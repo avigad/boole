@@ -12,8 +12,7 @@
 #
 ################################################################################
 
-from language import Language, built_in_language, get_language, \
-  null_language, global_language, set_default_language
+
 
 
 ################################################################################
@@ -22,19 +21,6 @@ from language import Language, built_in_language, get_language, \
 #
 ################################################################################
 
-# this used for functions that take either a single argument or a list
-def _mk_list(l):
-    if isinstance(l, list):
-        return l
-    else:
-        return [l]
-    
-# this is used for a function that returns either a single elements or a tuple
-def _unmk_list(l):
-    if len(l) == 1:
-        return l[0]
-    else:
-        return tuple(l)
         
 # this is used for functions that take a string, consisting either of
 # a single name, or a list of names, e.g.
@@ -53,435 +39,34 @@ def _str_to_list(s):
         return [s]
 
 
-################################################################################
-#
-# Exceptions associated with Types
-#
-################################################################################
-
-class TypeError(Exception):
-    """Class of all possible type errors
-    """
-    
-    def __init__(self, mess):
-        """
-        Arguments:
-        -`mess`: a string that represents the error message
-        """
-        Exception.__init__(self, mess)
-
-        
-class NonFunType(TypeError):
-    """Raised when trying to treat a non-functional type
-    as a functional type
-    """
-    
-    def __init__(self, etype):
-        """
-        
-        Arguments:
-        - `etype`: the etype that raised the error
-        """
-        TypeError.__init__(self, "Non functional type error.")
-        self.etype = etype
-
-        
-class TypeMismatch(TypeError):
-    """Raised when making a bad application"""
-
-    def __init__(self, actual, expected):
-        """
-        
-        Arguments:
-        - `actual`: the actual type of the expr
-        - `expected`: the expected type of the expression
-        """
-        mess = "Bad application: actual=" + str(actual) + " expected=" + \
-            str(expected)
-        TypeError.__init__(self, mess)
-        self.actual = actual
-        self.expected = expected
-
-
-class FunTypeError(TypeError):
-    """Raised when performing an illegal operation
-    on a functional type.
-    """
-    def __init__(self, mess):
-        """
-        
-        Arguments:
-        - `mess`:
-        """
-        TypeError.__init__(self, mess)
-
-
-
-################################################################################
-#
-# The class of types that an expression can have
-#
-################################################################################
-
-class Type(object):
-    """Parent class for types of expressions
+# TODO: replace with a dictionary which counts the use
+# of a single name.
+class FreshGen(object):
+    """Generate a fresh name according to a counter
+    which should never be reset.
     """
     
     def __init__(self):
-        pass
-
-
-    def __eq__(self, etype):
-        return hash(self) == hash(etype)
-
-    def __call__(self, s, language = None, **kwargs):
-        """Creates a new constant of that type
-        
-        Arguments:
-        - `s`: A list of variable names, such as 'x', 'x y z', or 'x, y, z'
-        - `language`: A language to associate them with
+        """Initialize the index to 0.
         """
-        
-        language = get_language(language)
-        args = _str_to_list(s)
-        consts = ()
-        for a in args:
-            consts += (Const(a, self, language = language),)
-        return _unmk_list(consts)
+        self._index = 0
 
-    def __mul__(self, t):
-        """Return the product type self * t
+    def get_name(self, name = None):
+        """Return an unused name
         """
-        return prodType(self, t)
-
-    def __rshift__(self, t):
-        """Return the arrow type self >> t
-        """
-        return FunType(dom = self, codom = t)
-
-    def iomap(self, type):
-        """Raises NonFunType(self)
-        by default, overriden by FunType.
-        
-        Arguments:
-        - `type`: an arbitrary type
-        """
-        raise NonFunType(self)
-
-
-class BasicType(Type):
-    """User-declared basic types
-    """
-    
-    def __init__(self, name, value = None, language = None, supertypes = []):
-        """
-        
-        Arguments:
-        - `name`: a string that represents the name of the type
-        - `value`: a domain that interprets the base type
-        - `language`: the language to associate it with
-        - `supertypes`: a list of supertypes of this type
-        """
-        Type.__init__(self)
-        self.name = name
-        self.value = value
-        self.supertypes = supertypes + [self]
-        language = get_language(language)
-        language.add_type(self)
-
-
-    def __eq__(self, etype):
-        """Equality of base types is by -name- only.
-        
-        Arguments:
-        - `etype`: An arbitrary etype
-        """
-        if isinstance(etype, BasicType):
-            return self.name == etype.name
+        if name != None:
+            pad = name
         else:
-            return False
+            pad = "_Boole"
+        fresh_name = "{0!s}_{0!s}".format(pad, self._index)
+        self._index += 1
+        return fresh_name
 
 
 
-    def __str__(self):
-        return self.name
-
-    def is_super(self, type):
-        """Check if type is a supertype of self.
-        
-        Arguments:
-        - `etype`: an etype
-        """
-        if isinstance(type, Star):
-            type = Star.factor
-        # TODO: check that equality is well-implemented for types
-        return type in self.supertypes
-
-    def accept(self, visitor, *args, **kwargs):
-        """
-        
-        Arguments:
-        - `visitor`:
-        - `*args`:
-        - `**kwargs`:
-        """
-        return visitor.visit_basic(self, *args, **kwargs)
+fresh_name = FreshGen()
 
 
-class EnumType(Type):
-    """An enumerated type is simply a list of strings with a name.
-    """
-    
-    def __init__(self, name, elts, language = None):
-        """
-        
-        Arguments:
-        - `name`: String representing Name of the enumerated type
-        - `elts`: a list of strings
-        - `language`: the language to associate it with
-        """
-        Type.__init__(self)
-        self.name = name
-        language = get_language(language)
-        language.add_type(self)
-        self.elts = elts
-        
-    def make_constants(self, language = None):
-        """
-        Create a tuple of constants denoting the elements. So,
-        for example, a constant named 'Alice' denotes the element 'Alice'.
-        
-        Arguments:
-        - `language`: the language to associate it with
-        """        
-        constants = []
-        for name in self.elts:
-            constants.append(Const(name, self, value = name, 
-                              language = language))
-        return tuple(constants)
-       
-    def __str__(self):
-        return self.name
-
-    # TODO: allow structural subtyping here?
-    def is_super(self, type):
-        """Returns true if and only if self == type
-        
-        Arguments:
-        - `type`: a type
-        """
-        return self == type
-
-    # TODO: revisit; is this needed?
-    def mem(self, s):
-        """Returns True if s is in elts and False otherwise.
-        
-        Arguments:
-        - `x`: an expr
-        """
-        return s in self.elts
-
-    def accept(self, visitor, *args, **kwargs):
-        """
-        
-        Arguments:
-        - `visitor`:
-        - `*args`:
-        - `**kwargs`:
-        """
-        return visitor.visit_enum(self, *args, **kwargs)
-
-
-class ProdType(Type):
-    """A finite product of types: is used to give
-    a type to any (finite) enumeration of well-typed
-    exprs
-    """
-    
-    def __init__(self, *factors):
-        """
-        
-        Arguments:
-        - `*factors`: a finite enumeration of types
-        """
-        Type.__init__(self)
-        self.factors = list(factors)
-
-    def __str__(self):
-        """
-        """
-        return ' * '.join(map(str, self.factors))
-
-    def is_super(self, type):
-        """Returns true if type is a supertype
-        of self. Product types are compared
-        componentwise.
-        
-        Arguments:
-        - `type`: an arbitrary type
-        """
-        i = len(self.factors)
-        if isinstance(type, Star):
-            for k in range(i):
-                if not self.factors[k].is_super(type.factor):
-                    return False
-            return True
-        elif isinstance(type, ProdType):
-            for k in range(i):
-                if not self.factors[k].is_super(type.factors[k]):
-                    return False
-            return True
-        else:
-            return False
-
-    def accept(self, visitor, *args, **kwargs):
-        """
-        
-        Arguments:
-        - `visitor`:
-        - `*args`:
-        - `**kwargs`:
-        """
-        return visitor.visit_prod(self, *args, **kwargs)
-
-
-def prodType(t1, t2):
-    """Takes a pair of types and returns the product of those
-    two types, while "flattening" the first type if it is
-    already a product.
-    
-    Arguments:
-    - `t1`: a type
-    - `t2`: a type
-    """
-    if isinstance(t1, ProdType):
-        return ProdType(*(t1.factors + [t2]))
-    else:
-        return ProdType(t1, t2)
-
-
-class Star(Type):
-    """A finite product of types: is used to give
-    a type to any (finite) enumeration of well-typed
-    exprs
-    """
-    
-    def __init__(self, factor):
-        """
-        
-        Arguments:
-        - `factors`: a type
-        """
-        Type.__init__(self)
-        # TODO: check factor is not itself a star type or product type?
-        self.factor = factor
-
-    def __str__(self):
-        """
-        """
-        return 'Star(' + str(self.factor) + ')'
-
-    def is_super(self, type):
-        """Returns true if type is a supertype
-        of self.
-        
-        Arguments:
-        - `type`: an arbitrary type
-        """
-        if not isinstance(type, Star):
-            return False
-        else:
-            return self.factor.is_super(type.factor)
-
-    def accept(self, visitor, *args, **kwargs):
-        """
-        
-        Arguments:
-        - `visitor`:
-        - `*args`:
-        - `**kwargs`:
-        """
-        return visitor.visit_star(self, *args, **kwargs)
-
-
-class FunType(Type):
-    """The type of functions: to be more flexible,
-    the output type can be parametrized by the input type: this
-    allows ad-hoc polymorphism.
-    """
-    
-    def __init__(self, dom = None, codom = None, iomap = None):
-        """
-        
-        Arguments:
-        - `dom`: The input type
-        - `codom`: The output type
-        - `iomap`: A function which takes an input type and
-        returns an output type, or raises an error if there is none
-        """
-        Type.__init__(self)
-        self.dom = dom
-        self.codom = codom
-        self.iomap = self._init_io(dom, codom, iomap)
-
-    def _init_io(self, dom, codom, iomap):
-        """Returns
-        - iomap if it is not None
-        - otherwise returns a function which tests a
-        given type for being a subtype of dom,
-        and returns codom if it is, and raises
-        TypeMismatch(type, dom) otherwise.
-        """
-        if iomap != None:
-            return iomap
-        elif (dom != None) and (codom != None):
-            def check_app(type):
-                if type.is_super(dom):
-                    return codom
-                else:
-                    raise TypeMismatch(type, dom)
-
-            return check_app
-        else:
-            raise FunTypeError("Underspecified arrow type")
-        
-    def __str__(self, ):
-        """Print a functional type as dom -> codom
-        or <poly> if it is ad-hoc polymorphic
-        """
-        if (self.dom != None) and (self.codom != None):
-            return str(self.dom) + ' >> ' + str(self.codom)
-        elif self.iomap != None:
-            return "<polymorphic>"
-        else:
-            raise FunTypeError("Underspecified arrow type")
-
-    def is_super(self, type):
-        """Returns true if type is a supertype of self.
-        Comparisons are contravariant in the domain
-        and covariant in the codomain.
-        
-        Arguments:
-        - `type`: any type
-        """
-        if not isinstance(type, FunType):
-            return False
-        elif (self.dom != None and self.codom != None and
-            type.dom != None  and type.codom != None):
-            return (type.dom.is_super(self.dom) and
-                    self.codom.is_super(type.codom))
-        else:
-            raise FunTypeError("Can't compare polymorphic types")
-
-    def accept(self, visitor, *args, **kwargs):
-        """
-        
-        Arguments:
-        - `visitor`:
-        - `*args`:
-        - `**kwargs`:
-        """
-        return visitor.visit_fun(self, *args, **kwargs)
 
 
 ################################################################################
@@ -490,278 +75,43 @@ class FunType(Type):
 #
 ################################################################################
 
+        
 class ExprError(Exception):
     """Errors for expressions
     """
-    def __init__(self, expr):
-        Exception.__init__(self)
+    def __init__(self, mess, expr):
+        Exception.__init__(self, mess)
         self.expr = expr
 
-
-class NoValue(ExprError):
-    """Raised if the constant or base type has no value
-    """
-    def __init__(self, expr):
-        """
-        
-        Arguments:
-        - `expr`:
-        """
-        Exception.__init__(self, "The constant "+str(expr)+" has no value.")
-        self.expr = expr
-        
-
-class NoType(TypeError):
-    """Raised if the expression has no type
-    """
-
-    def __init__(self, expr):
-        """Raised if the constant has no default type.
-        
-        Arguments:
-        - `expr`:
-        """
-        Exception.__init__(self, "The constant "+str(expr)+" has no type.")
-        self.expr = expr
-
-
-class BadApp(TypeError):
-    """Raised if there is a type mismatch in an application
-    """
-    
-    def __init__(self, actual, expected, expr):
-        """
-        
-        Arguments:
-        - `actual`: the type of the arguments
-        - `expected`: the domain of the function
-        - `expr`: the application
-        """
-        mess = ("Bad application in {0!s}: actual type = {1!s}, "
-            "expected = {2!s}").format(expr, actual, expected)
-        TypeError.__init__(self, mess)
-        self.actual = actual
-        self.expected = expected
-        self.expr = expr
-
-        
-class NonFunTypeApp(TypeError):
-    """Raised if there is an application to an expression
-    of non functional type.
-    """
-
-    def __init__(self, expr, type):
-        """
-        
-        Arguments:
-        - `expr`: the expression being applied
-        """
-        mess = "The expression: {0!s}\
-        is of type {1!s} which is non-functional.".format(expr, type)
-        TypeError.__init__(self, mess)
-        self.expr = expr
-        self.type = type
 
        
-class EnumError(ExprError):
-    """Raised if a name n is not found in the
-    enumeration type e.
-    """
-    
-    def __init__(self, enum, name):
-        """
-        
-        Arguments:
-        - `enum`: an enumeration type
-        - `name`: a string
-        """
-        self.enum = enum
-        self.name = name
-        
+
 
 ################################################################################
 #
-# The general class for expressions, which include terms and
-# formulas (expressions of type bool)
+# Expressions and types: these implement the term language of a dependent,
+# extensional, impredicative and classical type theory.
+#
+#
+# The datatype is represented by:
+#
+# Expr := Type | Kind | Bool | Const(name) | DB(int) | Pi(name,Expr,Expr) |
+#         App(Expr,Expr,Expr) | Abs(name,Expr,Expr) | Sig(Tele,Expr) |
+#         Tuple(Expr,...,Expr) | Proj(int,Expr) | Ev(Tele,Expr) |
+#         Forall(name,Expr,Expr) | Exists(name,Expr,Expr) |
+#         Eq(Expr,Expr) | Box(Expr,Expr,Expr)
+#
+# Tele := Tele([name,...,name],[Expr,...,Expr])
 #
 ################################################################################
-
-def to_expr(e):
-    """Takes a python object and coerces it to an
-    expression if possible, does nothing otherwise.
-    
-    Arguments:
-    - `e`: a python object
-    """
-    if isinstance(e, Expr):
-        return e
-    elif isinstance(e, int):
-        return ii(e)
-    elif isinstance(e, float):
-        return rr(e)
-    else:
-        raise TypeError('Expected an object of type Expr')
-
 
 class Expr(object):
-    """Class of general expressions
+    """The class of types and expressions.
     """
     
     def __init__(self):
-        """Initialize an Expr
         """
-        pass
-
-    def __str__(self):
-        """Give the string representation of an expression
         """
-        return "<abstr>"
-
-    def __call__(self, *exprs):
-        """Calling an expression on arguments creates the expression
-        that is an application with arguments expr_list
-        
-        Arguments:
-        - `*expr_list`: a tuple of python objects. They are coerced
-        to Expr.
-        """
-        args = map(to_expr, list(exprs))
-        return App(self, args)
-    
-    def etype(self):
-        """Return the type of the expression
-        """
-        raise NoType(self)
-
-    def has_type(self):
-        """Return True if self is well-typed and
-        false otherwise.
-        """
-        try:
-            self.etype()
-            return True
-        except TypeError:
-            return False
-
-    def accept(self, visitor, *args, **kwargs):
-        """The accept method takes a visitor as argument
-        and calls the appropriate method of visitor on self.
-        
-        Arguments:
-        - `visitor`: The visitor obeject with methods
-        visit_const, visit_app, etc
-        - `*args`: arguments to the visitor
-        - `**kwargs`: named args to the visitor
-        """
-        raise NotImplementedError()
-
-    # The rest of the class translates Python syntax to built in functions
-    # and predicates defined below
-    
-    def __eq__(self, expr):
-        return equals(self, to_expr(expr))
-    
-    def __ne__(self, expr):
-        return not_equals(self, to_expr(expr))
-    
-    def __and__(self, expr):
-        return conj(self, expr)
-
-    def __or__(self, expr):
-        return disj(self, expr)
-    
-    def __rshift__(self, expr):     # used for implication
-        return implies(self, expr)
-
-    def __invert__(self):           # used for boolean negation
-        return bneg(self)
-    
-    def __add__(self, expr):
-        return plus(self, to_expr(expr))
-  
-    def __mul__(self, expr):
-        return times(self, to_expr(expr))
-
-    def __sub__(self, expr):
-        return sub(self, to_expr(expr))
-
-    def __div__(self, expr):
-        return div(self, to_expr(expr))
-
-    def __pow__(self, expr):
-        return power(self, to_expr(expr))
-
-    def __neg__(self):
-        return neg(self)
-        
-    def __abs__(self):
-        return absf(self)
-        
-    def __lt__(self, expr):
-        return less_than(self, to_expr(expr))
-        
-    def __le__(self, expr):
-        return less_eq(self, to_expr(expr))
-        
-    def __gt__(self, expr):
-        return greater_than(self, to_expr(expr))
-    
-    def __ge__(self, expr):
-        return greater_eq(self, to_expr(expr))
-
-    def __radd__(self, expr):
-        return plus(to_expr(expr), self)
-
-    def __rmul__(self, expr):
-        return times(to_expr(expr), self)
-
-    def __rsub__(self, expr):
-        return sub(to_expr(expr), self)
-
-    def __rdiv__(self, expr):
-        return div(to_expr(expr), self)
-
-    def __rpow__(self, expr):
-        return power(to_expr(expr), self)
-
-
-class Const(Expr):
-    """Constants and variables
-    """
-    
-    def __init__(self, name, type = None, value = None, 
-                 language = None, **kwargs):
-        """Initialize a constant
-        
-        Arguments:
-        - `name`: string
-        - `value`: any python object representing the value of the constant;
-        this overrides the value that may be given by a model.
-        - `language`: the language to associate it with
-        - `etype` : an optional Etype
-        - `infix` : a boolean that is true if the constant is an
-        infix function symbol.
-        """
-        language = get_language(language)
-        Expr.__init__(self)
-        self.name = name
-        self.value = value
-        self.type_ = type
-        self.attributes = kwargs
-        language.add_const(self)
-
-    def __str__(self):
-        """String representation of a constant
-        """
-        return self.name
- 
-    def etype(self):
-        """Return the type of the constant
-        """
-        if self.type_ != None:
-            return self.type_
-        else:
-            raise NoType(self)
 
     def accept(self, visitor, *args, **kwargs):
         """
@@ -771,73 +121,183 @@ class Const(Expr):
         - `*args`:
         - `**kwargs`:
         """
-        return visitor.visit_const(self, *args, **kwargs)
+        raise NotImplemented()
+
+        
+
+class Const(Expr):
+    """A constant declaration. Variables
+    and constants are identified.
+    """
+    
+    def __init__(self, name, type):
+        """
+        
+        Arguments:
+        - `name`:
+        - `type`:
+        """
+        self.name = name
+        self.type = type
+
+    def accept(self, visitor, *args, **kwargs):
+        """
+        
+        Arguments:
+        - `visitor`:
+        - `*args`:
+        - `**kwargs`:
+        """
+        visitor.visit_const(self, *args, **kwargs)
+
+        
+
+class DB(Expr):
+    """A bound index represented by a De Bruijn variable.
+    a De Bruijn variable generally does not to be initialized
+    as it is incremented while moving through a term
+    """
+    
+    def __init__(self, index = 0):
+        """
+        """
+        self.index = index
+
+    def incr(self, inc=1):
+        """Increment the index
+        
+        Arguments:
+        - `inc`: integer specifying the increment.
+        """
+        self.index += inc
+
+    def decr(self):
+        """Decrement the index by 1
+        """
+        if self.index == 0:
+            raise ExprError("Cannot decrement a DB\
+            variable with index 0", self)
+        else:
+            self.index -= 1
+
+
+        
+    def accept(self, visitor, *args, **kwargs):
+        """
+        
+        Arguments:
+        - `visitor`:
+        - `*args`:
+        - `**kwargs`:
+        """
+        visitor.visit_db(self, *args, **kwargs)
+                
+
+
+
+class Type(Expr):
+    """The type of all small types
+    """
+    
+    def __init__(self):
+        """
+        """
+
+    def accept(self, visitor, *args, **kwargs):
+        """
+        
+        Arguments:
+        - `visitor`:
+        - `*args`:
+        - `**kwargs`:
+        """
+        visitor.visit_type(self, *args, **kwargs)
+
+        
+class Kind(Expr):
+    """The type of all large types
+    """
+    
+    def __init__(self):
+        """
+        """
+    def accept(self, visitor, *args, **kwargs):
+        """
+        
+        Arguments:
+        - `visitor`:
+        - `*args`:
+        - `**kwargs`:
+        """
+        visitor.visit_kind(self, *args, **kwargs)
+
+
+class Bool(Expr):
+    """The type of all propositions.
+    """
+    
+    def __init__(self):
+        """
+        """
+                
+    def accept(self, visitor, *args, **kwargs):
+        """
+        
+        Arguments:
+        - `visitor`:
+        - `*args`:
+        - `**kwargs`:
+        """
+        visitor.visit_bool(self, *args, **kwargs)
+
+class Bound(Expr):
+    """An expression consisting of a binder,
+    a domain, and a term which binds a variable of
+    that domain.
+    """
+    
+    def __init__(self, binder, dom, expr):
+        """
+        
+        Arguments:
+        - `binder`: an element of the Binder class
+        - `dom`: an expression denoting the domain of the variable
+        - `expr`: an expression
+        """
+        self.binder = binder
+        self.dom = dom
+        self.expr = expr
+        
+
+    def accept(self, visitor, *args, **kwargs):
+        """
+        
+        Arguments:
+        - `visitor`:
+        - `*args`:
+        - `**kwargs`:
+        """
+        visitor.visit_bound(self, *args, **kwargs)
+
 
 
 class App(Expr):
-    """Applications
+    """Applications. Carries the proof of well-formedness
     """
     
-    def __init__(self, fun, args, **kwargs):
+    def __init__(self, conv, fun, arg):
         """
         
         Arguments:
-        - `term`: An expression
-        - `args`: A list of expressions
+        - `conv`: A term representing evidence that the application
+        is well-typed.
+        - `fun`: The functional part of the application.
+        - `arg`: The argument part of the application.
         """
-        Expr.__init__(self, **kwargs)
+        self.conv = conv
         self.fun = fun
-        self.args = args
-        
-    def __str__(self):
-        """String representation of an application
-        """
-        def par(expr):
-            """Return the string representation of an expr,
-            add parentheses if needed.
-            
-            Arguments:
-            - `expr`: an expression
-            """
-            if isinstance(expr, Const):
-                return str(expr)
-            else:
-                return "(" + str(expr) + ")"
+        self.arg = arg
 
-        # special printing for infix symbols
-        if isinstance(self.fun, Const) and len(self.args) == 2 and \
-                'infix' in self.fun.attributes.keys():
-            infix = self.fun.attributes['infix']
-            return par(self.args[0]) + " " + infix + " " + \
-                par(self.args[1])
-        # special printing for prefix symbols
-        elif isinstance(self.fun, Const) and len(self.args) == 1 and \
-                'prefix' in self.fun.attributes.keys():
-            prefix = self.fun.attributes['prefix']
-            return prefix + par(self.args[0])
-        else:
-            return str(self.fun) + '(' + ", ".join(map(str, self.args)) + ')' 
-
-    def etype(self):
-        """
-        Compute the type of the arguments: as a product type if the
-        number of arguments is different than 1, the type of the
-        single argument otherwise. Return the output of iomap
-        of fun applied to this type.
-        """
-        fun_type = self.fun.etype()
-        if len(self.args) == 1:
-            arg_type = self.args[0].etype()
-        else:
-            arg_type = ProdType(*map(lambda expr: expr.etype(), self.args))
-        try:
-            return fun_type.iomap(arg_type)
-        except TypeMismatch, e:
-            raise BadApp(e.actual, e.expected, self)
-        except NonFunType, e:
-            raise NonFunTypeApp(self.fun, fun_type)
-        
-        
     def accept(self, visitor, *args, **kwargs):
         """
         
@@ -846,39 +306,24 @@ class App(Expr):
         - `*args`:
         - `**kwargs`:
         """
-        return visitor.visit_app(self, *args, **kwargs)
+        visitor.visit_const(self, *args, **kwargs)
 
 
-class Abs(Expr):
-    """The abstraction of an expression over a list of variables.
+class Sig(Expr):
+    """Sigma types, takes a telescope as argument
     """
     
-    def __init__(self, vars, body, **kwargs):
+    def __init__(self, telescope, type):
         """
         
         Arguments:
-        - `vars`: a list of constants; no constant should have a value!
-        - `body`: the expression that is to be abstracted over
+        - `telescope`: A telescope of types.
+        - `type`: A term which may depend on elements of the
+        telescope. Binds n variables where n is the length of the
+        telescope.
         """
-        Expr.__init__(self, **kwargs)
-        self.vars = vars
-        self.body = body
-        
-    def __str__(self):
-        """String representation of an abstraction
-        """
-        if len(self.vars) == 1:
-            var_str = str(self.vars[0])
-        else:
-            var_str = "[" + ", ".join(map(str, self.vars)) + "]"
-        return ("Abs(" + var_str + ",  " + str(self.body) + ")")
-
-    def etype(self):
-        """
-        """
-        dom_type = ProdType( *map(lambda expr: expr.etype(), self.vars))
-        return dom_type >> self.body.etype()
-
+        self.telescope = telescope
+        self.type = type
     def accept(self, visitor, *args, **kwargs):
         """
         
@@ -887,51 +332,20 @@ class Abs(Expr):
         - `*args`:
         - `**kwargs`:
         """
-        return visitor.visit_abs(self, *args, **kwargs)
+        visitor.visit_sig(self, *args, **kwargs)
 
-        
-class Forall(Expr):
-    """The universal quantification of a formula over
-    a list of variables.
+
+class Tuple(Expr):
+    """Elements of Sigma types.
     """
     
-    def __init__(self, vars, body, **kwargs):
+    def __init__(self, exprs):
         """
         
         Arguments:
-        - `vars`: a constant or a list of constants: no constant should have a value!
-        - `body`: an expression, preferably of type Bool.
-        counterexample contains a list of pairs of counterexamples and models.
+        - `expr_list`: a list of expressions
         """
-        Expr.__init__(self, **kwargs)
-        if isinstance(vars, Const):
-            self.vars = [vars]
-        else:
-            self.vars = vars
-        self.body = body
-        self.counterexample = []
-
-    def __str__(self):
-        """
-        """
-        if len(self.vars) == 1:
-            var_str = str(self.vars[0])
-        else:
-            var_str = "[" + ", ".join(map(str, self.vars)) + "]"
-        return ("Forall(" + var_str + ", " + str(self.body) + ")")
-
-    def etype(self):
-        """Return the type of a forall statement:
-        simply compute the type of the body, and if it
-        is boolean (and well typed) then return Bool
-        """
-        # Note that we do not check if a variable
-        # with name 'x' has same type in body and
-        # vars
-        if Bool.is_super(self.body.etype()):
-            return Bool
-        else:
-            raise TypeMismatch(self.body.etype(), Bool)
+        self.exprs = exprs
 
     def accept(self, visitor, *args, **kwargs):
         """
@@ -941,51 +355,78 @@ class Forall(Expr):
         - `*args`:
         - `**kwargs`:
         """
-        return visitor.visit_forall(self, *args, **kwargs)
-    
+        visitor.visit_tuple(self, *args, **kwargs)
 
-class Exists(Expr):
-    """The Existential quantification of a formula over
-    a list of variables.
+
+class Proj(Expr):
+    """Projections for Sigma types
     """
     
-    def __init__(self, vars, body, **kwargs):
+    def __init__(self, index, expr):
         """
         
         Arguments:
-        - `vars`: a list of constants: no constant should have a value!
-        - `body`: an expression, preferably of type Bool.
-        witness contains a list of pairs of counterexamples and models.
+        - `index`: an integer
+        - `expr`: the expression to which is applied the projection.
         """
-        Expr.__init__(self, **kwargs)
-        if isinstance(vars, Const):
-            self.vars = [vars]
-        else:
-            self.vars = vars
-        self.body = body
-        self.witness = []
+        self.index = index
+        self.expr = expr
 
-    def __str__(self):
+    def accept(self, visitor, *args, **kwargs):
         """
+    
+        Arguments:
+        - `visitor`:
+        - `*args`:
+        - `**kwargs`:
         """
-        if len(self.vars) == 1:
-            var_str = str(self.vars[0])
-        else:
-            var_str = "[" + ", ".join(map(str, self.vars)) + "]"
-        return ("Exists(" + var_str + ", " + str(self.body) + ")")
+        visitor.visit_proj(self, *args, **kwargs)
+        
 
-    def etype(self):
-        """Return the type of an exists statement:
-        simply compute the type of the body, and if it
-        is boolean (and well typed) then return Bool
+
+class Ev(Expr):
+    """Evidence type: provides evidence for a
+    proposition (of type Bool)
+    """
+    
+    def __init__(self, telescope, prop):
         """
-        # Note that we do not check if a variable
-        # with name 'x' has same type in body and
-        # vars
-        if Bool.is_super(self.body.etype()):
-            return Bool
-        else:
-            raise TypeMismatch(self.body.etype(), Bool)
+        
+        Arguments:
+        - `telescope`: a telescope of evidence for the proposition
+        prop.
+        - `prop`: a proposition whose evidence is supplied by self.
+        binds NO variables.
+        """
+        self.telescope = telescope
+        self.prop = prop
+        
+    def accept(self, visitor, *args, **kwargs):
+        """
+        
+        Arguments:
+        - `visitor`:
+        - `*args`:
+        - `**kwargs`:
+        """
+        visitor.visit_ev(self, *args, **kwargs)
+
+
+
+class Eq(Expr):
+    """Equality between expression. Makes sense regardless
+    of the type of the expressions.
+    """
+    
+    def __init__(self, expr1, expr2):
+        """
+        
+        Arguments:
+        - `expr1`: an expression
+        - `expr2`: an expression
+        """
+        self.lhs = expr1
+        self.rhs = expr2
 
     def accept(self, visitor, *args, **kwargs):
         """
@@ -995,63 +436,179 @@ class Exists(Expr):
         - `*args`:
         - `**kwargs`:
         """
-        return visitor.visit_exists(self, *args, **kwargs)
+        visitor.visit_eq(self, *args, **kwargs)
+
+
+
+class Box(Expr):
+    """Boxed epressions: a boxed expression
+    carries a type and a witness that the type of
+    the expression is identical to it.
+    """
+    
+    def __init__(self, conv, expr, type):
+        """
+        
+        Arguments:
+        - `conv`: A witness to the equality between the type
+        of expr and type
+        - `expr`: The expression denoted by the box
+        - `type`: The type assigned to expr
+        """
+        self.conv = conv
+        self.expr = expr
+        self.type = type
+        
+    def accept(self, visitor, *args, **kwargs):
+        """
+        
+        Arguments:
+        - `visitor`:
+        - `*args`:
+        - `**kwargs`:
+        """
+        visitor.visit_box(self, *args, **kwargs)
 
 
 ################################################################################
 #
-# The visitor classes for Expr and Type
+# The class of 1 variable binders: this includes Pi, Abs, forall/exists
+# but excludes Sig.
 #
 ################################################################################
 
-class TypeVisitor(object):
-    """Dispatch appropriate methods for each
-    subclass of Type.
+class Binder(object):
+    """The class of Expression binders.
     """
     
     def __init__(self):
-        """Do nothing by default.
-        """
         pass
 
-    def visit_basic(self, *args, **kwargs):
-        """
-        """
-        raise NotImplementedError()
+    def is_pi(self):
+        return False
 
-    def visit_enum(self, *args, **kwargs):
-        """
-        """
-        raise NotImplementedError()
+    def is_abs(self):
+        return False
 
-    def visit_prod(self, *args, **kwargs):
-        """
-        """
-        raise NotImplementedError()
+    def is_forall(self):
+        return False
 
-    def visit_star(self, *args, **kwargs):
-        """
-        """
-        raise NotImplementedError()
+    def is_exists(self):
+        return False
 
-    def visit_fun(self, *args, **kwargs):
-        """
-        """
-        raise NotImplementedError()
 
-    def visit(self, t, *args, **kwargs):
-        """Visit a type
+class Pi(Binder):
+    """Abstraction
+    """
+    
+    def __init__(self, var):
+        """
         
         Arguments:
-        - `t`:
+        - `var`:
+        """
+        self.var = var
+        
+    def is_pi(self):
+        return True
+        
+        
+class Abs(Binder):
+    """Abstraction
+    """
+    
+    def __init__(self, var):
+        """
+        
+        Arguments:
+        - `var`:
+        """
+        self.var = var
+        
+    def is_abs(self):
+        return True
+        
+class Forall(Binder):
+    """Abstraction
+    """
+    
+    def __init__(self, var):
+        """
+        
+        Arguments:
+        - `var`:
+        """
+        self.var = var
+        
+    def is_forall(self):
+        return True
+        
+class Exists(Binder):
+    """Abstraction
+    """
+    
+    def __init__(self, var):
+        """
+        
+        Arguments:
+        - `var`:
+        """
+        self.var = var
+        
+    def is_exists(self):
+        return True
+        
+
+        
+
+
+
+
+################################################################################
+#
+# The Tele class represents a telescope.
+#
+################################################################################
+
+class Tele(object):
+    """A telescope is a (possible) list of names
+    and expressions, each expression may depend on the
+    previous ones.
+    """
+    
+    def __init__(self, vars, types):
+        """
+        
+        Arguments:
+        - `vars`: the names of the variable associated to each expression.
+        - `exprs`: a list of types. Each type binds a variable of the previous type.
+        """
+        self.vars = vars
+        self.types = types
+        self.len = len(self.types)
+
+
+    def accept(self, visitor, *args, **kwargs):
+        """
+        
+        Arguments:
+        - `visitor`:
         - `*args`:
         - `**kwargs`:
         """
-        return t.accept(self, *args, **kwargs)
+        visitor.visit_tele(self, *arg, **kwargs)
 
+
+
+
+################################################################################
+#
+# The visitor class for Expr and Tele
+#
+################################################################################
 
 class ExprVisitor(object):
-    """Visit an expression.
+    """
     """
     
     def __init__(self):
@@ -1059,33 +616,52 @@ class ExprVisitor(object):
         """
         pass
 
-    def visit_const(self, *args, **kwargs):
-        """
-        """
-        raise NotImplementedError()
+    def visit_const(self, expr, *args, **kwargs):
+        raise NotImplemented()
 
-    def visit_app(self, *args, **kwargs):
-        """
-        """
-        raise NotImplementedError()
+    def visit_db(self, expr, *args, **kwargs):
+        raise NotImplemented()
 
-    def visit_abs(self, *args, **kwargs):
-        """
-        """
-        raise NotImplementedError()
+    def visit_type(self, expr, *args, **kwargs):
+        raise NotImplemented()
 
-    def visit_forall(self, *args, **kwargs):
-        """
-        """
-        raise NotImplementedError()
+    def visit_kind(self, expr, *args, **kwargs):
+        raise NotImplemented()
 
-    def visit_exists(self, *args, **kwargs):
-        """
-        """
-        raise NotImplementedError()
+    def visit_bool(self, expr, *args, **kwargs):
+        raise NotImplemented()
+
+    def visit_binder(self, expr, *args, **kwargs):
+        raise NotImplemented()
+
+    def visit_app(self, expr, *args, **kwargs):
+        raise NotImplemented()
+
+    def visit_sig(self, expr, *args, **kwargs):
+        raise NotImplemented()
+
+    def visit_tuple(self, expr, *args, **kwargs):
+        raise NotImplemented()
+
+    def visit_proj(self, expr, *args, **kwargs):
+        raise NotImplemented()
+
+    def visit_ev(self, expr, *args, **kwargs):
+        raise NotImplemented()
+
+    def visit_eq(self, expr, *args, **kwargs):
+        raise NotImplemented()
+
+    def visit_box(self, expr, *args, **kwargs):
+        raise NotImplemented()
+
+    def visit_tele(self, expr, *args, **kwargs):
+        raise NotImplemented()
+
 
     def visit(self, expr, *args, **kwargs):
-        """
+        """Call the appropriate method of self
+        on expr depending on its form.
         
         Arguments:
         - `expr`: an expression
@@ -1093,272 +669,309 @@ class ExprVisitor(object):
         return expr.accept(self, *args, **kwargs)
 
 
+
+
 ################################################################################
 #
-# Built-in types and expressions
+# Locally nameless representation utility functions:
+# binding and freeing variables.
 #
 ################################################################################
 
-Real = BasicType('Real', language = built_in_language)
-Int = BasicType('Int', language = built_in_language, supertypes = [Real])
-Bool = BasicType('Bool', language = built_in_language)
 
-
-#
-# Equality and disequality. Note that these are polymorphic.
-#
-
-def poly_bin_pred(dom):
-    """From a product of types, check
-    if one type is a subtype of the other
-    and return the largest.
-    
-    Arguments:
-    - `dom`: A product type with two factors
-    """
-    a = dom.factors[0]
-    b = dom.factors[1]
-
-    if not (a.is_super(b) | b.is_super(a)):
-        raise FunTypeError(
-            'Cannot compare elements of {0!s} and {1!s}'.format(a,b))
-    return Bool
-    
-equals = Const('equals', 
-               FunType(codom = Bool, iomap = poly_bin_pred),
-               # value = (lambda a, b: a == b),
-               language = built_in_language, 
-               infix = '==')
-
-not_equals = Const('not_equals', 
-               FunType(codom = Bool, iomap = poly_bin_pred),
-               # value = (lambda a, b: a != b),
-               language = built_in_language, 
-               infix = '!=')
-
-
-#
-# Boolean constants and operations
-#
-
-true =    Const('true', 
-              Bool, 
-              # value = True, 
-              language = built_in_language)
-
-false =   Const('false', 
-              Bool, 
-              # value = False, 
-              language = built_in_language) 
-
-conj =    Const('conj', 
-              Bool * Bool >> Bool, 
-              # value = (lambda a, b: a & b), 
-              language = built_in_language, 
-              infix = '&')
-
-disj =    Const('disj', 
-              Bool * Bool >> Bool, 
-              # value = (lambda a, b: a | b), 
-              language = built_in_language, 
-              infix = '|')
-
-implies = Const('implies', 
-              Bool * Bool >> Bool, 
-              # value = (lambda a, b: (not a) or b), 
-              language = built_in_language, 
-              infix = '>>')
-
-bneg =    Const('bneg',
-              Bool >> Bool,
-              # value = (lambda a: not a),
-              language = built_in_language,
-              prefix = "~")
-
-And =     Const('And',
-              Star(Bool) >> Bool,
-              # value = lambda *args: reduce(lambda x, y: x & y, args, True),
-              language = built_in_language)
-
-Or =      Const('Or',
-              Star(Bool) >> Bool,
-              # value = lambda *args: reduce(lambda x, y: x | y, args, False),
-              language = built_in_language)
-
-
-#
-# Numeric operations and predicates.
-#
-# These require a special form of polymorphism, since an Int can be 
-# coerced to a Real.
-#
-# TODO: use a more general Numeric class instead of Real
-#
-
-def arith_un_pred(dom):
-    if not dom.is_super(Real):
-        raise FunTypeError('{0!s} is not a numeric type'.format(dom))
-    return Bool
-
-def arith_un_func(dom):
-    if not dom.is_super(Real):
-        raise FunTypeError('{0!s} is not a numeric type'.format(dom))
-    return dom
-
-def _is_arith_type_list(type_list):
-    """
-    Takes a list of types, and returns True if all are numeric types.
+# TODO: should this just perform a side effect on the expression?
+class AbstractExpr(ExprVisitor):
+    """Abstract an expression over a list
+    of names, in the locally nameless approach. Return
+    the updated expression. The names should be distinct.
     """
     
-    for t in type_list:
-        if not t.is_super(Real):
-            return False
-    return True
+    def __init__(self, names):
+        """
 
-def _max_arith_type_list(type_list):
-    """
-    Takes a list of types, assumed to be numeric types, and returns
-    a type subsuming all of them.
-    """
-    
-    def join(t1, t2):
-        if t1.is_super(t2):
-            return t2
-        elif t2.is_super(t1):
-            return t1
-        else:
-            return Real
+        Arguments:
+        - `names`: a list of strings
+        """
+        self.names = names
+
         
-    return reduce(join, type_list, Int)
+    def visit_const(self, expr, depth):
+        """
+        
+        Arguments:
+        - `expr`: an expression.
+        - `depth`: the number of binders crossed.
+        """
+        if expr.name in self.names:
+            index = depth + self.names.index(expr.name)
+            return DB(index = index)
+        else:
+            return Const(expr.name, expr.type)
+            
 
-def arith_bin_pred(dom):
-    if len(dom.factors) != 2:
-        raise FunTypeError('Two arguments expected.')
-    elif not _is_arith_type_list(dom.factors):
-        raise FunTypeError('Arguments must have numeric types.')
-    else:
-        return Bool
+    def visit_db(self, expr, *args, **kwargs):
+        return DB(index = expr.index)
+
+
+    def visit_type(self, expr, *args, **kwargs):
+        return Type()
+
+
+    def visit_kind(self, expr, *args, **kwargs):
+        return Kind()
+
+
+    def visit_bool(self, expr, *args, **kwargs):
+        return Bool()
     
-def arith_bin_func(dom):
-    if len(dom.factors) != 2:
-        raise FunTypeError('Two arguments expected.')
-    elif not _is_arith_type_list(dom.factors):
-        raise FunTypeError('Arguments must have numeric types.')
-    else:
-        return _max_arith_type_list(dom.factors)
-    
-def arith_star_pred(dom):
-    if not _is_arith_type_list(dom.factors):
-        raise FunTypeError('Arguments must have numeric types.')
-    else:
-        return Bool
-    
-def arith_star_func(dom):
-    if not _is_arith_type_list(dom.factors):
-        raise FunTypeError('Arguments must have numeric types.')
-    else:
-        return _max_arith_type_list(dom.factors)
 
-ArithUnFunc = FunType(dom = Real, codom = Real, iomap = arith_un_func)
-ArithBinFunc = FunType(dom = Real * Real, codom = Real, iomap = arith_bin_func)
-ArithStarFunc = FunType(dom = Star(Real), codom = Real, iomap = arith_star_func)
-ArithUnPred = FunType(dom = Real, codom = Bool, iomap = arith_un_pred)
-ArithBinPred = FunType(dom = Real * Real, codom = Bool, iomap = arith_bin_pred)
-ArithStarPred = FunType(dom = Star(Real), codom = Bool, iomap = arith_star_pred)
+    def visit_bound(self, expr, depth):
+        """
+        
+        Arguments:
+        - `expr`: an expression.
+        - `depth`: the number of binders crossed.
+        """
+        dom = self.visit(expr.dom, depth)
+        b_expr = self.visit(expr.expr, depth + 1)
+        return Bound(expr.binder, dom, b_expr)
+        
 
-# TODO: do we really want both binary plus and sum?
-# simiarly for max and min
-
-plus =    Const('plus', 
-              ArithBinFunc,
-              language = built_in_language, 
-              infix = '+')
-
-Sum =     Const('Sum',
-             ArithStarFunc,
-             language = built_in_language)
-
-times =   Const('times', 
-             ArithBinFunc,
-             language = built_in_language, 
-             infix = '*')
-
-Product = Const('Product',
-             ArithStarFunc,
-             language = built_in_language)
-
-sub =     Const('sub',
-             ArithBinFunc,
-             language = built_in_language,
-             infix = '-')
-
-div =     Const('div',
-             ArithBinFunc,
-             language = built_in_language,
-             infix = '/')
-
-power =   Const('power',
-             ArithBinFunc,
-             language = built_in_language,
-             infix = '**')
-
-neg =     Const('neg',
-             ArithUnFunc,
-             language = built_in_language,
-             prefix = '-')
-
-absf =    Const('abs',
-             ArithUnFunc,
-             language = built_in_language)
-
-Min =     Const('min',
-             ArithStarFunc,
-             language = built_in_language)
-
-Max =     Const('max',
-             ArithStarFunc,
-             language = built_in_language)
-
-less_than =    Const('less_than', 
-                    ArithBinPred,
-                    language = built_in_language, 
-                    infix = '<')
-
-less_eq =      Const('less_eq', 
-                    ArithBinPred,
-                    language = built_in_language, 
-                    infix = '<=')
-
-greater_than = Const('greater_than', 
-                    ArithBinPred,
-                    language = built_in_language, 
-                    infix = '>')
-
-greater_eq =   Const('greater_eq', 
-                    ArithBinPred,
-                    language = built_in_language, 
-                    infix = '>=')
+    def visit_app(self, expr, *args, **kwargs):
+        conv = self.visit(expr.conv, *args, **kwargs)
+        fun = self.visit(expr.fun, *args, **kwargs)
+        arg = self.visit(expr.arg, *args, **kwargs)
+        return App(conv, fun, arg)
 
 
-# create a constant from a Python object
-def const(c, type = None):
-    """Define a constant with a fixed given value
+    def visit_sig(self, expr, depth):
+        """
+        
+        Arguments:
+        - `expr`: an expression.
+        - `depth`: the number of binders crossed.
+        """
+        tele = self.visit(expr.telescope, depth)
+        shift = expr.telescope.len
+        type = self.visit(expr.type, depth + shift)
+        return Sig(tele, type)
+
+
+    def visit_tuple(self, expr, *args, **kwargs):
+        exprs = map(lambda x:self.visit(x, *args, **kwargs), expr.exprs)
+        return Tuple(exprs)
+        
+
+    def visit_proj(self, expr, *args, **kwargs):
+        sub_expr = self.visit(expr.expr, *args, **kwargs)
+        return Proj(expr.index, sub_expr)
+
+
+    def visit_ev(self, expr, *args, **kwargs):
+        tele = self.visit(expr.tele, *args, **kwargs)
+        prop = self.visit(expr.prop, *args, **kwargs)
+        return Ev(tele, prop)
+        
+
+    def visit_eq(self, expr, *args, **kwargs):
+        lhs = self.visit(expr.lhs, *args, **kwargs)
+        rhs = self.visit(expr.rhs, *args, **kwargs)
+        return Eq(lhs, rhs)
+
+
+    def visit_box(self, expr, *args, **kwargs):
+        conv = self.visit(expr.conv, *args, **kwargs)
+        expr = self.visit(expr.expr, *args, **kwargs)
+        type = self.visit(expr.type, *args, **kwargs)
+        return Box(conv, expr, type)
+
+
+    def visit_tele(self, expr, depth):
+        """
+        
+        Arguments:
+        - `expr`: an expression.
+        - `depth`: the number of binders crossed.
+        """
+        types = []
+        for i, e in enumerate(expr.types):
+            abs_e = self.visit(e, depth + i)
+            types.append(abs_e)
+
+        return Tele(expr.vars, types)
+
+
+
+
+
+def abstract_expr(var_list, expr):
+    """Abstract a list of variables in an
+    expression.
     
     Arguments:
-    - `c`: any python object
+    - `var_list`: a list of variable names
+    - `expr`: an expression
     """
-    if type == None:
-        s = 'const({0!s})'.format(c)
-    else:
-        s = 'const({0!s},{1!s})'.format(c,type)
-    return Const(s, type, value = c, language = null_language)
+    abstractor = AbstractExpr(var_list)
+    return abstractor.visit(expr, 0)
 
-# create an integer constant
-def ii(n):
-    return Const('ii({0!s})'.format(n), Int, int(n), null_language)
 
-# create a real constant
-def rr(x, language = null_language):
-    return Const('rr({0!s})'.format(x), Real, float(x), null_language)
 
+class SubstExpr(ExprVisitor):
+    """Given a list of expressions e0,...,en
+    instantiate the DB indices 1,...,n with those
+    terms.
+    """
+    
+    def __init__(self, exprs):
+        """
+        
+        Arguments:
+        - `exprs`: the expressions to instanciate.
+        """
+        self.exprs = exprs
+        self.len = len(self.exprs)
+        
+    def visit_const(self, expr, *args, **kwargs):
+        return Const(expr.name, expr.type)
+
+    def visit_db(self, expr, depth):
+        if expr.index < depth:
+            return DB(index = expr.index)
+        elif expr.index < depth + self.len:
+            return self.exprs[expr.index - depth]
+        else:
+            raise ExprError("Unbound DB variable", expr)
+           
+    def visit_type(self, expr, *args, **kwargs):
+        return Type()
+
+    def visit_kind(self, expr, *args, **kwargs):
+        return Kind()
+
+    def visit_bool(self, expr, *args, **kwargs):
+        return Bool()
+
+    def visit_bound(self, expr, depth):
+        dom = self.visit(expr.dom, depth)
+        b_expr = self.visit(expr.expr, depth + 1)
+        return Bound(expr.binder, dom, b_epr)
+
+    def visit_app(self, expr, *args, **kwargs):
+        conv = self.visit(expr.conv, *args, **kwargs)
+        fun = self.visit(expr.fun, *args, **kwargs)
+        arg = self.visit(expr.arg, *args, **kwargs)
+        return App(conv, fun, arg)
+
+    def visit_sig(self, expr, depth):
+        tele = self.visit(expr.telescope, depth)
+        shift = expr.telescope.len
+        type = self.visit(expr.type, depth + shift)
+        return Sig(tele, type)
+
+    def visit_tuple(self, expr, *args, **kwargs):
+        exprs = map(lambda x:self.visit(x, *args, **kwargs), expr.exprs)
+        return Tuple(exprs)
+
+    def visit_proj(self, expr, *args, **kwargs):
+        sub_expr = self.visit(expr.expr, *args, **kwargs)
+        return Proj(expr.index, sub_expr)        
+
+    def visit_ev(self, expr, *args, **kwargs):
+        tele = self.visit(expr.tele, *args, **kwargs)
+        prop = self.visit(expr.prop, *args, **kwargs)
+        return Ev(tele, prop)
+
+    def visit_eq(self, expr, *args, **kwargs):
+        lhs = self.visit(expr.lhs, *args, **kwargs)
+        rhs = self.visit(expr.rhs, *args, **kwargs)
+        return Eq(lhs, rhs)
+
+    def visit_box(self, expr, *args, **kwargs):
+        conv = self.visit(expr.conv, *args, **kwargs)
+        expr = self.visit(expr.expr, *args, **kwargs)
+        type = self.visit(expr.type, *args, **kwargs)
+        return Box(conv, expr, type)
+
+    def visit_tele(self, expr, *args, **kwargs):
+        types = []
+        for i, e in enumerate(expr.types):
+            abs_e = self.visit(e, depth + i)
+            types.append(abs_e)
+
+        return Tele(expr.vars, types)
+
+
+def subst_expr(expr_list, expr):
+    """Instanciate DB indices in expr according
+    to expr_list
+    
+    Arguments:
+    - `expr_list`: a list of expressions
+    - `expr`: an expression
+    """
+    subster = SubstExpr(expr_list)
+    return subster.visit(expr, 0)
+
+
+def sub_in(substitutor, var, substitutee):
+    """Replace constants with name var by substitutor
+    in substitutee
+    
+    Arguments:
+    - `substitutor`: an expression
+    - `var`: a variable name
+    - `substitutee`: an expression
+    """
+    return subst_expr([substitutor], abstract_expr([var], substitutee))
+
+
+
+def pi(var, dom, codom):
+    """Create the term
+    Pi x:A.B from its constituents
+    
+    Arguments:
+    - `var`: a variable name
+    - `dom`: an expression
+    - `codom`: an expression possibly containing var
+    """
+    codom_abs = abstract_expr([var], codom)
+    return Bound(Pi(var), dom, codom)
+
+def abs_expr(var, dom, expr):
+    """Create the term
+    lambda x:A.t from its constituents
+    
+    Arguments:
+    - `var`: a variable name
+    - `dom`: an expression
+    - `expr`: an expression possibly containing var
+    """
+    expr_abs = abstract_expr([var], expr)
+    return Bound(Abs(var), dom, expr)
+
+def forall(var, dom, prop):
+    """Create the term
+    forall x:A.P from its constituents
+    
+    Arguments:
+    - `var`: a variable name
+    - `dom`: an expression
+    - `prop`: an expression possibly containing var
+    """
+    prop_abs = abstract_expr([var], prop)
+    return Bound(Forall(var), dom, codom)
+
+def exists(var, dom, prop):
+    """Create the term
+    exists x:A.P from its constituents
+    
+    Arguments:
+    - `var`: a variable name
+    - `dom`: an expression
+    - `prop`: an expression possibly containing var
+    """
+    prop_abs = abstract_expr([var], prop)
+    return Exists(Exists(var), dom, codom)
 
