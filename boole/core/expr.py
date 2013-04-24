@@ -22,21 +22,6 @@
 ################################################################################
 
         
-# this is used for functions that take a string, consisting either of
-# a single name, or a list of names, e.g.
-#
-#   Int('x')
-#   Int('x y z')
-#   Int('x,y,z')
-#
-# It is modeled after Sage's SR.var
-def _str_to_list(s):
-    if ',' in s:
-        return [item.strip() for item in s.split(',')]
-    elif ' ' in s:
-        return [item.strip() for item in s.split()]
-    else:
-        return [s]
 
 
 # TODO: replace with a dictionary which counts the use
@@ -129,7 +114,90 @@ class Expr(object):
         """
         return "<abstr>"
 
-        
+    def is_type(self):
+        """Tests wether the expression is an instance of
+        Type
+        """
+        return False
+
+    def is_kind(self):
+        """Tests wether the expression is an instance of
+        Kind
+        """
+        return False
+
+    def is_bound(self):
+        """Tests wether the expression is an instance of
+        Bound
+        """
+        return False
+
+    def is_app(self):
+        """Tests wether the expression is an instance of
+        App
+        """
+        return False
+
+    def is_tuple(self):
+        """Tests wether the expression is an instance of
+        Tuple
+        """
+        return False
+
+    def is_proj(self):
+        """Tests wether the expression is an instance of
+        Proj
+        """
+        return False
+
+    def is_sig(self):
+        """Tests wether the expression is an instance of
+        Sig
+        """
+        return False
+
+    def is_eq(self):
+        """Tests wether the expression is an instance of
+        Eq
+        """
+        return False
+
+    def is_box(self):
+        """Tests wether the expression is an instance of
+        Box
+        """
+        return False
+
+    def is_const(self):
+        """Tests wether the expression is an instance of
+        Const
+        """
+        return False
+
+    def is_db(self):
+        """Tests wether the expression is an instance of
+        DB
+        """
+        return False
+
+    def is_bool(self):
+        """Tests wether the expression is an instance of
+        Bool
+        """
+        return False
+
+    def is_app(self):
+        """Tests wether the expression is an instance of
+        App
+        """
+        return False
+
+    def is_ev(self):
+        """Tests wether the expression is an instance of
+        EV
+        """
+        return False
+
 
 class Const(Expr):
     """A constant declaration. Variables
@@ -159,6 +227,23 @@ class Const(Expr):
 
     def __str__(self):
         return self.name
+
+
+    def is_const(self):
+        return True
+
+
+    def equals(self, expr):
+        """Structural equality.
+        
+        Arguments:
+        - `expr`: an expression
+        """
+        if expr.is_const():
+            return self.name == expr.name
+        else:
+            return False
+
 
 
 class DB(Expr):
@@ -205,6 +290,19 @@ class DB(Expr):
     def __str__(self):
         return "DB({0!s})".format(self.index)
 
+    def is_db(self):
+        return True
+
+    def equals(self, expr):
+        """Structural equality.
+        
+        Arguments:
+        - `expr`: an expression
+        """
+        if expr.is_db():
+            return self.index == expr.index
+        else:
+            return False
 
 
 class Type(Expr):
@@ -228,6 +326,17 @@ class Type(Expr):
 
     def __str__(self):
         return "Type()"
+
+    def is_type(self):
+        return True
+
+    def equals(self, expr):
+        """Structural equality.
+        
+        Arguments:
+        - `expr`: an expression
+        """
+        return expr.is_type()
 
 
         
@@ -253,6 +362,17 @@ class Kind(Expr):
 
     def __str__(self):
         return "Kind()"
+    
+    def is_kind(self):
+        return True
+
+    def equals(self, expr):
+        """Structural equality.
+        
+        Arguments:
+        - `expr`: an expression
+        """
+        return expr.is_kind()
 
 
 class Bool(Expr):
@@ -276,6 +396,17 @@ class Bool(Expr):
 
     def __str__(self):
         return "Bool()"
+
+    def is_bool(self):
+        return True
+
+    def equals(self, expr):
+        """Structural equality.
+        
+        Arguments:
+        - `expr`: an expression
+        """
+        return expr.is_bool()
 
 
 class Bound(Expr):
@@ -317,6 +448,19 @@ class Bound(Expr):
         return "{0!s}({1!s},{2!s},{3!s})".format(\
             self.binder.name, self.binder.var, self.dom, open_expr)
 
+    def is_bound(self):
+        return True
+
+    def equals(self, expr):
+        """Structural equality.
+        
+        Arguments:
+        - `expr`: an expression
+        """
+        if expr.is_bound() and (self.binder.name == expr.binder.name):
+            return self.dom.equals(expr.dom) and self.expr.equals(expr.expr)
+        else:
+            return False
 
 
 class App(Expr):
@@ -355,6 +499,19 @@ class App(Expr):
         """
         return "App({0!s},{1!s},{2!s})".format(self.conv, self.fun, self.arg)
 
+    def is_app(self):
+        return True
+
+    def equals(self, expr):
+        """Structural equality.
+        
+        Arguments:
+        - `expr`: an expression
+        """
+        if expr.is_app():
+            return self.fun.equals(expr.fun) and self.arg.equals(expr.arg)
+        else:
+            return False
 
 
 class Sig(Expr):
@@ -398,6 +555,21 @@ class Sig(Expr):
         tel = ','.join(map(str_decl, named_tel))
         return "sig([{0!s}], {1!s})".format(tel, open_type)
 
+    def is_sig(self):
+        return True
+    
+
+    def equals(self, expr):
+        """Structural equality.
+        
+        Arguments:
+        - `expr`: an expression
+        """
+        if expr.is_sig():
+            return self.telescope.equals(expr.telescope) and \
+                   self.type.equals(expr.type)
+        else:
+            return False
 
 
 
@@ -429,6 +601,21 @@ class Tuple(Expr):
         expr_str = ','.join(expr_str)
         return "Tuple({0!s})".format(expr_str)
         
+    def is_tuple(self):
+        return True
+
+    def equals(self, expr):
+        """Structural equality.
+        
+        Arguments:
+        - `expr`: an expression
+        """
+        if expr.is_tuple():
+            eq_info = map(lambda (e1, e2) : e1.equals(e2), zip(self.exprs, expr.exprs))
+            return reduce(lambda x, y: x and y, eq_info, True)
+        else:
+            return False
+
 
 
 
@@ -465,7 +652,20 @@ class Proj(Expr):
         """
         return "Proj({0!s}, {1!s})".format(self.index, self.expr)
 
+    def is_tuple(self):
+        return True
+
+    def equals(self, expr):
+        """Structural equality.
         
+        Arguments:
+        - `expr`: an expression
+        """
+        if expr.is_proj():
+            return (self.index == expr.index) and (self.expr.equals(expr.expr))
+        else:
+            return False
+
 
 
 class Ev(Expr):
@@ -499,6 +699,20 @@ class Ev(Expr):
     def __str__(self):
         #TODO: complete this function!
         return "Ev({0!s})".format(self.prop)
+
+    def is_ev(self):
+        return True
+
+    def equals(self, expr):
+        """Structural equality.
+        
+        Arguments:
+        - `expr`: an expression
+        """
+        if expr.is_ev():
+            return True
+        else:
+            return False
 
 
 
@@ -536,6 +750,19 @@ class Eq(Expr):
         """
         return "{0!s} == {1!s}".format(self.lhs, self.rhs)
 
+    def is_eq(self):
+        return True
+
+    def equals(self, expr):
+        """Structural equality.
+        
+        Arguments:
+        - `expr`: an expression
+        """
+        if expr.is_eq():
+            return (self.lhs.equals(expr.lhs)) and (self.rhs.equals(expr.rhs))
+        else:
+            return False
 
 
 class Box(Expr):
@@ -571,7 +798,19 @@ class Box(Expr):
     def __str__(self):
         return "Box({0!s},{1!s},{2!s})".format(self.conv, self.expr, self.type)
 
+    def is_box(self):
+        return True
 
+    def equals(self, expr):
+        """Structural equality.
+        
+        Arguments:
+        - `expr`: an expression
+        """
+        if expr.is_box():
+            return self.expr.equals(expr.expr)
+        else:
+            return False
 
 
 ################################################################################
@@ -702,7 +941,17 @@ class Tele(object):
         ty_str = ','.join(map(str, self.types))
         return "Tele([{0!s}],[{1!s}])".format(var_str, ty_str)
 
-
+    def equals(self, tele):
+        """Structural equality.
+        
+        Arguments:
+        - `expr`: an expression
+        """
+        if self.len == tele.len:
+            eq_info = map(lambda (x, y): x.equals(y), zip(self.types, tele.types))
+            return reduce(lambda x, y: x and y, eq_info, True)
+        else:
+            return False
 
 def open_tele(tele):
     """Takes a telescope and returns a list of pairs
@@ -1140,16 +1389,21 @@ if __name__ == '__main__':
 
     print nat, ":", nat.type
 
+    print nat.equals(nat)
+
     typair = sig([(dummy(Type()), Type())], Type())
 
     print typair
+    print typair.equals(typair)
     
     natpair = sig([(dummy(nat), nat)], nat)
 
     print natpair
+    print natpair.equals(natpair)
     
     plusty = pi(dummy(nat), natpair, nat)
 
     print plusty
+    print plusty.equals(plusty)
 
     
