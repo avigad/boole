@@ -482,6 +482,10 @@ if __name__ == "__main__":
 
     dummy = Const('_', unit)
 
+    def app(fun, arg):
+        return App(Ev(nullctxt), fun, arg)
+
+
     nat = Const('nat', Type())
 
     print nat, ":", nat.type
@@ -510,8 +514,13 @@ if __name__ == "__main__":
 
     pair_x_y = Tuple([x, y], natpair)
 
-    plus_x_y = App(Ev(nullctxt), plus, pair_x_y)
+    plus_x_y = app(plus, pair_x_y)
     
-    print infer(plus_x_y)[0]
-    print infer(plus_x_y)[1]
+    ty, obl = infer(plus_x_y)
+    
+    print plus_x_y
+    print ty
+    print obl
+    obl.solve_with('trivial')
+    print obl.is_solved()
     

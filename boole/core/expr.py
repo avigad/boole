@@ -78,11 +78,12 @@ class ExprError(Exception):
 #
 # The datatype is represented by:
 #
-# Expr := Type | Kind | Bool | Const(name) | DB(int) | Pi(name,Expr,Expr) |
-#         App(Expr,Expr,Expr) | Abst(name,Expr,Expr) | Sig(Tele) |
-#         Tuple([Expr,...,Expr],Type) | Proj(int,Expr) | Ev(Tele) |
-#         Forall(name,Expr,Expr) | Exists(name,Expr,Expr) |
-#         Eq(Expr,Expr) | Box(Expr,Expr,Expr)
+# Expr := Type | Kind | Bool   | Const(string,Expr)  | DB(int) |
+#         Pi(name,Expr,Expr)   | App(Expr,Expr,Expr) |
+#         Abst(name,Expr,Expr) | Sig(Tele) |
+#         Tuple([Expr,...,Expr],Type)      | Proj(int,Expr) | Ev(Tele) |
+#         Forall(name,Expr,Expr)           | Exists(name,Expr,Expr) |
+#         Eq(Expr,Expr)        | Box(Expr,Expr,Expr)
 #
 # Tele := Tele([name,...,name],[Expr,...,Expr])
 #
