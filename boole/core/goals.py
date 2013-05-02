@@ -12,7 +12,7 @@
 ##############################################################################
 
 
-class Constr(object):
+class Goal(object):
     """The type of constraints: represents a proof obligation
     is constituted of a context (a telescope) and a
     boolean representing the proposition.
@@ -40,20 +40,36 @@ class Constr(object):
         - `method`: a string describing the method
         """
         if method == "trivial":
-            if self.prop.is_const() and self.prop.name == "true":
-                return True
-            elif self.prop.is_eq():
-                return self.prop.lhs.equals(self.prop.rhs)
-            else:
-                return False
+            return trivial(self.tele, self.prop)
         else:
             raise Exception("Unknown solver: {0!s}".format(method))
-        
+
+def trivial(hyps, goal):
+    """Solve trivial goals. Checks if the
+    goal is equal to true, and otherwise checks if it is a
+    trivial equality, or is in the hypotheses.
+    
+    Arguments:
+    - `hyps`: a telescope
+    - `goal`: an expression of type Bool
+    """
+    if goal.is_const() and goal.name == "true":
+        return True
+    elif goal.is_eq():
+        #try for pointer equality first.
+        if goal.lhs is goal.rhs:
+            return True
+        else:
+            return goal.lhs.equals(goal.rhs)
+    else:
+        for h in hyps.types:
+            if h.equals(goal):
+                return True
+        return False
 
 
 
-
-class Obl(object):
+class Goals(object):
     """The class of proof obligations. Simply maintains a list of
     goals. The empty obligation is considered solved.
     """
@@ -102,8 +118,8 @@ class Obl(object):
         self.goals = new_goals
 
 
-def empty_obl():
+def empty_goals():
     """The empty proof obligation.
     Used to initialize the type inference.
     """
-    return Obl()
+    return Goals()
