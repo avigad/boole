@@ -80,16 +80,17 @@ class ExprInfer(ExprVisitor):
         ExprVisitor.__init__(self)
         #self.check = ExprCheck()
 
-    #TODO: add flag indicating whether type has been checked
-    # for sortedness already.
     def visit_const(self, expr, *args, **kwargs):
-        sort = self.visit(expr.type, *args, **kwargs)
-        if is_sort(sort):
+        if expr.checked:
             return expr.type
         else:
-            mess = 'The type of {0!s} is {1!s} which should\
-            be Type, Kind or Bool'.format(expr, expr.type)
-            raise ExprTypeError(mess, expr)
+            sort = self.visit(expr.type, *args, **kwargs)
+            if is_sort(sort):
+                return expr.type
+            else:
+                mess = 'The type of {0!s} is {1!s} which should\
+                be Type, Kind or Bool'.format(expr, expr.type)
+                raise ExprTypeError(mess, expr)
 
     def visit_db(self, expr, *args, **kwargs):
         raise ExprTypeError('Cannot determine the type of\
@@ -106,10 +107,22 @@ class ExprInfer(ExprVisitor):
 
     def visit_bound(self, expr, *args, **kwargs):
         dom_ty = self.visit(expr.dom, *args, **kwargs)
+        #check that the domain is well-kinded
+        if is_sort(dom_ty):
+            pass
+        elif is_sort(self.visit(dom_ty, *args, **kwargs)):
+            pass
+        else:
+            mess = "The term {0!s} has type {1!s} must be a sort\
+            or have as type a sort".format(expr.dom, dom_ty)
+            raise ExprTypeError(mess, expr)
+        #substitute a fresh constant in the body of the binder
         var = fresh_name.get_name(expr.binder.var)
-        const = Const(var, expr.dom)
+        const = Const(var, expr.dom, checked=True)
         open_expr = subst_expr([const], expr.expr)
+        #compute the type of the resulting expression
         expr_ty = self.visit(open_expr, *args, **kwargs)
+        #Infer the type for each different binder
         if expr.binder.is_pi():
             if is_sort(dom_ty) and is_sort(expr_ty):
                 #We wish for Pis to be at least in Type()
@@ -126,7 +139,7 @@ class ExprInfer(ExprVisitor):
             body_sort = self.visit(expr_ty, *args, **kwargs)
             if is_sort(dom_ty) and is_sort(body_sort):
                 expr_ty = abstract_expr([var], expr_ty)
-                return Pi(expr.binder.var, expr.dom, expr_ty)
+                return Binder(Pi(expr.binder.var), expr.dom, expr_ty)
             else:
                 #In this case, it is necessarily the domain that
                 # is ill-sorted. (the type of a type must be a sort,

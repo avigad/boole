@@ -197,16 +197,19 @@ class Const(Expr):
     and constants are identified.
     """
 
-    def __init__(self, name, type):
+    def __init__(self, name, type, checked = False):
         """
         
         Arguments:
-        - `name`:
-        - `type`:
+        - `name`: A name representing the constant
+        - `type`: an expression representing its type
+        - `checked`: a boolean indicating that the type
+        has been checked to be well-kinded.
         """
         Expr.__init__(self)
         self.name = name
         self.type = type
+        self.checked = checked
 
     def accept(self, visitor, *args, **kwargs):
         """
