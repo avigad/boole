@@ -12,7 +12,7 @@
 ##############################################################################
 
 from expr import *
-import constr as con
+import goals
 
 
 def is_sort(expr):
@@ -241,7 +241,10 @@ class ExprInfer(ExprVisitor):
             raise ExprTypeError(mess, expr)
 
     def visit_tele(self, expr, *args, **kwargs):
-        open_tel = open_tele_with_fresh(expr)
+        #There is no need to check that the constants
+        # are well-kinded as this will be done when
+        # checking each type in the telescope.
+        open_tel = open_tele_with_fresh(expr, checked=True)
         sorts = []
         for _, ty in open_tel:
             sorts.append(self.visit(ty, *args, **kwargs))
@@ -283,7 +286,7 @@ class ExprCheck(ExprVisitor):
         - `constr`: a list of constraints
         """
         if self.visit(prop, Bool(), constrs, *args, **kwargs):
-            constrs.append(con.Constr(expr.telescope, prop))
+            constrs.append(goals.Goal(expr.telescope, prop))
             return True
         else:
             return False
@@ -481,7 +484,7 @@ def infer(expr):
     Arguments:
     - `expr`: an expression
     """
-    prf_obl = con.empty_obl()
+    prf_obl = goals.empty_goals()
     ty = ExprInfer().visit(expr, prf_obl)
     return (ty, prf_obl)
 
@@ -498,27 +501,35 @@ if __name__ == "__main__":
     def app(fun, arg):
         return App(Ev(nullctxt), fun, arg)
 
+    def ty_prod(*ty):
+        tele = [(dummy, t) for t in ty]
+        return sig(*tele)
 
     nat = Const('nat', Type())
 
     print nat, ":", nat.type
 
-    print nat.equals(nat)
+    # print nat.equals(nat)
 
-    typair = sig((dummy, Type()), (dummy, Type()))
+    typair = ty_prod(Type(), Type())
 
-    print typair
-    print typair.equals(typair)
+    print 'type * type = ', typair
+    # print typair.equals(typair)
+    print 'type * type :', infer(typair)[0]
+    print 'With obligations:\n', infer(typair)[1]
     
-    natpair = sig((dummy, nat), (dummy, nat))
+    natpair = ty_prod(nat, nat)
 
-    print natpair
-    print natpair.equals(natpair)
+    # print natpair
+    # print natpair.equals(natpair)
+
+    def arrow(dom, codom):
+        return pi(dummy, dom, codom)
     
     plusty = pi(dummy, natpair, nat)
 
-    print plusty
-    print plusty.equals(plusty)
+    print plusty, ':', infer(plusty)[0]
+    print 'With obligations:\n', infer(plusty)[1]
 
     plus = Const("plus", plusty)
 
@@ -531,9 +542,26 @@ if __name__ == "__main__":
     
     ty, obl = infer(plus_x_y)
     
-    print plus_x_y
-    print ty
-    print obl
+    print "x + y = ", plus_x_y, ':', ty
+    print 'With obligations:\n', obl
     obl.solve_with('trivial')
-    print obl.is_solved()
+    if obl.is_solved():
+        print "Which are trivially solved"
+    else:
+        raise Exception("Which should be solved!")
     
+    def check(expr):
+        """Check the type of an expression
+        
+        Arguments:
+        - `expr`:
+        """
+        ty, obl = infer(expr)
+        print expr, ':', ty
+        print
+        obl.solve_with('trivia')
+        if obl.is_solved():
+            print "With no remaning obligations!"
+        else:
+            print "With remaining obligations:\n"
+            print obl

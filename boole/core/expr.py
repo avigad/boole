@@ -949,7 +949,7 @@ class Tele(object):
         return self.len
 
 
-def open_tele(tele, vars):
+def open_tele(tele, vars, checked=False):
     """Takes a telescope and returns a list of pairs
     (constant, type) where the subsequent types may depend
     on the constant.
@@ -961,7 +961,7 @@ def open_tele(tele, vars):
     consts = []
     for i in range(0, tele.len):
         opened_ty[i] = subst_expr(consts, opened_ty[i])
-        x = Const(vars[i], opened_ty[i])
+        x = Const(vars[i], opened_ty[i], checked=checked)
         consts.append(x)
     return zip(consts, opened_ty)
 
@@ -975,14 +975,14 @@ def open_tele_with_default(tele):
     return open_tele(tele, tele.vars)
 
 
-def open_tele_with_fresh(tele):
+def open_tele_with_fresh(tele, checked=False):
     """Open a telescope with fresh variables
     
     Arguments:
     - `tele`: a telescope
     """
     fr_vars = [fresh_name.get_name(name = v) for v in tele.vars]
-    return open_tele(tele, fr_vars)
+    return open_tele(tele, fr_vars, checked=checked)
 
 
 ###############################################################################
