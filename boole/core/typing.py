@@ -62,8 +62,8 @@ class ExprTypeError(Exception):
         Exception.__init__(self)
         self.mess = mess
         self.expr = expr
-
-
+        print "Type error in expression {0!s}: {1!s}"\
+              .format(expr, mess)
 
 
 class ExprInfer(ExprVisitor):
@@ -489,6 +489,23 @@ def infer(expr):
     return (ty, prf_obl)
 
 
+def check(expr):
+    """Check the type of an expression and
+    print it `Coq style`
+    
+    Arguments:
+    - `expr`: an expression
+    """
+    ty, obl = infer(expr)
+    print expr, ':', ty
+    print
+    obl.solve_with('trivial')
+    if obl.is_solved():
+        print "With no remaning obligations!"
+    else:
+        print "With remaining obligations:\n"
+        print obl
+
 
 if __name__ == "__main__":
 
@@ -549,19 +566,3 @@ if __name__ == "__main__":
         print "Which are trivially solved"
     else:
         raise Exception("Which should be solved!")
-    
-    def check(expr):
-        """Check the type of an expression
-        
-        Arguments:
-        - `expr`:
-        """
-        ty, obl = infer(expr)
-        print expr, ':', ty
-        print
-        obl.solve_with('trivia')
-        if obl.is_solved():
-            print "With no remaning obligations!"
-        else:
-            print "With remaining obligations:\n"
-            print obl
