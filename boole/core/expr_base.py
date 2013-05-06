@@ -44,7 +44,7 @@ class FreshGen(object):
             pad = name
         else:
             pad = "_Boole"
-        fresh = "{0!s}_{0!s}".format(pad, self._index)
+        fresh = "{0!s}_{1!s}".format(pad, self._index)
         self._index += 1
         return fresh
 
@@ -135,8 +135,9 @@ class BaseExpr(object):
         try:
             return self.info['__mul__'](self, arg)
         except KeyError:
-            raise TypeError('`BaseExpr` object does not support\
-            multiplication')
+            print self, self.info
+            mess = '`BaseExpr` object does not support multiplication'
+            raise TypeError(mess)
 
     def __add__(self, arg):
         """Call the addition implemented in info
@@ -144,8 +145,8 @@ class BaseExpr(object):
         try:
             return self.info['__add__'](self, arg)
         except KeyError:
-            raise TypeError('`BaseExpr` object does not support\
-            addition')
+            mess = '`BaseExpr` object does not support addition'
+            raise TypeError(mess)
 
     def __rshift__(self, arg):
         """Call right_shift implemented in info
@@ -153,8 +154,28 @@ class BaseExpr(object):
         try:
             return self.info['__rshift__'](self, arg)
         except KeyError:
-            raise TypeError('`BaseExpr` object can not be\
-            right-shifted')
+            mess = '`BaseExpr` object can not be right-shifted'
+            raise TypeError(mess)
+
+
+    def __eq__(self, arg):
+        """Call right_shift implemented in info
+        """
+        try:
+            return self.info['__eq__'](self, arg)
+        except KeyError:
+            mess = '`BaseExpr` object does not support equality'
+            raise TypeError(mess)
+
+    def __getitem__(self, index):
+        """Call getitem implemented in info
+        """
+        try:
+            return self.info['__getitem__'](self, index)
+        except KeyError:
+            mess = '`BaseExpr` object does not support lookup'
+            raise TypeError(mess)
+
 
     def accept(self, visitor, *args, **kwargs):
         """

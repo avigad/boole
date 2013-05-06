@@ -32,7 +32,7 @@ def max_sort(e1, e2):
     - `e1, e2`: expressions
     """
     if is_sort(e1) and is_sort(e2):
-        if e1.is_kind or e2.is_kind:
+        if e1.is_kind() or e2.is_kind():
             return Kind()
         elif e1.is_bool():
             return e2
@@ -139,7 +139,7 @@ class ExprInfer(ExprVisitor):
             body_sort = self.visit(expr_ty, *args, **kwargs)
             if is_sort(dom_ty) and is_sort(body_sort):
                 expr_ty = abstract_expr([var], expr_ty)
-                return Binder(Pi(expr.binder.var), expr.dom, expr_ty)
+                return Bound(Pi(expr.binder.var), expr.dom, expr_ty)
             else:
                 #In this case, it is necessarily the domain that
                 # is ill-sorted. (the type of a type must be a sort,

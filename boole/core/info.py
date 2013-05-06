@@ -77,7 +77,7 @@ class DefaultInfo(ExprInfo):
     
     def __init__(self):
         ExprInfo.__init__(self, {})
-        self.info['__str__'] = default_str
+        self.info['__str__'] = lambda x: x.to_string()
 
 
 ###############################################################################
@@ -108,7 +108,7 @@ class infobox(object):
 
 
 #TODO: make this more elegant
-def with_info(info):
+def with_info(infobx):
     """Returns the function which calls a function on
     arguments, and update the info field of the result.
     
@@ -118,7 +118,7 @@ def with_info(info):
     def appl(f):
         def call_f(*args, **kwargs):
             e = f(*args, **kwargs)
-            e.info = info.info()
+            e.info = infobx.info()
             for k in kwargs:
                 e.info[k] = kwargs[k]
             return e
@@ -126,4 +126,12 @@ def with_info(info):
     return appl
     
 
-
+def same_info(f):
+    """Decorator that keeps the same information as the second argument
+    of f
+    """
+    def call_f(obj, expr, *args, **kwargs):
+        e = f(obj, expr, *args, **kwargs)
+        e.info = expr.info
+        return e
+    return call_f

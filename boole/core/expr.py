@@ -374,18 +374,19 @@ class Sig(Expr):
         """
         return visitor.visit_sig(self, *args, **kwargs)
 
+
     def to_string(self):
         #same deal as for bound expressions, the variables from
         # the telescope are substituted into the types that
         # depend on them.
         # TODO: this function is an ugly hack. Please rewrite.
+        def str_decl(d):
+            return "({0!s}, {1!s})".format(d[0], d[1])
         named_tel = open_tele_with_default(self.telescope)
         vars = []
         for (x, _) in named_tel:
             vars.append(x)
             
-        def str_decl(d):
-            return '({0!s}, {1!s})'.format(d[0], d[1])
         tel = ','.join(map(str_decl, named_tel))
         return "sig([{0!s}])".format(tel)
 
@@ -582,7 +583,7 @@ class Eq(Expr):
         Arguments:
         - `self`:
         """
-        return "{0!s} == {1!s}".format(self.lhs, self.rhs)
+        return "Eq({0!s}, {1!s})".format(self.lhs, self.rhs)
 
     def is_eq(self):
         return True
@@ -810,7 +811,7 @@ class Tele(BaseExpr):
         try:
             return self.info['__str__'](self)
         except KeyError:
-            return object.__str__(self)
+            raise AttributeError('__str__')
 
     def __len__(self):
         return self.len
@@ -1007,7 +1008,7 @@ class AbstractExpr(ExprVisitor):
         return Proj(expr.index, sub_expr)
 
     def visit_ev(self, expr, *args, **kwargs):
-        tele = self.visit(expr.tele, *args, **kwargs)
+        tele = self.visit(expr.telescope, *args, **kwargs)
         return Ev(tele)
 
     def visit_eq(self, expr, *args, **kwargs):
@@ -1034,6 +1035,10 @@ class AbstractExpr(ExprVisitor):
             types.append(abs_e)
 
         return Tele(expr.vars, types)
+
+    @info.same_info
+    def visit(self, expr, *args, **kwargs):
+        return expr.accept(self, *args, **kwargs)
 
 
 def abstract_expr(vars, expr):
@@ -1109,7 +1114,7 @@ class SubstExpr(ExprVisitor):
         return Proj(expr.index, sub_expr)
 
     def visit_ev(self, expr, *args, **kwargs):
-        tele = self.visit(expr.tele, *args, **kwargs)
+        tele = self.visit(expr.telescope, *args, **kwargs)
         return Ev(tele)
 
     def visit_eq(self, expr, *args, **kwargs):
@@ -1130,6 +1135,10 @@ class SubstExpr(ExprVisitor):
             types.append(abs_e)
 
         return Tele(expr.vars, types)
+
+    @info.same_info
+    def visit(self, expr, *args, **kwargs):
+        return expr.accept(self, *args, **kwargs)
 
 
 def subst_expr(exprs, expr):
@@ -1245,34 +1254,3 @@ def false():
     """The false constant.
     """
     return Const('false', Bool())
-
-
-if __name__ == '__main__':
-
-
-    unit = sig()
-
-    dummy = Const('_', unit)
-
-    nat = Const('nat', Type())
-
-    print nat, ":", nat.type
-
-    print nat.equals(nat)
-
-    typair = sig((dummy, Type()), (dummy, Type()))
-
-    print typair
-    print typair.equals(typair)
-    
-    natpair = sig((dummy, nat), (dummy, nat))
-
-    print natpair
-    print natpair.equals(natpair)
-    
-    plusty = pi(dummy, natpair, nat)
-
-    print plusty
-    print plusty.equals(plusty)
-
-    

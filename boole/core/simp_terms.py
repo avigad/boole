@@ -85,6 +85,15 @@ def print_sig(expr):
     types = map(str, expr.telescope.types)
     return "*".join(types)
     
+def print_eq(expr):
+    """
+    
+    Arguments:
+    - `expr`:
+    """
+    return "{0!s} == {1!s}".format(expr.lhs, expr.rhs)
+
+
 
 def st_str(expr):
     if expr.is_app():
@@ -97,6 +106,8 @@ def st_str(expr):
         return print_pi(expr)
     elif expr.is_sig():
         return print_sig(expr)
+    elif expr.is_eq():
+        return print_eq(expr)
     else:
         return expr.to_string()
 
@@ -130,7 +141,7 @@ def unit():
 
 
 def dummy():
-    return Const('_', unit)
+    return Const('_', unit())
 
 
 def trivial():
@@ -167,6 +178,27 @@ def add_tm(expr, arg):
     return plus(expr, arg)
 
 
+@with_info(st_term)
+def mul_tm(expr, arg):
+    return mult(expr, arg)
+
+
+@with_info(st_term)
+def get_tup(expr, index):
+    """Get the field of an expression using python syntax
+    
+    Arguments:
+    - `expr`:
+    - `index`:
+    """
+    return Proj(index, expr)
+
+
+@with_info(st_term)
+def eq_tm(expr1, expr2):
+    return Eq(expr1, expr2)
+    
+
 class StTerm(StExpr):
     """The information associated to terms
     """
@@ -175,6 +207,9 @@ class StTerm(StExpr):
         StExpr.__init__(self)
         self.info['__call__'] = tm_call
         self.info['__add__'] = add_tm
+        self.info['__mul__'] = mul_tm
+        self.info['__getitem__'] = get_tup
+        self.info['__eq__'] = eq_tm
 
 st_term._info = StTerm()
 
@@ -201,7 +236,7 @@ def typ_mul(type1, type2):
 
 @with_info(st_typ)
 def type_mul_list(types):
-    vars = [dummy()]*len(types)
+    vars = ['_'] * len(types)
     return Sig(Tele(vars, types))
 
 
@@ -221,7 +256,6 @@ class StTyp(StExpr):
         self.info['__rshift__'] = type_arrow
 
 
-print 'redefining st_typ!'
 st_typ._info = StTyp()
 
 
@@ -236,11 +270,14 @@ def mktype(name):
     return Const(name, Type())
 
 nat = mktype('nat')
-prod = nat * nat
-plus = const('+', (nat*nat) >> nat, infix=True)
-    
+plus = const('+', (nat * nat) >> nat, infix=True)
+mult = const('*', (nat * nat) >> nat, infix=True)
+zero = const('0', nat)
+one = const('1', nat)
 
 if __name__ == '__main__':
+
+    print dummy()
 
     nat = mktype('nat')
     prod = nat * nat * nat
@@ -249,13 +286,18 @@ if __name__ == '__main__':
 
     x = nat('x')
     y = nat('y')
-    z = (nat*nat)('z')
+    z = (nat * nat)('z')
     typing.check(x)
-    typing .check(z)
+    typing.check(z)
     
     typing.check(plus)
-    typing.check(mk_tuple([x,y]))
-
-
+    typing.check(mk_tuple([x, y]))
     typing.check(x + y)
+
+    typing.check(z[0] * z[1] == z[1] * z[0])
+
+    typing.check(abst(z, nat * nat, mk_tuple([x, x])))
+
+    typing.check(forall(z, nat * nat, (z[0] + z[1]) == (z[1] + z[0])))
+
     
