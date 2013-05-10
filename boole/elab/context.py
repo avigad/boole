@@ -31,6 +31,7 @@ def init_context():
     - `class_instances`: the definitions of the instance constants, which
     may depend on further instances, and the defining equations for the
     instances themselves.
+    - `unsolved_goals`: a list of unsolved goal lists.
     - `parent_contexts`: a dictionary sending names to contexts possibly
     containing the current one.
     """
@@ -44,6 +45,7 @@ def init_context():
         'classes'         :{},\
         'class_def'       :{},\
         'class_instances' :{},\
+        'unsolved_goals'  :{},\
         'parent_contexts' :{}
         }
     return ctxt
@@ -113,6 +115,15 @@ class Context(object):
             mess = "The expression {0!s} is not a constant."\
                    .format(expr)
             raise ContextErr(mess, self)
+
+    def next_goal(self):
+        """Gets the next unsolved goal list in the context.
+        Return None if there is none.
+        """
+        try:
+            return self._context['unsolved_goals'].popitem()[1]
+        except KeyError:
+            return None
         
 
     #TODO: should this be __setitem__?
@@ -132,3 +143,18 @@ class Context(object):
             raise ContextErr(mess, self)
         
 
+    def get_from_field(self, name, field):
+        """Get the object associated to name in the
+        field.
+        
+        Arguments:
+        - `name`: a string
+        - `field`: the name of a field
+        """
+        if field in self._context:
+            return self._context[field][name]
+        else:
+            mess = "Field {0!s} not found in context {1!s}"\
+                   .format(field, self.name)
+            raise ContextErr(mess, self)
+        

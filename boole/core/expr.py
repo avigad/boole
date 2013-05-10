@@ -43,7 +43,7 @@ class Const(Expr):
     and constants are identified.
     """
 
-    def __init__(self, name, type, checked=False):
+    def __init__(self, name, type, **kwargs):
         """
         
         Arguments:
@@ -55,7 +55,8 @@ class Const(Expr):
         Expr.__init__(self)
         self.name = name
         self.type = type
-        self.checked = checked
+        for k in kwargs:
+            self.info[k] = kwargs[k]
 
     def accept(self, visitor, *args, **kwargs):
         """

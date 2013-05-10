@@ -13,6 +13,7 @@
 #
 ##############################################################################
 
+
 class ExprInfo(object):
     """Container for the information dictionary
     attached to expressions
@@ -52,6 +53,17 @@ class ExprInfo(object):
         """
         return self.info.__delitem__(key)
 
+    def update(self, info):
+        """Add the new fields in info to self
+        
+        Arguments:
+        - `info`:
+        """
+        for k in info.info:
+            self.info[k] = info.info[k]
+
+
+
 ###############################################################################
 #
 # The default information class:
@@ -78,7 +90,7 @@ class DefaultInfo(ExprInfo):
     def __init__(self):
         ExprInfo.__init__(self, {})
         self.info['__str__'] = lambda x: x.to_string()
-
+        self.info['checked'] = False
 
 ###############################################################################
 #
@@ -118,7 +130,7 @@ def with_info(infobx):
     def appl(f):
         def call_f(*args, **kwargs):
             e = f(*args, **kwargs)
-            e.info = infobx.info()
+            e.info.update(infobx.info())
             for k in kwargs:
                 e.info[k] = kwargs[k]
             return e

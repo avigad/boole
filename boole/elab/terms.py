@@ -222,7 +222,7 @@ def const(name, type, infix=False):
 
 
 def typ_call(type, name):
-    return const(name, type)
+    return defconst(name, type)
 
 
 
@@ -303,11 +303,22 @@ def defconst(name, type, infix=False):
     - `infix`:
     """
     c = const(name, type, infix=infix)
+    _, obl = typing.infer(c)
+    obl.solve_with('trivial')
     st_context.add_const(c)
+    if obl.is_solved():
+        print "{0!s} : {1!s} is assumed.\n".format(c, type)
+    else:
+        st_context.add_to_field(obl.name, obl, 'unsolved_goals')
+        print "In the declaration:\n{0!s} : {1!s}".format(name, type)
+        print "remaining type-checking constraints!"
+        print obl
     return c
 
 
-def defexpr(name, type, value):
+#TODO: clean this function!
+#TODO: abstract over st_context
+def defexpr(name, value, type=None):
     """Define an expression with a given type and value.
     Checks that the type of value is correct, and adds the defining
     equation to the context.
@@ -317,23 +328,30 @@ def defexpr(name, type, value):
     - `type`: an expression
     - `value`: an expression
     """
+    if type != None:
+        ty, obl = typing.infer(value, type=type)
+    else:
+        ty, obl = typing.infer(value)
+    obl.solve_with('trivial')
+
     c = const(name, type)
     c.info['defined'] = True
-    ty, obl = typing.infer(value, type=type)
-    obl.solve_with('trivial')
-    if obl.is_solved():
-        st_context.add_const(c)
-        eq_c = (c == value)
-        def_name = "{0!s}_def".format(name)
-        c_def = const(def_name, eq_c)
-        st_context.add_to_field(def_name, c_def, 'defs')
-        st_context.add_const(c_def)
-        return c
-    else:
-        print "In the definition\n  {0!s} = {1!s}".format(name, value)
-        print "remaining obligations!"
-        print obl
+    st_context.add_const(c)
 
+    eq_c = (c == value)
+    def_name = "{0!s}_def".format(name)
+    c_def = const(def_name, eq_c)
+    st_context.add_to_field(def_name, c_def, 'defs')
+    st_context.add_const(c_def)
+
+    if obl.is_solved():
+        print "{0!s} : {1!s} is defined.\n".format(c, ty)
+    else:
+        st_context.add_to_field(obl.name, obl, 'unsolved_goals')
+        print "In the definition\n  {0!s} = {1!s}".format(name, value)
+        print "remaining type-checking constraints!"
+        print obl
+    return c
 
 ###############################################################################
 #
@@ -363,23 +381,42 @@ if __name__ == '__main__':
     x = nat('x')
     y = nat('y')
     z = (nat * nat)('z')
-    typing.check(x)
-    typing.check(z)
-    
-    typing.check(plus)
-    typing.check(mk_tuple([x, y]))
-    typing.check(x + y)
 
-    typing.check(z[0] * z[1] == z[1] * z[0])
+    # typing.check(mk_tuple([x, y]))
+    # typing.check(x + y)
 
-    typing.check(abst(z, nat * nat, mk_tuple([x, x])))
+    # typing.check(z[0] * z[1] == z[1] * z[0])
 
-    typing.check(forall(z, nat * nat, (z[0] + z[1]) == (z[1] + z[0])))
+    # typing.check(abst(z, nat * nat, mk_tuple([x, x])))
+
+    # typing.check(forall(z, nat * nat, (z[0] + z[1]) == (z[1] + z[0])))
+
+    fa = forall(z, nat * nat, (z[0] + z[1]) == (z[1] + z[0]))
+
+    plus_commut_stmt = defexpr('plus_commut_stmt', fa, Bool())
 
     typing.check(st_context.nat)
 
 
-    two = defexpr('two', nat, one+one)
-    print two
-    if two.defined:
-        print "is defined as = ", st_context.two_def.type
+    def definition_of(expr):
+        """Return the definition of a defined constant.
+        
+        Arguments:
+        - `expr`:
+        """
+        if expr.is_const():
+            if expr.defined:
+                print st_context.get_from_field(expr.name+"_def", 'defs')\
+                      .type
+            else:
+                print expr, " is not defined!"
+        else:
+            print expr, " is not a constant!"
+
+    two = defexpr('two', one+one, nat)
+
+    definition_of(plus_commut_stmt)
+
+    definition_of(two)
+
+    plus_commut = defexpr('plus_commut', trivial(), fa)

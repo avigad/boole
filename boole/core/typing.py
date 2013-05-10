@@ -62,7 +62,7 @@ class ExprTypeError(Exception):
         Exception.__init__(self)
         self.mess = mess
         self.expr = expr
-        print "Type error in expression {0!s}: {1!s}"\
+        print "Type error in expression {0!s}:\n{1!s}"\
               .format(expr, mess)
 
 
@@ -476,7 +476,7 @@ class ExprCheck(ExprVisitor):
             return False
 
 
-def infer(expr):
+def infer(expr, type=None):
     """Infer the type of an expression and return the pair
     (type, proof obligations) or raise an exception of type
     ExprTypeError.
@@ -484,19 +484,30 @@ def infer(expr):
     Arguments:
     - `expr`: an expression
     """
-    prf_obl = goals.empty_goals()
-    ty = ExprInfer().visit(expr, prf_obl)
-    return (ty, prf_obl)
+    prf_obl = goals.empty_goals(fresh_name.get_name('_typing'))
+    #slight hack here: we compare pointers to avoid calling the
+    # __eq__ method of type. There should only be one instance of
+    # the None object, so pointer equality is valid.
+    if type is None:
+        ty = ExprInfer().visit(expr, prf_obl)
+        return (ty, prf_obl)
+    else:
+        if ExprCheck().visit(expr, type, prf_obl):
+            return (type, prf_obl)
+        else:
+            mess = "Expected {0!s} to be of type {1!s}"\
+                   .format(expr, type)
+            raise ExprTypeError(mess, expr)
 
 
-def check(expr):
+def check(expr, type=None):
     """Check the type of an expression and
     print it `Coq style`
     
     Arguments:
     - `expr`: an expression
     """
-    ty, obl = infer(expr)
+    ty, obl = infer(expr, type)
     print expr, ':', ty
     print
     obl.solve_with('trivial')

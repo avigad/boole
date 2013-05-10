@@ -29,7 +29,11 @@ class Goal(object):
         self.prop = prop
         
     def __str__(self):
-        return "{0!s} |- {1!s}".format(self.tele, self.prop)
+        if len(self.tele) ==  0:
+            tele_string = ""
+        else:
+            tele_string = str(self.tele)
+        return "{0!s} |- {1!s}".format(tele_string, self.prop)
 
     #TODO: rewrite this whole approach.
     def solve_with(self, method):
@@ -74,9 +78,10 @@ class Goals(object):
     goals. The empty obligation is considered solved.
     """
     
-    def __init__(self):
+    def __init__(self, name):
+        """a Goals object has a name and a list of goals.
         """
-        """
+        self.name = name
         self.goals = []
 
 
@@ -96,7 +101,7 @@ class Goals(object):
     def __str__(self, ):
         """
         """
-        goal_str = ""
+        goal_str = "Goals `{0!s}`:\n".format(self.name)
         for i, g in enumerate(self.goals):
             goal_str += "({0!s}) : {1!s}\n".format(i, g)
         return goal_str
@@ -118,8 +123,8 @@ class Goals(object):
         self.goals = new_goals
 
 
-def empty_goals():
+def empty_goals(name):
     """The empty proof obligation.
     Used to initialize the type inference.
     """
-    return Goals()
+    return Goals(name)

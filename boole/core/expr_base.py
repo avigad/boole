@@ -14,42 +14,17 @@
 
 
 import info
-
+import vargen
 
 ##############################################################################
 #
-# Miscellaneous useful procedures
+# Global fresh variable generator for expressions
 #
 ##############################################################################
 
 
 
-
-# TODO: replace with a dictionary which counts the use
-# of a single name.
-class FreshGen(object):
-    """Generate a fresh name according to a counter
-    which should never be reset.
-    """
-
-    def __init__(self):
-        """Initialize the index to 0.
-        """
-        self._index = 0
-
-    def get_name(self, name=None):
-        """Return an unused name
-        """
-        if name != None:
-            pad = name
-        else:
-            pad = "_Boole"
-        fresh = "{0!s}_{1!s}".format(pad, self._index)
-        self._index += 1
-        return fresh
-
-
-fresh_name = FreshGen()
+fresh_name = vargen.VarGen()
 
 
 
@@ -66,9 +41,6 @@ class ExprError(Exception):
     def __init__(self, mess, expr):
         Exception.__init__(self, mess)
         self.expr = expr
-
-
-
 
 
 ##############################################################################
@@ -102,7 +74,7 @@ class BaseExpr(object):
         
     def __getattr__(self, name):
         """
-        all the fields contained in info
+        return field contained in info
         if not already given by the expression.
         
         Arguments:
@@ -111,7 +83,10 @@ class BaseExpr(object):
         try:
             return self.info[name]
         except KeyError:
-            raise AttributeError(name)
+            #TODO: is this the right thing?
+            #raise AttributeError(name)
+            return None
+
 
     def __str__(self):
         """Call the printer implemented in info

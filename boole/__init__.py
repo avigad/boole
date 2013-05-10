@@ -1,1 +1,1 @@
-__all__ = ['core']
+__all__ = ['core', 'elab']
