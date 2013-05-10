@@ -67,7 +67,7 @@ class BaseExpr(object):
     """The syntactic class of expressions and telescopes.
     """
     
-    def __init__(self, ):
+    def __init__(self):
         """Sets the default info
         """
         self.info = info.DefaultInfo()

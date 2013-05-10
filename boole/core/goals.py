@@ -93,12 +93,12 @@ class Goals(object):
         """
         self.goals.append(constr)
 
-    def is_solved(self, ):
+    def is_solved(self):
         """Returns true if there are no obligations left.
         """
         return (len(self.goals) == 0)
 
-    def __str__(self, ):
+    def __str__(self):
         """
         """
         goal_str = "Goals `{0!s}`:\n".format(self.name)
