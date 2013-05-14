@@ -12,6 +12,8 @@
 ##############################################################################
 
 
+import conv
+
 class Goal(object):
     """The type of constraints: represents a proof obligation
     is constituted of a context (a telescope) and a
@@ -45,6 +47,8 @@ class Goal(object):
         """
         if method == "trivial":
             return trivial(self.tele, self.prop)
+        elif method == "simpl":
+            return simpl(self.tele, self.prop)
         else:
             raise Exception("Unknown solver: {0!s}".format(method))
 
@@ -70,6 +74,18 @@ def trivial(hyps, goal):
             if h.equals(goal):
                 return True
         return False
+
+
+def simpl(hyps, goal):
+    """Solve goals by performing beta-reduction,
+    then calling trivial.
+    
+    Arguments:
+    - `hyps`: a telescope
+    - `goal`: an expression of type Bool
+    """
+    simp_goal = conv.par_beta(goal)
+    return trivial(hyps, simp_goal)
 
 
 

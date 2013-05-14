@@ -117,15 +117,13 @@ class ExprInfer(ExprVisitor):
             or have as type a sort".format(expr.dom, dom_ty)
             raise ExprTypeError(mess, expr)
         #substitute a fresh constant in the body of the binder
-        var = fresh_name.get_name(expr.binder.var)
-        const = Const(var, expr.dom, checked=True)
-        open_expr = subst_expr([const], expr.expr)
+        var, open_expr = open_bound_with_fresh(expr)
         #compute the type of the resulting expression
         expr_ty = self.visit(open_expr, *args, **kwargs)
         #Infer the type for each different binder
         if expr.binder.is_pi():
             if is_sort(dom_ty) and is_sort(expr_ty):
-                #We wish for Pis to be at least in Type()
+                #We force Pis to be at least in Type()
                 return max_sort(max_sort(dom_ty, expr_ty), Type())
             else:
                 if not is_sort(dom_ty):
@@ -500,7 +498,7 @@ def infer(expr, type=None):
             raise ExprTypeError(mess, expr)
 
 
-def check(expr, type=None):
+def check(expr, type=None, solver=None):
     """Check the type of an expression and
     print it `Coq style`
     
@@ -510,7 +508,10 @@ def check(expr, type=None):
     ty, obl = infer(expr, type)
     print expr, ':', ty
     print
-    obl.solve_with('trivial')
+    if solver == None:
+        obl.solve_with('trivial')
+    else:
+        obl.solve_with(solver)
     if obl.is_solved():
         print "With no remaning obligations!"
     else:
@@ -572,7 +573,7 @@ if __name__ == "__main__":
     
     print "x + y = ", plus_x_y, ':', ty
     print 'With obligations:\n', obl
-    obl.solve_with('trivial')
+    obl.solve_with('simpl')
     if obl.is_solved():
         print "Which are trivially solved"
     else:

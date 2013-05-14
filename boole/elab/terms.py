@@ -18,7 +18,8 @@ from boole.core.expr import *
 from context import *
 import boole.core.typing as typing
 import boole.core.goals as goals
-
+import boole.core.expr as expr
+import boole.core.conv as conv
 
 def print_app(expr):
     """Takes an application and prints it in readable format.
@@ -31,7 +32,7 @@ def print_app(expr):
             if expr.arg.is_tuple() and len(expr.arg) == 2:
                 lhs = expr.arg.exprs[0]
                 rhs = expr.arg.exprs[1]
-                return "{0!s} {1!s} {2!s}".format(lhs, expr.fun, rhs)
+                return "({0!s} {1!s} {2!s})".format(lhs, expr.fun, rhs)
             else:
                 return "{0!s}({1!s})".format(expr.fun, expr.arg)
         else:
@@ -95,7 +96,11 @@ def print_eq(expr):
     """
     return "{0!s} == {1!s}".format(expr.lhs, expr.rhs)
 
+def print_bool(expr):
+    return "Bool"
 
+def print_type(expr):
+    return "Type"
 
 def st_str(expr):
     if expr.is_app():
@@ -110,6 +115,10 @@ def st_str(expr):
         return print_sig(expr)
     elif expr.is_eq():
         return print_eq(expr)
+    elif expr.is_bool():
+        return print_bool(expr)
+    elif expr.is_type():
+        return print_type(expr)
     else:
         return expr.to_string()
 
@@ -270,7 +279,7 @@ def mktype(name):
     - `name`:
     """
 
-    return Const(name, Type())
+    return Const(name, expr.Type())
 
 
 ###############################################################################
@@ -282,7 +291,7 @@ def mktype(name):
 
 st_context = Context("st_context")
 
-def deftype(name):
+def deftype(name, solver=None):
     """Define a type constant, and add it
     to st_context.
     
@@ -290,10 +299,22 @@ def deftype(name):
     - `name`:
     """
     c = mktype(name)
+    ty, obl = typing.infer(c)
+    if solver == None:
+        obl.solve_with('trivial')
+    else:
+        obl.solve_with(solver)
     st_context.add_const(c)
+    if obl.is_solved():
+        print "{0!s} : {1!s} is assumed.\n".format(c, ty)
+    else:
+        st_context.add_to_field(obl.name, obl, 'unsolved_goals')
+        print "In the declaration:\n{0!s} : {1!s}".format(name, type)
+        print "remaining type-checking constraints!"
+        print obl
     return c
 
-def defconst(name, type, infix=False):
+def defconst(name, type, infix=False, solver=None):
     """Define a constant, add it to
     st_context and return it.
     
@@ -304,7 +325,10 @@ def defconst(name, type, infix=False):
     """
     c = const(name, type, infix=infix)
     _, obl = typing.infer(c)
-    obl.solve_with('trivial')
+    if solver == None:
+        obl.solve_with('trivial')
+    else:
+        obl.solve_with(solver)
     st_context.add_const(c)
     if obl.is_solved():
         print "{0!s} : {1!s} is assumed.\n".format(c, type)
@@ -318,7 +342,7 @@ def defconst(name, type, infix=False):
 
 #TODO: clean this function!
 #TODO: abstract over st_context
-def defexpr(name, value, type=None):
+def defexpr(name, value, type=None, solver=None):
     """Define an expression with a given type and value.
     Checks that the type of value is correct, and adds the defining
     equation to the context.
@@ -332,7 +356,11 @@ def defexpr(name, value, type=None):
         ty, obl = typing.infer(value, type=type)
     else:
         ty, obl = typing.infer(value)
-    obl.solve_with('trivial')
+
+    if solver == None:
+        obl.solve_with('trivial')
+    else:
+        obl.solve_with(solver)
 
     c = const(name, type)
     c.info['defined'] = True
@@ -348,7 +376,7 @@ def defexpr(name, value, type=None):
         print "{0!s} : {1!s} is defined.\n".format(c, ty)
     else:
         st_context.add_to_field(obl.name, obl, 'unsolved_goals')
-        print "In the definition\n  {0!s} = {1!s}".format(name, value)
+        print "In the definition\n  {0!s} = {1!s} : {2!s}".format(name, value, ty)
         print "remaining type-checking constraints!"
         print obl
     return c
@@ -361,12 +389,30 @@ def defexpr(name, value, type=None):
 
 
 nat = deftype('nat')
-plus = defconst('+', (nat * nat) >> nat, infix=True)
-mult = defconst('*', (nat * nat) >> nat, infix=True)
+plus = defconst('+', nat * nat >> nat, infix=True)
+mult = defconst('*', nat * nat >> nat, infix=True)
 zero = defconst('0', nat)
 one = defconst('1', nat)
 
+#create a single instance of Bool() and Type().
+Bool = Bool()
+Bool.info.update(StTyp())
 
+Type = Type()
+Type.info.update(StTyp())
+
+#TODO: add methods allowing infix input
+conj = defconst('&', Bool * Bool >> Bool, infix=True)
+disj = defconst('|', Bool * Bool >> Bool, infix=True)
+neg = defconst('neg', Bool >> Bool, infix=True)
+impl = defconst('=>', Bool * Bool >> Bool, infix=True)
+
+#This is equivalent to the constant returned by the
+# true() function in expr.py, as constants are only compared
+# by name.
+true = defconst('true', Bool)
+
+false = defconst('false', Bool)
 
 if __name__ == '__main__':
 
@@ -393,10 +439,10 @@ if __name__ == '__main__':
 
     fa = forall(z, nat * nat, (z[0] + z[1]) == (z[1] + z[0]))
 
-    plus_commut_stmt = defexpr('plus_commut_stmt', fa, Bool())
-
+    plus_commut_stmt = defexpr('plus_commut_stmt', fa, type=Bool)
+    
     typing.check(st_context.nat)
-
+    print
 
     def definition_of(expr):
         """Return the definition of a defined constant.
@@ -408,10 +454,13 @@ if __name__ == '__main__':
             if expr.defined:
                 print st_context.get_from_field(expr.name+"_def", 'defs')\
                       .type
+                print
             else:
                 print expr, " is not defined!"
+                print
         else:
             print expr, " is not a constant!"
+            print
 
     two = defexpr('two', one+one, nat)
 
@@ -420,3 +469,22 @@ if __name__ == '__main__':
     definition_of(two)
 
     plus_commut = defexpr('plus_commut', trivial(), fa)
+
+    p = mk_tuple([x, y])
+
+    proj_x_y_0 = defexpr('proj_x_y_0', trivial(), p[0] == x, solver='simpl')
+
+    boolop = Bool * Bool >> Bool
+
+    typeop = Type * Type >> Type
+
+    typing.check(boolop)
+    print
+    typing.check(typeop)
+    print
+    typing.check(conj(true, disj(true, false)))
+    print
+    print p[1]
+    print conv.par_beta(p[0])
+    print conv.par_beta(p[1])
+    print conv.par_beta(p[2])

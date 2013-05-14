@@ -2,7 +2,8 @@
 #
 # expr.py
 #
-# description: basic types and expressions in Boole
+# description: types and expressions in Boole, all constructors inherit from
+# the Expr class, except Tele, which inherits from BaseExpr
 #
 #
 # Authors:
@@ -257,7 +258,7 @@ class Bound(Expr):
         Arguments:
         - `binder`: an element of the Binder class
         - `dom`: an expression denoting the domain of the variable
-        - `expr`: an expression
+        - `expr`: an expression with a bound variable.
         """
         Expr.__init__(self)
         self.binder = binder
@@ -557,16 +558,16 @@ class Eq(Expr):
     of the type of the expressions.
     """
     
-    def __init__(self, expr1, expr2):
+    def __init__(self, lhs, rhs):
         """
         
         Arguments:
-        - `expr1`: an expression
-        - `expr2`: an expression
+        - `lhs`: an expression
+        - `rhs`: an expression
         """
         Expr.__init__(self)
-        self.lhs = expr1
-        self.rhs = expr2
+        self.lhs = lhs
+        self.rhs = rhs
 
     def accept(self, visitor, *args, **kwargs):
         """
@@ -1164,6 +1165,22 @@ def sub_in(substitutor, var, substitutee):
     - `substitutee`: an expression
     """
     return subst_expr([substitutor], abstract_expr([var], substitutee))
+
+
+def open_bound_with_fresh(expr, checked=None):
+    """Return the opened body of a bound expression
+    using the variable from the binder to generate a fresh
+    name. The constant is marked as type-checked by default.
+    
+    Arguments:
+    - `expr`: an instance of Bound
+    """
+    var = fresh_name.get_name(expr.binder.var)
+    if checked == None:
+        const = Const(var, expr.dom, checked=True)
+    else:
+        const = Const(var, expr.dom, checked=checked)
+    return (var, subst_expr([const], expr.expr))
 
 
 def pi(var, dom, codom):
