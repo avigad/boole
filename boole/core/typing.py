@@ -13,6 +13,7 @@
 
 from expr import *
 import goals
+import context
 
 
 def is_sort(expr):
@@ -88,13 +89,13 @@ class ExprInfer(ExprVisitor):
             if is_sort(sort):
                 return expr.type
             else:
-                mess = 'The type of {0!s} is {1!s} which should\
-                be Type, Kind or Bool'.format(expr, expr.type)
+                mess = 'The type of {0!s} is {1!s} which should be Type, Kind or Bool'\
+                       .format(expr, expr.type)
                 raise ExprTypeError(mess, expr)
 
     def visit_db(self, expr, *args, **kwargs):
-        raise ExprTypeError('Cannot determine the type of\
-        a De Bruijn index', expr)
+        raise ExprTypeError('Cannot determine the type of a De Bruijn index', \
+                            expr)
 
     def visit_type(self, expr, *args, **kwargs):
         return Kind()
@@ -156,11 +157,11 @@ class ExprInfer(ExprVisitor):
         fun_ty = self.visit(expr.fun, *args, **kwargs)
         arg_ty = self.visit(expr.arg, *args, **kwargs)
         if fun_ty.is_bound() and fun_ty.binder.is_pi():
-            #We check that the types of the domain and
-            #co-domain are equal using expr.conv as
+            #We check that the types of the argument is
+            #a subtype of the domain using expr.conv as
             #evidence.
-            eq_dom = Eq(fun_ty.dom, arg_ty)
-            ExprCheck().visit(expr.conv, eq_dom, *args, **kwargs)
+            sub_dom = Sub(arg_ty, fun_ty.dom)
+            ExprCheck().visit(expr.conv, sub_dom, *args, **kwargs)
             return subst_expr([expr.arg], fun_ty.expr)
         else:
             raise ExprTypeError("Non functional application in\
@@ -221,7 +222,7 @@ class ExprInfer(ExprVisitor):
         self.visit(expr.telescope, *args, **kwargs)
         return true()
 
-    def visit_eq(self, expr, *args, **kwargs):
+    def visit_sub(self, expr, *args, **kwargs):
         #Just check that the lhs and rhs have some type
         self.visit(expr.lhs, *args, **kwargs)
         self.visit(expr.rhs, *args, **kwargs)
@@ -229,8 +230,8 @@ class ExprInfer(ExprVisitor):
 
     def visit_box(self, expr, *args, **kwargs):
         expr_ty = self.visit(expr.expr)
-        eq_ty = Eq(expr.type, expr_ty)
-        ExprCheck().visit(expr.conv, eq_ty, *args, **kwargs)
+        sub_ty = Sub(expr_ty, expr.type)
+        ExprCheck().visit(expr.conv, sub_ty, *args, **kwargs)
         ty_sort = self.visit(expr.type)
         if is_sort(ty_sort):
             return expr.type
@@ -283,6 +284,8 @@ class ExprCheck(ExprVisitor):
         - `prop`: an expression denoting a proposition
         - `constr`: a list of constraints
         """
+        #check that expr is well-formed
+        ExprInfer().visit(expr, constrs, *args, **kwargs)
         if self.visit(prop, Bool(), constrs, *args, **kwargs):
             constrs.append(goals.Goal(expr.telescope, prop))
             return True
@@ -430,7 +433,7 @@ class ExprCheck(ExprVisitor):
         else:
             return False
 
-    def visit_eq(self, expr, type, *args, **kwargs):
+    def visit_sub(self, expr, type, *args, **kwargs):
         """Check the syntactic equality of the inferred
         type of expr and type.
         
@@ -474,7 +477,7 @@ class ExprCheck(ExprVisitor):
             return False
 
 
-def infer(expr, type=None):
+def infer(expr, type=None, ctxt=None):
     """Infer the type of an expression and return the pair
     (type, proof obligations) or raise an exception of type
     ExprTypeError.
@@ -482,7 +485,13 @@ def infer(expr, type=None):
     Arguments:
     - `expr`: an expression
     """
-    prf_obl = goals.empty_goals(fresh_name.get_name('_typing'))
+    if ctxt == None:
+        ty_ctxt_name = fresh_name.get_name('_ty_ctxt')
+        ty_ctxt = context.Context(ty_ctxt_name)
+    else:
+        ty_ctxt = ctxt
+    prf_obl_name = fresh_name.get_name('_ty_goals')
+    prf_obl = goals.empty_goals(prf_obl_name, ty_ctxt)
     #slight hack here: we compare pointers to avoid calling the
     # __eq__ method of type. There should only be one instance of
     # the None object, so pointer equality is valid.
@@ -498,20 +507,20 @@ def infer(expr, type=None):
             raise ExprTypeError(mess, expr)
 
 
-def check(expr, type=None, solver=None):
+def check(expr, type=None, tactic=None, context=None):
     """Check the type of an expression and
     print it `Coq style`
     
     Arguments:
     - `expr`: an expression
     """
-    ty, obl = infer(expr, type)
+    ty, obl = infer(expr, type, context)
     print expr, ':', ty
     print
-    if solver == None:
-        obl.solve_with('trivial')
+    if tactic == None:
+        obl.solve_with(goals.trivial)
     else:
-        obl.solve_with(solver)
+        obl.solve_with(tactic)
     if obl.is_solved():
         print "With no remaning obligations!"
     else:
@@ -573,7 +582,7 @@ if __name__ == "__main__":
     
     print "x + y = ", plus_x_y, ':', ty
     print 'With obligations:\n', obl
-    obl.solve_with('simpl')
+    obl.solve_with(goals.simpl)
     if obl.is_solved():
         print "Which are trivially solved"
     else:

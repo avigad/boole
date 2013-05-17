@@ -134,7 +134,7 @@ class BaseExpr(object):
 
 
     def __eq__(self, arg):
-        """Call right_shift implemented in info
+        """Call eq implemented in info
         """
         try:
             return self.info['__eq__'](self, arg)
@@ -149,6 +149,15 @@ class BaseExpr(object):
             return self.info['__getitem__'](self, index)
         except KeyError:
             mess = '`BaseExpr` object does not support lookup'
+            raise TypeError(mess)
+
+    def __le__(self, index):
+        """Call le implemented in info
+        """
+        try:
+            return self.info['__le__'](self, index)
+        except KeyError:
+            mess = '`BaseExpr` object does not support leq'
             raise TypeError(mess)
 
 
@@ -214,7 +223,7 @@ class Expr(BaseExpr):
         """
         return False
 
-    def is_eq(self):
+    def is_sub(self):
         """Tests wether the expression is an instance of
         Eq
         """

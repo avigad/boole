@@ -22,7 +22,7 @@ from expr_base import *
 ##############################################################################
 #
 # Expressions and types: these implement the term language of a dependent,
-# extensional, impredicative and classical type theory.
+# extensional, impredicative and classical type theory, With subtyping.
 #
 #
 # The datatype is represented by:
@@ -32,7 +32,7 @@ from expr_base import *
 #         Abst(name,Expr,Expr) | Sig(Tele) |
 #         Tuple([Expr,...,Expr],Type)      | Proj(int,Expr) | Ev(Tele) |
 #         Forall(name,Expr,Expr)           | Exists(name,Expr,Expr) |
-#         Eq(Expr,Expr)        | Box(Expr,Expr,Expr)
+#         Sub(Expr,Expr)        | Box(Expr,Expr,Expr)
 #
 # Tele := Tele([name,...,name],[Expr,...,Expr])
 #
@@ -553,8 +553,8 @@ class Ev(Expr):
             return False
 
 
-class Eq(Expr):
-    """Equality between expression. Makes sense regardless
+class Sub(Expr):
+    """The subtype relation. Makes sense regardless
     of the type of the expressions.
     """
     
@@ -577,7 +577,7 @@ class Eq(Expr):
         - `*args`:
         - `**kwargs`:
         """
-        return visitor.visit_eq(self, *args, **kwargs)
+        return visitor.visit_sub(self, *args, **kwargs)
 
     def to_string(self):
         """
@@ -585,9 +585,9 @@ class Eq(Expr):
         Arguments:
         - `self`:
         """
-        return "Eq({0!s}, {1!s})".format(self.lhs, self.rhs)
+        return "Sub({0!s}, {1!s})".format(self.lhs, self.rhs)
 
-    def is_eq(self):
+    def is_sub(self):
         return True
 
     def equals(self, expr):
@@ -596,7 +596,7 @@ class Eq(Expr):
         Arguments:
         - `expr`: an expression
         """
-        if expr.is_eq():
+        if expr.is_sub():
             return (self.lhs.equals(expr.lhs)) and (self.rhs.equals(expr.rhs))
         else:
             return False
@@ -605,7 +605,7 @@ class Eq(Expr):
 class Box(Expr):
     """Boxed epressions: a boxed expression
     carries a type and a witness that the type of
-    the expression is identical to it.
+    the expression is a subtype of it.
     """
     
     def __init__(self, conv, expr, type):
@@ -652,7 +652,7 @@ class Box(Expr):
 
 ##############################################################################
 #
-# The class of 1 variable binders: this includes Pi, Abst, forall/exists
+# The class of single variable binders: this includes Pi, Abst, forall/exists
 # but excludes Sig.
 #
 ###############################################################################
@@ -903,7 +903,7 @@ class ExprVisitor(object):
     def visit_ev(self, expr, *args, **kwargs):
         raise NotImplementedError()
 
-    def visit_eq(self, expr, *args, **kwargs):
+    def visit_sub(self, expr, *args, **kwargs):
         raise NotImplementedError()
 
     def visit_box(self, expr, *args, **kwargs):
@@ -1013,10 +1013,10 @@ class AbstractExpr(ExprVisitor):
         tele = self.visit(expr.telescope, *args, **kwargs)
         return Ev(tele)
 
-    def visit_eq(self, expr, *args, **kwargs):
+    def visit_sub(self, expr, *args, **kwargs):
         lhs = self.visit(expr.lhs, *args, **kwargs)
         rhs = self.visit(expr.rhs, *args, **kwargs)
-        return Eq(lhs, rhs)
+        return Sub(lhs, rhs)
 
     def visit_box(self, expr, *args, **kwargs):
         conv = self.visit(expr.conv, *args, **kwargs)
@@ -1119,10 +1119,10 @@ class SubstExpr(ExprVisitor):
         tele = self.visit(expr.telescope, *args, **kwargs)
         return Ev(tele)
 
-    def visit_eq(self, expr, *args, **kwargs):
+    def visit_sub(self, expr, *args, **kwargs):
         lhs = self.visit(expr.lhs, *args, **kwargs)
         rhs = self.visit(expr.rhs, *args, **kwargs)
-        return Eq(lhs, rhs)
+        return Sub(lhs, rhs)
 
     def visit_box(self, expr, *args, **kwargs):
         conv = self.visit(expr.conv, *args, **kwargs)

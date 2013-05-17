@@ -90,16 +90,16 @@ class Context(object):
         
 
     def __getattr__(self, attr):
-        """Return the constant defined in the decls
-        field of the context.
+        """Return the dictionary with name attr
+        from the context.
         
         Arguments:
         - `attr`:
         """
         try:
-            return self._context['decls'][attr]
+            return self._context[attr]
         except KeyError:
-            mess = "Constant {0!s} not found in context {1!s}"\
+            mess = "Field {0!s} not found in context {1!s}"\
                    .format(attr, self.name)
             raise ContextErr(mess, self)
 

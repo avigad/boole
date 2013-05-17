@@ -98,10 +98,10 @@ class ParBeta(ExprVisitor):
         #no computational content.
         return expr
 
-    def visit_eq(self, expr, *args, **kwargs):
+    def visit_sub(self, expr, *args, **kwargs):
         lhs = self.visit(expr.lhs, *args, **kwargs)
         rhs = self.visit(expr.rhs, *args, **kwargs)
-        return Eq(lhs, rhs)
+        return Sub(lhs, rhs)
 
     def visit_box(self, expr, *args, **kwargs):
         inside = self.visit(expr.expr, *args, **kwargs)

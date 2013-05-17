@@ -14,6 +14,13 @@
 
 import conv
 
+##############################################################################
+#
+# The basic Goal objects
+#
+##############################################################################
+
+
 class Goal(object):
     """The type of constraints: represents a proof obligation
     is constituted of a context (a telescope) and a
@@ -26,7 +33,9 @@ class Goal(object):
         Arguments:
         - `tele`: a telescope
         - `prop`: a proposition
+        - `context`: a context potentially containing additional information
         """
+        #TODO: should this be a telescope?
         self.tele = tele
         self.prop = prop
         
@@ -37,56 +46,114 @@ class Goal(object):
             tele_string = str(self.tele)
         return "{0!s} |- {1!s}".format(tele_string, self.prop)
 
-    #TODO: rewrite this whole approach.
-    def solve_with(self, method):
-        """Attempt to determine if the constraint is true, using
-        a given method. Returns a boolean.
+
+
+##############################################################################
+#
+# Tacics: they act as goal transformers, taking a Goal as input and
+# returning a (possibly empty) list of new goals, or failing
+#
+##############################################################################
+
+
+class TacticFailure(Exception):
+    """Raised when a tactic fails
+    """
+    
+    def __init__(self, mess, tactic, goal):
+        """
         
         Arguments:
-        - `method`: a string describing the method
+        - `mess`: the error message
+        - `tactic`: the tactic which generated the error
+        - `goal`: the goal on which the tactic failed
         """
-        if method == "trivial":
-            return trivial(self.tele, self.prop)
-        elif method == "simpl":
-            return simpl(self.tele, self.prop)
-        else:
-            raise Exception("Unknown solver: {0!s}".format(method))
+        Exception.__init__(self, mess)
+        self.mess = mess
+        self.tactic = tactic
+        self.goal = goal
 
-def trivial(hyps, goal):
+
+
+
+class Tactic(object):
+    """The class of goal transformers
+    """
+    
+    def __init__(self, name):
+        self.name = name
+        
+    def solve(self, goal, context):
+        """Takes a goal and returns a list of goals
+        
+        Arguments:
+        - `goal`: an instance of the Goal class
+        - `context`: a context
+        """
+        raise TacticFailure("Undefined tactic", self, goal)
+        
+
+class Trivial(Tactic):
     """Solve trivial goals. Checks if the
     goal is equal to true, and otherwise checks if it is a
     trivial equality, or is in the hypotheses.
     
-    Arguments:
-    - `hyps`: a telescope
-    - `goal`: an expression of type Bool
     """
-    if goal.is_const() and goal.name == "true":
-        return True
-    elif goal.is_eq():
-        #try for pointer equality first.
-        if goal.lhs is goal.rhs:
-            return True
-        else:
-            return goal.lhs.equals(goal.rhs)
-    else:
+    
+    def __init__(self):
+        Tactic.__init__(self, 'trivial')
+
+    def solve(self, goal, context):
+        prop = goal.prop
+        hyps = goal.tele
+        if prop.is_const() and prop.name == "true":
+            return []
+        elif prop.is_sub():
+            #try for pointer equality first.
+            if prop.lhs is prop.rhs:
+                return []
+            elif prop.lhs.equals(goal.prop.rhs):
+                return []
+
         for h in hyps.types:
-            if h.equals(goal):
-                return True
-        return False
+            if h.equals(prop):
+                return []
+        glob_hyps = context.hyps
+        for h in glob_hyps:
+            if glob_hyps[h].equals(prop):
+                return []
+        return [goal]
 
 
-def simpl(hyps, goal):
+trivial = Trivial()
+
+
+class Simpl(Tactic):
     """Solve goals by performing beta-reduction,
     then calling trivial.
-    
-    Arguments:
-    - `hyps`: a telescope
-    - `goal`: an expression of type Bool
-    """
-    simp_goal = conv.par_beta(goal)
-    return trivial(hyps, simp_goal)
 
+    """
+
+    def __init__(self):
+        Tactic.__init__(self, 'simpl')
+
+    def solve(self, goal, context):
+        prop = goal.prop
+        simp_goal = Goal(goal.tele, conv.par_beta(prop))
+        return trivial.solve(simp_goal, context)
+
+
+simpl = Simpl()
+
+
+
+##############################################################################
+#
+# Goals are a list of atomic Goal objects, which can call solvers on
+# that list to transform themselves destructively.
+# They are defined within a context and have a name.
+#
+##############################################################################
 
 
 class Goals(object):
@@ -94,20 +161,21 @@ class Goals(object):
     goals. The empty obligation is considered solved.
     """
     
-    def __init__(self, name):
-        """a Goals object has a name and a list of goals.
+    def __init__(self, name, context):
+        """a Goals object has a name, a context
+        and a list of goals.
         """
         self.name = name
         self.goals = []
+        self.context = context
 
-
-    def append(self, constr):
-        """Add a constraint to the proof obligations
+    def append(self, goal):
+        """Add a goal to the proof obligations
         
         Arguments:
         - `constr`:
         """
-        self.goals.append(constr)
+        self.goals.append(goal)
 
     def is_solved(self):
         """Returns true if there are no obligations left.
@@ -122,25 +190,24 @@ class Goals(object):
             goal_str += "({0!s}) : {1!s}\n".format(i, g)
         return goal_str
 
-    def solve_with(self, method):
+    def __len__(self, ):
+        return len(self.goals)
+
+    def solve_with(self, tactic):
         """Remove the obligations which can
         be proven with the method.
         
         Arguments:
-        - `method`:
+        - `tactic`: an instance of Tactic
         """
-        new_goals = []
-        for g in self.goals:
-            if g.solve_with(method):
-                pass
-            else:
-                new_goals.append(g)
-                
+        new_goals = [g_new for g in self.goals\
+                     for g_new in tactic.solve(g, self.context)]
+
         self.goals = new_goals
 
 
-def empty_goals(name):
+def empty_goals(name, context):
     """The empty proof obligation.
-    Used to initialize the type inference.
+    Used e.g. to initialize the type inference.
     """
-    return Goals(name)
+    return Goals(name, context)
