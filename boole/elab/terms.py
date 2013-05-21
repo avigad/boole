@@ -457,17 +457,17 @@ if __name__ == '__main__':
     x = nat('x')
     y = nat('y')
     # z = (real * real)('z')
-    # w = real('w')
-    # t = real('t')
+    w = real('w')
+    t = real('t')
 
-    # abs_plus = defexpr('abs_plus', abst(t, real, t+w))
+    abs_plus = defexpr('abs_plus', abst(t, real, t+w))
 
-    # print abs_plus
+    print abs_plus
 
-    # typing.check(abs_plus(x), context=st_context)
+    typing.check(abs_plus(x), context=st_context)
     
     # typing.check(mk_tuple([x, y]))
-    typing.check(x + y, tactic=goals.destruct)
+    typing.check(x + y, tactic=goals.comp_tac(goals.destruct, goals.trivial), context=st_context)
 
     # typing.check(z[0] * z[1] == z[1] * z[0])
 

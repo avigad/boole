@@ -93,7 +93,11 @@ class Tactic(object):
         - `context`: a context
         """
         raise TacticFailure("Undefined tactic", self, goal)
+
+    def __show__(self):
+        return self.name
         
+
 
 class Trivial(Tactic):
     """Solve trivial goals. Checks if the
@@ -219,13 +223,28 @@ class trytac(Tactic):
         - `tac`:
         """
         self.tac = tac
-        Tactic.__init__(self, 'try {0!s}'.format(tac.name))
+        Tactic.__init__(self, 'try {0!s}'.format(tac))
 
     def solve(self, goal, context):
         try:
             return self.tac.solve(goal, context)
         except TacticFailure:
             return [goal]
+
+
+class comp_tac(Tactic):
+    """Take two tactics as input, and return the tactic that calls
+    the first on the goal, and the second on the resulting sub-goals.
+    """
+    
+    def __init__(self, tac1, tac2):
+        self.tac1 = tac1
+        self.tac2 = tac2
+        Tactic.__init__(self, '({0!s} ; {1!s})'.format(tac1, tac2))
+        
+    def solve(self, goal, context):
+        new_goals = self.tac1.solve(goal, context)
+        return [g for g1 in new_goals for g in self.tac2.solve(g1, context)]
 
 
 ##############################################################################
