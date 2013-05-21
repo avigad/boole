@@ -441,88 +441,88 @@ false = defconst('false', Bool)
 if __name__ == '__main__':
 
 
-    print dummy()
+    # print dummy()
 
     nat = deftype('nat')
     
-    prod = nat * nat * nat
+    # prod = nat * nat * nat
 
     nat_sub_real = (nat <= real)('nat_sub_real')
 
     #TODO: should we add the hypothesis or the constant?
     st_context.add_to_field('nat_sub_real', nat_sub_real.type, 'hyps')
 
-    print prod
+    # print prod
 
     x = nat('x')
     y = nat('y')
-    z = (real * real)('z')
-    w = real('w')
-    t = real('t')
+    # z = (real * real)('z')
+    # w = real('w')
+    # t = real('t')
 
-    abs_plus = defexpr('abs_plus', abst(t, real, t+w))
+    # abs_plus = defexpr('abs_plus', abst(t, real, t+w))
 
-    print abs_plus
+    # print abs_plus
 
-    typing.check(abs_plus(x), context=st_context)
+    # typing.check(abs_plus(x), context=st_context)
     
-    typing.check(mk_tuple([x, y]))
-    typing.check(x + y)
+    # typing.check(mk_tuple([x, y]))
+    typing.check(x + y, tactic=goals.destruct)
 
-    typing.check(z[0] * z[1] == z[1] * z[0])
+    # typing.check(z[0] * z[1] == z[1] * z[0])
 
-    typing.check(abst(z, real * real, mk_tuple([x, x])))
+    # typing.check(abst(z, real * real, mk_tuple([x, x])))
 
-    typing.check(forall(z, real * real, (z[0] + z[1]) == (z[1] + z[0])))
+    # typing.check(forall(z, real * real, (z[0] + z[1]) == (z[1] + z[0])))
 
-    fa = forall(z, real * real, (z[0] + z[1]) == (z[1] + z[0]))
+    # fa = forall(z, real * real, (z[0] + z[1]) == (z[1] + z[0]))
 
-    plus_commut_stmt = defexpr('plus_commut_stmt', fa, type=Bool)
+    # plus_commut_stmt = defexpr('plus_commut_stmt', fa, type=Bool)
     
-    typing.check(st_context.decls['real'])
-    print
+    # typing.check(st_context.decls['real'])
+    # print
 
-    def definition_of(expr):
-        """Return the definition of a defined constant.
+    # def definition_of(expr):
+    #     """Return the definition of a defined constant.
         
-        Arguments:
-        - `expr`:
-        """
-        if expr.is_const():
-            if expr.defined:
-                print st_context.get_from_field(expr.name+"_def", 'defs')\
-                      .type
-                print
-            else:
-                print expr, " is not defined!"
-                print
-        else:
-            print expr, " is not a constant!"
-            print
+    #     Arguments:
+    #     - `expr`:
+    #     """
+    #     if expr.is_const():
+    #         if expr.defined:
+    #             print st_context.get_from_field(expr.name+"_def", 'defs')\
+    #                   .type
+    #             print
+    #         else:
+    #             print expr, " is not defined!"
+    #             print
+    #     else:
+    #         print expr, " is not a constant!"
+    #         print
 
-    two = defexpr('two', one+one, real)
+    # two = defexpr('two', one+one, real)
 
-    definition_of(plus_commut_stmt)
+    # definition_of(plus_commut_stmt)
 
-    definition_of(two)
+    # definition_of(two)
 
-    plus_commut = defexpr('plus_commut', trivial(), fa)
+    # plus_commut = defexpr('plus_commut', trivial(), fa)
 
-    p = mk_tuple([x, y])
+    # p = mk_tuple([x, y])
 
-    proj_x_y_0 = defexpr('proj_x_y_0', trivial(), p[0] == x, tactic=goals.simpl)
+    # proj_x_y_0 = defexpr('proj_x_y_0', trivial(), p[0] == x, tactic=goals.simpl)
 
-    boolop = Bool * Bool >> Bool
+    # boolop = Bool * Bool >> Bool
 
-    typeop = Type * Type >> Type
+    # typeop = Type * Type >> Type
 
-    typing.check(boolop)
-    print
-    typing.check(typeop)
-    print
-    typing.check(conj(true, disj(true, false)))
-    print
-    print p[1]
-    print conv.par_beta(p[0])
-    print conv.par_beta(p[1])
-    print conv.par_beta(p[2])
+    # typing.check(boolop)
+    # print
+    # typing.check(typeop)
+    # print
+    # typing.check(conj(true, disj(true, false)))
+    # print
+    # print p[1]
+    # print conv.par_beta(p[0])
+    # print conv.par_beta(p[1])
+    # print conv.par_beta(p[2])

@@ -1167,20 +1167,38 @@ def sub_in(substitutor, var, substitutee):
     return subst_expr([substitutor], abstract_expr([var], substitutee))
 
 
+def open_expr(var, typ, expr, checked=None):
+    """Return the opened body of an expression
+    with a bound variable, by substituting
+    the bound name with a constant of type
+    typ
+    
+    Arguments:
+    - `var`: a variable name
+    - `typ`: a type
+    - `expr`: an expression with a bound
+    variable
+    - `checked`: marks weather typ has been
+    checked for well-typedness
+    """
+    if checked == None:
+        const = Const(var, typ, checked=True)
+    else:
+        const = Const(var, typ, checked=checked)
+    return subst_expr([const], expr)
+
+
 def open_bound_with_fresh(expr, checked=None):
     """Return the opened body of a bound expression
     using the variable from the binder to generate a fresh
-    name. The constant is marked as type-checked by default.
+    name, along with the variable name. The constant is marked as
+    type-checked by default.
     
     Arguments:
     - `expr`: an instance of Bound
     """
     var = fresh_name.get_name(expr.binder.var)
-    if checked == None:
-        const = Const(var, expr.dom, checked=True)
-    else:
-        const = Const(var, expr.dom, checked=checked)
-    return (var, subst_expr([const], expr.expr))
+    return (var, open_expr(var, expr.dom, expr.expr, checked=checked))
 
 
 def pi(var, dom, codom):
