@@ -29,9 +29,10 @@ def head_beta(expr):
     if expr.is_app() and expr.fun.is_bound() and \
            expr.fun.binder.is_abst():
         return subst_expr([expr.arg], expr.fun.expr)
-    elif expr.is_proj() and expr.expr.is_tuple() and \
-             expr.index < len(expr.expr):
-        return expr.expr.exprs[expr.index]
+    elif expr.is_fst() and expr.expr.is_pair():
+        return expr.expr.fst
+    elif expr.is_snd() and expr.expr.is_pair():
+        return expr.expr.snd
     elif expr.is_box():
         return expr.expr
     else:
@@ -66,7 +67,7 @@ class ParBeta(ExprVisitor):
         return expr
 
     def visit_bound(self, expr, *args, **kwargs):
-        var, open_expr = open_bound_with_fresh(expr)
+        var, open_expr = open_bound_fresh(expr)
         dom = self.visit(expr.dom, *args, **kwargs)
         body = self.visit(open_expr, *args, **kwargs)
         body = abstract_expr([var], body)
@@ -79,19 +80,19 @@ class ParBeta(ExprVisitor):
         arg = self.visit(expr.arg, *args, **kwargs)
         return head_beta(App(expr.conv, fun, arg))
 
-    def visit_sig(self, expr, *args, **kwargs):
-        tel = self.visit(expr.telescope, *args, **kwargs)
-        return Sig(tel)
-
-    def visit_tuple(self, expr, *args, **kwargs):
-        exprs = [self.visit(e, *args, **kwargs)\
-                 for e in expr.exprs]
+    def visit_pair(self, expr, *args, **kwargs):
+        fst = self.visit(expr.fst, *args, **kwargs)
+        snd = self.visit(expr.snd, *args, **kwargs)
         type = self.visit(expr.type, *args, **kwargs)
-        return Tuple(exprs, type)
+        return Pair(fst, snd, type)
 
-    def visit_proj(self, expr, *args, **kwargs):
-        tup = self.visit(expr.expr, *args, **kwargs)
-        return head_beta(Proj(expr.index, tup))
+    def visit_fst(self, expr, *args, **kwargs):
+        red_expr = self.visit(expr.expr, *args, **kwargs)
+        return head_beta(Fst(red_expr))
+
+    def visit_snd(self, expr, *args, **kwargs):
+        red_expr = self.visit(expr.expr, *args, **kwargs)
+        return head_beta(Snd(red_expr))
 
     def visit_ev(self, expr, *args, **kwargs):
         #do nothing, as evidence terms have

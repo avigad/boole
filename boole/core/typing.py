@@ -63,7 +63,7 @@ class ExprTypeError(Exception):
         Exception.__init__(self)
         self.mess = mess
         self.expr = expr
-        print "Type error in expression {0!s}:\n{1!s}"\
+        print "Type error in the expression {0!s}:\n{1!s}"\
               .format(expr, mess)
 
 
@@ -82,7 +82,7 @@ class ExprInfer(ExprVisitor):
         #self.check = ExprCheck()
 
     def visit_const(self, expr, *args, **kwargs):
-        if expr.checked:
+        if expr.info.checked:
             return expr.type
         else:
             sort = self.visit(expr.type, *args, **kwargs)
@@ -111,40 +111,27 @@ class ExprInfer(ExprVisitor):
         #check that the domain is well-kinded
         if is_sort(dom_ty):
             pass
-        elif is_sort(self.visit(dom_ty, *args, **kwargs)):
-            pass
         else:
-            mess = "The term {0!s} has type {1!s} must be a sort\
+            mess = "The term {0!s} has type {1!s} which must be a sort\
             or have as type a sort".format(expr.dom, dom_ty)
             raise ExprTypeError(mess, expr)
         #substitute a fresh constant in the body of the binder
-        var, open_expr = open_bound_with_fresh(expr)
+        var, open_expr = open_bound_fresh(expr)
         #compute the type of the resulting expression
         expr_ty = self.visit(open_expr, *args, **kwargs)
         #Infer the type for each different binder
-        if expr.binder.is_pi():
-            if is_sort(dom_ty) and is_sort(expr_ty):
-                #We force Pis to be at least in Type()
+        if expr.binder.is_pi() or expr.binder.is_sig():
+            if is_sort(expr_ty):
+                #We force Pis and Sigmas to be at least in Type()
                 return max_sort(max_sort(dom_ty, expr_ty), Type())
             else:
-                if not is_sort(dom_ty):
-                    mess = "The type of {0!s} must be a sort".format(expr.dom)
-                    raise ExprTypeError(mess, expr)
-                if not is_sort(expr_ty):
-                    mess = "The type of {0!s} must be a sort".format(expr.expr)
-                    raise ExprTypeError(mess, expr)
+                mess = "The type of {0!s} must be a sort".format(expr.body)
+                raise ExprTypeError(mess, expr)
         elif expr.binder.is_abst():
             #Just need to check to see if the product is well-kinded:
+            #for example: abs(x:Bool, Type) is not well-kinded
             body_sort = self.visit(expr_ty, *args, **kwargs)
-            if is_sort(dom_ty) and is_sort(body_sort):
-                expr_ty = abstract_expr([var], expr_ty)
-                return Bound(Pi(expr.binder.var), expr.dom, expr_ty)
-            else:
-                #In this case, it is necessarily the domain that
-                # is ill-sorted. (the type of a type must be a sort,
-                # if it exists)
-                mess = "The type of {0!s} must be a sort".format(expr.dom)
-                raise ExprTypeError(mess, expr)
+            return Bound(Pi(expr.binder.var), expr.dom, expr_ty)
         else:
             assert(expr.binder.is_forall() or expr.binder.is_exists())
             if Bool().equals(expr_ty):
@@ -162,56 +149,36 @@ class ExprInfer(ExprVisitor):
             #evidence.
             sub_dom = Sub(arg_ty, fun_ty.dom)
             ExprCheck().visit(expr.conv, sub_dom, *args, **kwargs)
-            return subst_expr([expr.arg], fun_ty.expr)
+            return subst_expr([expr.arg], fun_ty.body)
         else:
-            raise ExprTypeError("Non functional application in\
-            {0!s}".format(expr), expr)
+            raise ExprTypeError("Non functional application in {0!s}"\
+                                .format(expr), expr)
 
-    def visit_sig(self, expr, *args, **kwargs):
-        return self.visit(expr.telescope, *args, **kwargs)
-
-    def visit_tuple(self, expr, *args, **kwargs):
-        if expr.type.is_sig():
-            tele_ty = expr.type.telescope.types
-            if len(expr.exprs) == len(tele_ty):
-                # a bit risky: requires the expressions to be
-                # free of "dangling" DB indices.
-                for i, ty in enumerate(tele_ty):
-                    ty_sub = subst_expr([expr.exprs], ty)
-                    e = expr.exprs[i]
-                    #we simply check that the term has exactly the right
-                    #type (structurally). Any conversions need to be
-                    #handled with Boxes.
-                    if ExprCheck().visit(e, ty_sub, *args, **kwargs):
-                        pass
-                    else:
-                        mess = "Expected {0!s} to be of type\
-                        {1!s}".format(e, ty_sub)
-                        raise ExprTypeError(mess, expr)
-                return expr.type
-            else:
-                mess = "Length mismatch between\
-                {0!s} and {1!s}".format(expr.exprs, expr.type.telescope)
-                raise ExprTypeError(mess, expr)
+    def visit_pair(self, expr, *args, **kwargs):
+        if expr.type.is_bound() and expr.type.binder.is_sig():
+            ExprCheck().visit(expr.fst, expr.type.dom, *args, **kwargs)
+            codom = subst_expr([expr.fst], expr.type.body)
+            ExprCheck().visit(expr.snd, codom, *args, **kwargs)
+            return expr.type
         else:
             mess = "Expected a Sig type, obtained {0!s} instead"\
                    .format(expr.type)
             raise ExprTypeError(mess, expr)
 
-    def visit_proj(self, expr, *args, **kwargs):
+    def visit_fst(self, expr, *args, **kwargs):
         arg_ty = self.visit(expr.expr, *args, **kwargs)
-        if arg_ty.is_sig():
-            if len(arg_ty) >= expr.index:
-                projs = []
-                for i in range(expr.index):
-                    projs.append(Proj(i, expr.expr))
-                ty_expr = arg_ty.telescope.types[expr.index]
-                ty_expr = subst_expr(projs, ty_expr)
-                return ty_expr
-            else:
-                mess = "Length mismatch: expected {0!s} to be of length\
-                at least {1!s}".format(arg_ty, expr.index)
-                raise ExprTypeError(mess, expr)
+        if arg_ty.is_bound() and arg_ty.binder.is_sig():
+            return arg_ty.dom
+        else:
+            mess = "Expected a Sig type, got {0!s} instead"\
+                   .format(arg_ty)
+            raise ExprTypeError(mess, expr)
+
+    def visit_snd(self, expr, *args, **kwargs):
+        arg_ty = self.visit(expr.expr, *args, **kwargs)
+        if arg_ty.is_bound() and arg_ty.binder.is_sig():
+            fst_proj = Fst(expr.expr)
+            return subst_expr([fst_proj], arg_ty.body)
         else:
             mess = "Expected a Sig type, got {0!s} instead"\
                    .format(arg_ty)
@@ -219,7 +186,7 @@ class ExprInfer(ExprVisitor):
 
     def visit_ev(self, expr, *args, **kwargs):
         #Check if the telescope is well-formed
-        self.visit(expr.telescope, *args, **kwargs)
+        self.visit(expr.tele, *args, **kwargs)
         return true()
 
     def visit_sub(self, expr, *args, **kwargs):
@@ -243,9 +210,9 @@ class ExprInfer(ExprVisitor):
         #There is no need to check that the constants
         # are well-kinded as this will be done when
         # checking each type in the telescope.
-        open_tel = open_tele_with_fresh(expr, checked=True)
+        open_tel = open_tele_with_fresh(expr, checked=True)[1]
         sorts = []
-        for _, ty in open_tel:
+        for ty in open_tel:
             sorts.append(self.visit(ty, *args, **kwargs))
         #We wish for telescopes to be at least in Type()
         max_s = Type()
@@ -254,7 +221,7 @@ class ExprInfer(ExprVisitor):
                 max_s = max_sort(max_s, s)
             else:
                 mess = "The type of {0!s} must be a\
-                sort.".format(open_tel[i][1])
+                sort.".format(open_tel[i])
                 raise ExprTypeError(mess, expr)
         return max_s
 
@@ -287,7 +254,7 @@ class ExprCheck(ExprVisitor):
         #check that expr is well-formed
         ExprInfer().visit(expr, constrs, *args, **kwargs)
         if self.visit(prop, Bool(), constrs, *args, **kwargs):
-            constrs.append(goals.Goal(expr.telescope, prop))
+            constrs.append(goals.Goal(expr.tele, prop))
             return True
         else:
             return False
@@ -377,20 +344,6 @@ class ExprCheck(ExprVisitor):
         else:
             return False
 
-    def visit_sig(self, expr, type, *args, **kwargs):
-        """Check the syntactic equality of the inferred
-        type of expr and type.
-        
-        Arguments:
-        - `expr`: an expression
-        - `type`: a type
-        """
-        expr_ty = ExprInfer().visit(expr, *args, **kwargs)
-        if expr_ty.equals(type):
-            return True
-        else:
-            return False
-
     def visit_app(self, expr, type, *args, **kwargs):
         """Check the syntactic equality of the inferred
         type of expr and type.
@@ -405,7 +358,7 @@ class ExprCheck(ExprVisitor):
         else:
             return False
 
-    def visit_tuple(self, expr, type, *args, **kwargs):
+    def visit_pair(self, expr, type, *args, **kwargs):
         """Check the syntactic equality of the inferred
         type of expr and type.
         
@@ -419,7 +372,21 @@ class ExprCheck(ExprVisitor):
         else:
             return False
 
-    def visit_proj(self, expr, type, *args, **kwargs):
+    def visit_fst(self, expr, type, *args, **kwargs):
+        """Check the syntactic equality of the inferred
+        type of expr and type.
+        
+        Arguments:
+        - `expr`: an expression
+        - `type`: a type
+        """
+        expr_ty = ExprInfer().visit(expr, *args, **kwargs)
+        if expr_ty.equals(type):
+            return True
+        else:
+            return False
+
+    def visit_snd(self, expr, type, *args, **kwargs):
         """Check the syntactic equality of the inferred
         type of expr and type.
         
@@ -532,16 +499,15 @@ if __name__ == "__main__":
 
     nullctxt = Tele([], [])
 
-    unit = sig()
+    unit = Const('unit', Type())
 
     dummy = Const('_', unit)
 
     def app(fun, arg):
         return App(Ev(nullctxt), fun, arg)
 
-    def ty_prod(*ty):
-        tele = [(dummy, t) for t in ty]
-        return sig(*tele)
+    def ty_prod(ty1, ty2):
+        return sig(dummy, ty1, ty2)
 
     nat = Const('nat', Type())
 
@@ -574,7 +540,7 @@ if __name__ == "__main__":
     x = Const("x", nat)
     y = Const("y", nat)
 
-    pair_x_y = Tuple([x, y], natpair)
+    pair_x_y = Pair(x, y, natpair)
 
     plus_x_y = app(plus, pair_x_y)
     

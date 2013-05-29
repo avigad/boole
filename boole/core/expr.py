@@ -29,10 +29,11 @@ from expr_base import *
 #
 # Expr := Type | Kind | Bool   | Const(string,Expr)  | DB(int) |
 #         Pi(name,Expr,Expr)   | App(Expr,Expr,Expr) |
-#         Abst(name,Expr,Expr) | Sig(Tele) |
-#         Tuple([Expr,...,Expr],Type)      | Proj(int,Expr) | Ev(Tele) |
+#         Abst(name,Expr,Expr) | Sig(name,Expr,Expr) |
+#         Pair(Expr,Expr,Type) | Fst(Expr) | Snd(Expr) |
+#         Ev(Tele) |
 #         Forall(name,Expr,Expr)           | Exists(name,Expr,Expr) |
-#         Sub(Expr,Expr)        | Box(Expr,Expr,Expr)
+#         Sub(Expr,Expr)       | Box(Expr,Expr,Expr)
 #
 # Tele := Tele([name,...,name],[Expr,...,Expr])
 #
@@ -252,18 +253,18 @@ class Bound(Expr):
     that domain.
     """
     
-    def __init__(self, binder, dom, expr):
+    def __init__(self, binder, dom, body):
         """
         
         Arguments:
         - `binder`: an element of the Binder class
         - `dom`: an expression denoting the domain of the variable
-        - `expr`: an expression with a bound variable.
+        - `body`: an expression with a bound variable.
         """
         Expr.__init__(self)
         self.binder = binder
         self.dom = dom
-        self.expr = expr
+        self.body = body
 
     def accept(self, visitor, *args, **kwargs):
         """
@@ -280,7 +281,7 @@ class Bound(Expr):
         # substituting the DB index by a constant
         # with the appropriate name.
         var = Const(self.binder.var, self.dom)
-        open_expr = subst_expr([var], self.expr)
+        open_expr = subst_expr([var], self.body)
         return "{0!s}({1!s},{2!s},{3!s})".format(\
             self.binder.name, self.binder.var, self.dom, open_expr)
 
@@ -294,7 +295,7 @@ class Bound(Expr):
         - `expr`: an expression
         """
         if expr.is_bound() and (self.binder.name == expr.binder.name):
-            return self.dom.equals(expr.dom) and self.expr.equals(expr.expr)
+            return self.dom.equals(expr.dom) and self.body.equals(expr.body)
         else:
             return False
 
@@ -350,79 +351,22 @@ class App(Expr):
             return False
 
 
-class Sig(Expr):
-    """Sigma types, takes a telescope as argument
+class Pair(Expr):
+    """Elements of Sigma types. They need to carry around their type,
+    for type-checking to be decidable.
     """
     
-    def __init__(self, telescope):
+    def __init__(self, fst, snd, type):
         """
         
         Arguments:
-        - `telescope`: A telescope of types.
-        - `type`: A term which may depend on elements of the
-        telescope. Binds n variables where n is the length of the
-        telescope.
-        """
-        Expr.__init__(self)
-        self.telescope = telescope
-
-    def accept(self, visitor, *args, **kwargs):
-        """
-        
-        Arguments:
-        - `visitor`:
-        - `*args`:
-        - `**kwargs`:
-        """
-        return visitor.visit_sig(self, *args, **kwargs)
-
-
-    def to_string(self):
-        #same deal as for bound expressions, the variables from
-        # the telescope are substituted into the types that
-        # depend on them.
-        # TODO: this function is an ugly hack. Please rewrite.
-        def str_decl(d):
-            return "({0!s}, {1!s})".format(d[0], d[1])
-        named_tel = open_tele_with_default(self.telescope)
-        vars = []
-        for (x, _) in named_tel:
-            vars.append(x)
-            
-        tel = ','.join(map(str_decl, named_tel))
-        return "sig([{0!s}])".format(tel)
-
-    def is_sig(self):
-        return True
-
-    def equals(self, expr):
-        """Structural equality.
-        
-        Arguments:
-        - `expr`: an expression
-        """
-        if expr.is_sig():
-            return self.telescope.equals(expr.telescope)
-        else:
-            return False
-
-    def __len__(self):
-        return len(self.telescope)
-
-
-class Tuple(Expr):
-    """Elements of Sigma types. Need to carry around their type.
-    """
-    
-    def __init__(self, exprs, type):
-        """
-        
-        Arguments:
+        - `fst`: an expression denoting the first component
+        - `snd`: an expression denoting the second component
         - `type`: an expression
-        - `exprs`: a list of expressions
         """
         Expr.__init__(self)
-        self.exprs = exprs
+        self.fst = fst
+        self.snd = snd
         self.type = type        
 
     def accept(self, visitor, *args, **kwargs):
@@ -433,14 +377,13 @@ class Tuple(Expr):
         - `*args`:
         - `**kwargs`:
         """
-        return visitor.visit_tuple(self, *args, **kwargs)
+        return visitor.visit_pair(self, *args, **kwargs)
 
     def to_string(self):
-        expr_str = map(str, self.exprs)
-        expr_str = ','.join(expr_str)
-        return "Tuple([{0!s}],{1!s})".format(expr_str, self.type)
+        return "Pair({0!s},{1!s},{2!s})".\
+               format(self.fst, self.snd, self.type)
         
-    def is_tuple(self):
+    def is_pair(self):
         return True
 
     def equals(self, expr):
@@ -449,30 +392,24 @@ class Tuple(Expr):
         Arguments:
         - `expr`: an expression
         """
-        if expr.is_tuple():
-            eq_info = [e1.equals(e2) for (e1, e2) in\
-                       zip(self.exprs, expr.exprs)]
-            return reduce(lambda x, y: x and y, eq_info, True)
+        if expr.is_pair():
+            return self.fst.equals(expr.fst) and \
+                   self.snd.equals(expr.snd) and \
+                   self.type.equals(expr.type)
         else:
             return False
 
-    def __len__(self):
-        return len(self.exprs)
-
-
-class Proj(Expr):
-    """Projections for Sigma types
+class Fst(Expr):
+    """First projection for Sigma types
     """
     
-    def __init__(self, index, expr):
+    def __init__(self, expr):
         """
         
         Arguments:
-        - `index`: an integer
         - `expr`: the expression to which is applied the projection.
         """
         Expr.__init__(self)
-        self.index = index
         self.expr = expr
 
     def accept(self, visitor, *args, **kwargs):
@@ -483,7 +420,7 @@ class Proj(Expr):
         - `*args`:
         - `**kwargs`:
         """
-        return visitor.visit_proj(self, *args, **kwargs)
+        return visitor.visit_fst(self, *args, **kwargs)
 
     def to_string(self):
         """
@@ -491,9 +428,9 @@ class Proj(Expr):
         Arguments:
         - `self`:
         """
-        return "Proj({0!s}, {1!s})".format(self.index, self.expr)
+        return "Fst({0!s})".format(self.expr)
 
-    def is_proj(self):
+    def is_fst(self):
         return True
 
     def equals(self, expr):
@@ -502,8 +439,53 @@ class Proj(Expr):
         Arguments:
         - `expr`: an expression
         """
-        if expr.is_proj():
-            return (self.index == expr.index) and (self.expr.equals(expr.expr))
+        if expr.is_fst():
+            return self.expr.equals(expr.expr)
+        else:
+            return False
+
+class Snd(Expr):
+    """Second projection for Sigma types
+    """
+    
+    def __init__(self, expr):
+        """
+        
+        Arguments:
+        - `expr`: the expression to which is applied the projection.
+        """
+        Expr.__init__(self)
+        self.expr = expr
+
+    def accept(self, visitor, *args, **kwargs):
+        """
+    
+        Arguments:
+        - `visitor`:
+        - `*args`:
+        - `**kwargs`:
+        """
+        return visitor.visit_snd(self, *args, **kwargs)
+
+    def to_string(self):
+        """
+        
+        Arguments:
+        - `self`:
+        """
+        return "Snd({0!s})".format(self.expr)
+
+    def is_snd(self):
+        return True
+
+    def equals(self, expr):
+        """Structural equality.
+        
+        Arguments:
+        - `expr`: an expression
+        """
+        if expr.is_snd():
+            return self.expr.equals(expr.expr)
         else:
             return False
 
@@ -513,17 +495,17 @@ class Ev(Expr):
     proposition (of type Bool)
     """
     
-    def __init__(self, telescope):
+    def __init__(self, tele):
         """
         
         Arguments:
-        - `telescope`: a telescope of evidence for the proposition
+        - `tele`: a telescope of evidence for the proposition
         prop.
         - `prop`: a proposition whose evidence is supplied by self.
         binds NO variables.
         """
         Expr.__init__(self)
-        self.telescope = telescope
+        self.tele = tele
         
     def accept(self, visitor, *args, **kwargs):
         """
@@ -536,7 +518,7 @@ class Ev(Expr):
         return visitor.visit_ev(self, *args, **kwargs)
 
     def to_string(self):
-        return "Ev({0!s})".format(self.telescope)
+        return "Ev({0!s})".format(self.tele)
 
     def is_ev(self):
         return True
@@ -652,8 +634,8 @@ class Box(Expr):
 
 ##############################################################################
 #
-# The class of single variable binders: this includes Pi, Abst, forall/exists
-# but excludes Sig.
+# The class of variable binders: this includes Pi, Abst, forall/exists
+# and Sig
 #
 ###############################################################################
 
@@ -681,6 +663,9 @@ class Binder(object):
     def is_exists(self):
         return False
 
+    def is_sig(self):
+        return False
+
 
 class Pi(Binder):
     """Dependent product
@@ -692,7 +677,18 @@ class Pi(Binder):
         
     def is_pi(self):
         return True
+
+class Sig(Binder):
+    """Dependent sum
+    """
+    
+    def __init__(self, var):
+        Binder.__init__(self, var)
+        self.name = "sig"
         
+    def is_sig(self):
+        return True
+
         
 class Abst(Binder):
     """Abstraction
@@ -729,11 +725,6 @@ class Exists(Binder):
     def is_exists(self):
         return True
         
-
-        
-
-
-
 
 ###############################################################################
 #
@@ -833,7 +824,7 @@ def open_tele(tele, vars, checked=False):
         opened_ty[i] = subst_expr(consts, opened_ty[i])
         x = Const(vars[i], opened_ty[i], checked=checked)
         consts.append(x)
-    return zip(consts, opened_ty)
+    return (consts, opened_ty)
 
 def open_tele_with_default(tele):
     """Open a telescope with the default variables provided by
@@ -853,6 +844,8 @@ def open_tele_with_fresh(tele, checked=False):
     """
     fr_vars = [fresh_name.get_name(name = v) for v in tele.vars]
     return open_tele(tele, fr_vars, checked=checked)
+
+
 
 
 ###############################################################################
@@ -894,10 +887,13 @@ class ExprVisitor(object):
     def visit_sig(self, expr, *args, **kwargs):
         raise NotImplementedError()
 
-    def visit_tuple(self, expr, *args, **kwargs):
+    def visit_pair(self, expr, *args, **kwargs):
         raise NotImplementedError()
 
-    def visit_proj(self, expr, *args, **kwargs):
+    def visit_fst(self, expr, *args, **kwargs):
+        raise NotImplementedError()
+
+    def visit_snd(self, expr, *args, **kwargs):
         raise NotImplementedError()
 
     def visit_ev(self, expr, *args, **kwargs):
@@ -981,8 +977,8 @@ class AbstractExpr(ExprVisitor):
         - `depth`: the number of binders crossed.
         """
         dom = self.visit(expr.dom, depth)
-        b_expr = self.visit(expr.expr, depth + 1)
-        return Bound(expr.binder, dom, b_expr)
+        b_body = self.visit(expr.body, depth + 1)
+        return Bound(expr.binder, dom, b_body)
         
     def visit_app(self, expr, *args, **kwargs):
         conv = self.visit(expr.conv, *args, **kwargs)
@@ -990,27 +986,22 @@ class AbstractExpr(ExprVisitor):
         arg = self.visit(expr.arg, *args, **kwargs)
         return App(conv, fun, arg)
 
-    def visit_sig(self, expr, depth):
-        """
-        
-        Arguments:
-        - `expr`: an expression.
-        - `depth`: the number of binders crossed.
-        """
-        tele = self.visit(expr.telescope, depth)
-        return Sig(tele)
-
-    def visit_tuple(self, expr, *args, **kwargs):
+    def visit_pair(self, expr, *args, **kwargs):
         type = self.visit(expr.type, *args, **kwargs)
-        exprs = [self.visit(x, *args, **kwargs) for x in expr.exprs]
-        return Tuple(exprs, type)
+        fst = self.visit(expr.fst, *args, **kwargs)
+        snd =  self.visit(expr.snd, *args, **kwargs)
+        return Pair(fst, snd, type)
 
-    def visit_proj(self, expr, *args, **kwargs):
+    def visit_fst(self, expr, *args, **kwargs):
         sub_expr = self.visit(expr.expr, *args, **kwargs)
-        return Proj(expr.index, sub_expr)
+        return Fst(sub_expr)
+
+    def visit_snd(self, expr, *args, **kwargs):
+        sub_expr = self.visit(expr.expr, *args, **kwargs)
+        return Snd(sub_expr)
 
     def visit_ev(self, expr, *args, **kwargs):
-        tele = self.visit(expr.telescope, *args, **kwargs)
+        tele = self.visit(expr.tele, *args, **kwargs)
         return Ev(tele)
 
     def visit_sub(self, expr, *args, **kwargs):
@@ -1025,12 +1016,6 @@ class AbstractExpr(ExprVisitor):
         return Box(conv, expr, type)
 
     def visit_tele(self, expr, depth):
-        """
-        
-        Arguments:
-        - `expr`: an expression.
-        - `depth`: the number of binders crossed.
-        """
         types = []
         for i, e in enumerate(expr.types):
             abs_e = self.visit(e, depth + i)
@@ -1057,7 +1042,7 @@ def abstract_expr(vars, expr):
 
 class SubstExpr(ExprVisitor):
     """Given a list of expressions e0,...,en
-    instantiate the DB indices 1,...,n with those
+    instantiate the DB indices 0,...,n with those
     terms.
     """
     
@@ -1093,7 +1078,7 @@ class SubstExpr(ExprVisitor):
 
     def visit_bound(self, expr, depth):
         dom = self.visit(expr.dom, depth)
-        b_expr = self.visit(expr.expr, depth + 1)
+        b_expr = self.visit(expr.dom, depth + 1)
         return Bound(expr.binder, dom, b_expr)
 
     def visit_app(self, expr, *args, **kwargs):
@@ -1102,21 +1087,22 @@ class SubstExpr(ExprVisitor):
         arg = self.visit(expr.arg, *args, **kwargs)
         return App(conv, fun, arg)
 
-    def visit_sig(self, expr, depth):
-        tele = self.visit(expr.telescope, depth)
-        return Sig(tele)
-
-    def visit_tuple(self, expr, *args, **kwargs):
+    def visit_pair(self, expr, *args, **kwargs):
         type = self.visit(expr.type, *args, **kwargs)
-        exprs = [self.visit(x, *args, **kwargs) for x in expr.exprs]
-        return Tuple(exprs, type)
+        fst = self.visit(expr.fst, *args, **kwargs)
+        snd = self.visit(expr.snd, *args, **kwargs)
+        return Pair(fst, snd, type)
 
-    def visit_proj(self, expr, *args, **kwargs):
+    def visit_fst(self, expr, *args, **kwargs):
         sub_expr = self.visit(expr.expr, *args, **kwargs)
-        return Proj(expr.index, sub_expr)
+        return Fst(sub_expr)
+
+    def visit_snd(self, expr, *args, **kwargs):
+        sub_expr = self.visit(expr.expr, *args, **kwargs)
+        return Snd(sub_expr)
 
     def visit_ev(self, expr, *args, **kwargs):
-        tele = self.visit(expr.telescope, *args, **kwargs)
+        tele = self.visit(expr.tele, *args, **kwargs)
         return Ev(tele)
 
     def visit_sub(self, expr, *args, **kwargs):
@@ -1171,7 +1157,7 @@ def open_expr(var, typ, expr, checked=None):
     """Return the opened body of an expression
     with a bound variable, by substituting
     the bound name with a constant of type
-    typ
+    typ.
     
     Arguments:
     - `var`: a variable name
@@ -1188,7 +1174,7 @@ def open_expr(var, typ, expr, checked=None):
     return subst_expr([const], expr)
 
 
-def open_bound_with_fresh(expr, checked=None):
+def open_bound_fresh(expr, checked=None):
     """Return the opened body of a bound expression
     using the variable from the binder to generate a fresh
     name, along with the variable name. The constant is marked as
@@ -1198,7 +1184,7 @@ def open_bound_with_fresh(expr, checked=None):
     - `expr`: an instance of Bound
     """
     var = fresh_name.get_name(expr.binder.var)
-    return (var, open_expr(var, expr.dom, expr.expr, checked=checked))
+    return (var, open_expr(var, expr.dom, expr.body, checked=checked))
 
 
 def pi(var, dom, codom):
@@ -1257,28 +1243,18 @@ def exists(var, dom, prop):
     return Exists(Exists(name), dom, prop_abs)
 
 
-def sig(*tele_var):
+def sig(var, dom, codom):
     """Create the term
-    Sig(tele)
-    using the named telescope tele_var
+    Sig x:A.B from its constituents
     
     Arguments:
-    - `tele_var`: a list of pairs of contants and
-    expressions.
-    - `type`: an expression
+    - `var`: a constant expr
+    - `dom`: an expression
+    - `codom`: an expression possibly containing var
     """
-    # a bit risky: requires the expressions to be
-    # free of "dangling" DB indices.
-    # also: syntax is atrocious.
-    vars = []
-    types = []
-    for (x, e) in tele_var:
-        vars.append(x)
-        types.append(e)
-    names = [x.name for x in vars]
-    types = [abstract_expr(names, e) for e in types]
-    return Sig(Tele(names, types))
-
+    name = var.name
+    codom_abs = abstract_expr([name], codom)
+    return Bound(Sig(name), dom, codom_abs)
 
 def true():
     """The true constant.

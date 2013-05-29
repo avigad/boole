@@ -43,25 +43,6 @@ class ExprError(Exception):
         self.expr = expr
 
 
-##############################################################################
-#
-# Expressions and types: these implement the term language of a dependent,
-# extensional, impredicative and classical type theory.
-#
-#
-# The datatype is represented by:
-#
-# Expr := Type | Kind | Bool   | Const(string,Expr)  | DB(int) |
-#         Pi(name,Expr,Expr)   | App(Expr,Expr,Expr) |
-#         Abst(name,Expr,Expr) | Sig(Tele) |
-#         Tuple([Expr,...,Expr],Type)      | Proj(int,Expr) | Ev(Tele) |
-#         Forall(name,Expr,Expr)           | Exists(name,Expr,Expr) |
-#         Eq(Expr,Expr)        | Box(Expr,Expr,Expr)
-#
-# Tele := Tele([name,...,name],[Expr,...,Expr])
-#
-###############################################################################
-
 
 class BaseExpr(object):
     """The syntactic class of expressions and telescopes.
@@ -71,21 +52,6 @@ class BaseExpr(object):
         """Sets the default info
         """
         self.info = info.DefaultInfo()
-        
-    def __getattr__(self, name):
-        """
-        return field contained in info
-        if not already given by the expression.
-        
-        Arguments:
-        - `name`: the name of the attribute.
-        """
-        try:
-            return self.info[name]
-        except KeyError:
-            #TODO: is this the right thing?
-            #raise AttributeError(name)
-            return None
 
 
     def __str__(self):
@@ -205,23 +171,24 @@ class Expr(BaseExpr):
         """
         return False
 
-    def is_tuple(self):
+    def is_pair(self):
         """Tests wether the expression is an instance of
         Tuple
         """
         return False
 
-    def is_proj(self):
+    def is_fst(self):
         """Tests wether the expression is an instance of
-        Proj
+        Fst
         """
         return False
 
-    def is_sig(self):
+    def is_snd(self):
         """Tests wether the expression is an instance of
-        Sig
+        Snd
         """
         return False
+
 
     def is_sub(self):
         """Tests wether the expression is an instance of

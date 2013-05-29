@@ -36,6 +36,22 @@ class ExprInfo(object):
         """
         return self.info.__getitem__(key)
 
+    def __getattr__(self, name):
+        """
+        return field contained in info
+        
+        Arguments:
+        - `name`: the name of the attribute.
+        """
+        try:
+            return self.info[name]
+        except KeyError:
+            #TODO: is this the right thing?
+            # raise Exception\
+            #       ("Could not find attribute {0!s} in {1!s}"\
+            #        .format(name, self))
+            return None
+
     def __setitem__(self, key, elt):
         """
         

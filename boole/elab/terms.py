@@ -20,46 +20,58 @@ import boole.core.typing as typing
 import boole.core.goals as goals
 import boole.core.expr as expr
 import boole.core.conv as conv
+import elab
+
 
 def print_app(expr):
-    """Takes an application and prints it in readable format.
+    """Takes an application and prints it in the following manner:
+    if the application is of the form (..(f a1)... an), print
+    f(a1,...,an)
+    
+    Arguments:
+    - `expr`: an application
+    """
+    if expr.fun.is_app() and expr.fun.fun.info.infix:
+        lhs = expr.fun.arg
+        rhs = expr.arg
+        fun = expr.fun.fun
+        return  "({0!s} {1!s} {2!s})".format(lhs, fun, rhs)
+    else:
+        rem_tm = expr
+        args = []
+        while rem_tm.is_app():
+            args.append(rem_tm.arg)
+            rem_tm = rem_tm.fun
+        args_str = map(str, args)
+        args_str = ", ".join(args_str)
+        return "{0!s}({1!s})".format(rem_tm, args_str)
+
+    
+def print_pair(expr):
+    """
+    
+    Arguments:
+    - `expr`: a pair
+    """
+    return "pair({0!s}, {1!s})".format(expr.fst, expr.snd)
+
+
+def print_fst(expr):
+    """
     
     Arguments:
     - `expr`:
     """
-    try:
-        if expr.fun.infix:
-            if expr.arg.is_tuple() and len(expr.arg) == 2:
-                lhs = expr.arg.exprs[0]
-                rhs = expr.arg.exprs[1]
-                return "({0!s} {1!s} {2!s})".format(lhs, expr.fun, rhs)
-            else:
-                return "{0!s}({1!s})".format(expr.fun, expr.arg)
-        else:
-            return "{0!s}({1!s})".format(expr.fun, expr.arg)
-    except AttributeError:
-        return "{0!s}({1!s})".format(expr.fun, expr.arg)
+    return "fst({0!s})".format(expr.expr)
 
 
-    
-def print_tuple(expr):
+def print_snd(expr):
     """
     
     Arguments:
     - `expr`:
     """
-    tups = map(str, expr.exprs)
-    tups = ", ".join(tups)
-    return "({0!s})".format(tups)
-
-
-def print_proj(expr):
-    """
-    
-    Arguments:
-    - `expr`:
-    """
-    return "({0!s})[{1!s}]".format(expr.expr, expr.index)
+    return "snd({0!s})".format(expr.expr)
 
 
 def print_box(expr):
@@ -68,7 +80,7 @@ def print_box(expr):
     Arguments:
     - `expr`:
     """
-    return str(expr)
+    return "Box({0!s})".format(expr)
 
 
 def print_pi(expr):
@@ -77,7 +89,7 @@ def print_pi(expr):
     Arguments:
     - `expr`:
     """
-    return "({0!s})>>{1!s}".format(expr.dom, expr.expr)
+    return "({0!s})>>{1!s}".format(expr.dom, expr.body)
 
 def print_sig(expr):
     """
@@ -85,8 +97,8 @@ def print_sig(expr):
     Arguments:
     - `expr`:
     """
-    types = map(str, expr.telescope.types)
-    return "*".join(types)
+    return "{0!s}*{1!s}".format(expr.dom, expr.body)
+
     
 def print_sub(expr):
     """
@@ -110,7 +122,7 @@ def str_typ(expr):
         return print_app(expr)
     elif expr.is_bound() and expr.binder.is_pi():
         return print_pi(expr)
-    elif expr.is_sig():
+    elif expr.is_bound() and expr.binder.is_sig():
         return print_sig(expr)
     elif expr.is_sub():
         return print_sub(expr)
@@ -125,10 +137,12 @@ def str_typ(expr):
 def str_tm(expr):
     if expr.is_app():
         return print_app(expr)
-    elif expr.is_tuple():
-        return print_tuple(expr)
-    elif expr.is_proj():
-        return print_proj(expr)
+    elif expr.is_pair():
+        return print_pair(expr)
+    elif expr.is_fst():
+        return print_fst(expr)
+    elif expr.is_snd():
+        return print_snd(expr)
     elif expr.is_sub():
         return print_eq(expr)
     else:
@@ -146,8 +160,6 @@ class StExpr(ExprInfo):
         ExprInfo.__init__(self, {})
 
 
-
-
 st_term = infobox(None)
 
 st_typ = infobox(None)
@@ -158,7 +170,7 @@ def nullctxt():
 
 
 def unit():
-    return sig()
+    return Const('unit', Type)
 
 
 def dummy():
@@ -170,19 +182,16 @@ def trivial():
 
 
 @with_info(st_term)
-def mk_tuple(args):
-    """Turn a list of simply typed arguments
-    into a tuple, unless there is a single term,
-    in which case, simply return it.
+def pair(expr1, expr2):
+    """Turn a pair of simply typed arguments
+    into a Pair.
     
     Arguments:
     - `args`: a list of expressions.
     """
-    if len(args) == 1:
-        return args[0]
-    else:
-        types = [typing.infer(a)[0] for a in args]
-        return Tuple(args, type_mul_list(types))
+    ty1 = typing.infer(expr1)[0]
+    ty2 = typing.infer(expr2)[0]
+    return Pair(expr1, expr2, typ_mul(ty1, ty2))
 
 
 @with_info(st_term)
@@ -193,7 +202,10 @@ def tm_call(fun, *args):
     - `fun`:
     - `arg`:
     """
-    return App(trivial(), fun, mk_tuple(args))
+    fun_typ = typing.infer(fun)[0]
+    conv = [trivial()]*len(args)
+    return elab.app_expr(fun, fun_typ, conv, args)
+    
 
 
 @with_info(st_term)
@@ -206,15 +218,22 @@ def mul_tm(expr, arg):
     return mult(expr, arg)
 
 
+#TODO: make this more clever
 @with_info(st_term)
-def get_tup(expr, index):
+def get_pair(expr, index):
     """Get the field of an expression using python syntax
     
     Arguments:
-    - `expr`:
-    - `index`:
+    - `expr`: an expression
+    - `index`: an integer equal to 0 or 1
     """
-    return Proj(index, expr)
+    if index == 0:
+        return Fst(expr)
+    elif index == 1:
+        return Snd(expr)
+    else:
+        raise Exception("Index applied to {0!s} must be 0 or 1"\
+                        .format(expr))
 
 
 #TODO: change this to a real equality
@@ -232,7 +251,7 @@ class StTerm(StExpr):
         self.info['__call__'] = tm_call
         self.info['__add__'] = add_tm
         self.info['__mul__'] = mul_tm
-        self.info['__getitem__'] = get_tup
+        self.info['__getitem__'] = get_pair
         self.info['__eq__'] = eq_tm
         self.info['__str__'] = str_tm
 
@@ -248,22 +267,9 @@ def typ_call(type, name):
     return defconst(name, type)
 
 
-
 @with_info(st_typ)
 def typ_mul(type1, type2):
-    if type1.is_sig():
-        vars = type1.telescope.vars + [dummy()]
-        types = type1.telescope.types + [type2]
-        return Sig(Tele(vars, types))
-    else:
-        return sig((dummy(), type1), (dummy(), type2))
-
-
-
-@with_info(st_typ)
-def type_mul_list(types):
-    vars = ['_'] * len(types)
-    return Sig(Tele(vars, types))
+    return sig(dummy(), type1, type2)
 
 
 @with_info(st_typ)
@@ -412,8 +418,8 @@ def defexpr(name, value, type=None, tactic=None):
 
 
 real = deftype('real')
-plus = defconst('+', real * real >> real, infix=True)
-mult = defconst('*', real * real >> real, infix=True)
+plus = defconst('+', real >> (real >> real), infix=True)
+mult = defconst('*', real >> (real >> real), infix=True)
 zero = defconst('0', real)
 one = defconst('1', real)
 
@@ -425,8 +431,8 @@ Type = Type()
 Type.info.update(StTyp())
 
 #TODO: add methods allowing infix input
-conj = defconst('&', Bool * Bool >> Bool, infix=True)
-disj = defconst('|', Bool * Bool >> Bool, infix=True)
+conj = defconst('&', Bool >> (Bool >> Bool), infix=True)
+disj = defconst('|', Bool >> (Bool >> Bool), infix=True)
 neg = defconst('neg', Bool >> Bool, infix=True)
 #TODO: make Sub(p, q) print as p ==> q for terms of type bool
 # impl = defconst('==>', Bool * Bool >> Bool, infix=True)
@@ -441,88 +447,89 @@ false = defconst('false', Bool)
 if __name__ == '__main__':
 
 
-    # print dummy()
+    print dummy()
 
     nat = deftype('nat')
     
-    # prod = nat * nat * nat
+    not_bin_op = nat >> nat >> nat
 
     nat_sub_real = (nat <= real)('nat_sub_real')
 
     #TODO: should we add the hypothesis or the constant?
     st_context.add_to_field('nat_sub_real', nat_sub_real.type, 'hyps')
 
-    # print prod
+    print not_bin_op
 
     x = nat('x')
     y = nat('y')
-    # z = (real * real)('z')
+    z = (real * real)('z')
     w = real('w')
     t = real('t')
 
-    abs_plus = defexpr('abs_plus', abst(t, real, t+w))
+    abs_plus = defexpr('abs_plus', abst(t, real, t + w))
 
     print abs_plus
 
     typing.check(abs_plus(x), context=st_context)
     
-    # typing.check(mk_tuple([x, y]))
-    typing.check(x + y, tactic=goals.comp_tac(goals.destruct, goals.trivial), context=st_context)
+    typing.check(pair(x, y))
 
-    # typing.check(z[0] * z[1] == z[1] * z[0])
+    typing.check(x + y, \
+                 context=st_context)
 
-    # typing.check(abst(z, real * real, mk_tuple([x, x])))
+    typing.check(z[0] * z[1] == z[1] * z[0])
 
-    # typing.check(forall(z, real * real, (z[0] + z[1]) == (z[1] + z[0])))
+    typing.check(abst(z, real * real, pair(x, x)))
 
-    # fa = forall(z, real * real, (z[0] + z[1]) == (z[1] + z[0]))
+    typing.check(forall(z, real * real, (z[0] + z[1]) == (z[1] + z[0])))
 
-    # plus_commut_stmt = defexpr('plus_commut_stmt', fa, type=Bool)
+    fa = forall(z, real * real, (z[0] + z[1]) == (z[1] + z[0]))
+
+    plus_commut_stmt = defexpr('plus_commut_stmt', fa, type=Bool)
     
-    # typing.check(st_context.decls['real'])
-    # print
+    typing.check(st_context.decls['real'])
+    print
 
-    # def definition_of(expr):
-    #     """Return the definition of a defined constant.
+    def definition_of(expr):
+        """Return the definition of a defined constant.
         
-    #     Arguments:
-    #     - `expr`:
-    #     """
-    #     if expr.is_const():
-    #         if expr.defined:
-    #             print st_context.get_from_field(expr.name+"_def", 'defs')\
-    #                   .type
-    #             print
-    #         else:
-    #             print expr, " is not defined!"
-    #             print
-    #     else:
-    #         print expr, " is not a constant!"
-    #         print
+        Arguments:
+        - `expr`:
+        """
+        if expr.is_const():
+            if expr.info.defined:
+                print st_context.get_from_field(expr.name+"_def", 'defs')\
+                      .type
+                print
+            else:
+                print expr, " is not defined!"
+                print
+        else:
+            print expr, " is not a constant!"
+            print
 
-    # two = defexpr('two', one+one, real)
+    two = defexpr('two', one+one, real)
 
-    # definition_of(plus_commut_stmt)
+    definition_of(plus_commut_stmt)
 
-    # definition_of(two)
+    definition_of(two)
 
-    # plus_commut = defexpr('plus_commut', trivial(), fa)
+    plus_commut = defexpr('plus_commut', trivial(), fa)
 
-    # p = mk_tuple([x, y])
+    p = pair(x, y)
 
-    # proj_x_y_0 = defexpr('proj_x_y_0', trivial(), p[0] == x, tactic=goals.simpl)
+    proj_x_y_0 = defexpr('proj_x_y_0', trivial(), p[0] == x, tactic=goals.simpl)
 
-    # boolop = Bool * Bool >> Bool
+    boolop = Bool * Bool >> Bool
 
-    # typeop = Type * Type >> Type
+    typeop = Type * Type >> Type
 
-    # typing.check(boolop)
-    # print
-    # typing.check(typeop)
-    # print
-    # typing.check(conj(true, disj(true, false)))
-    # print
-    # print p[1]
-    # print conv.par_beta(p[0])
-    # print conv.par_beta(p[1])
-    # print conv.par_beta(p[2])
+    typing.check(boolop)
+    print
+    typing.check(typeop)
+    print
+    typing.check(conj(true, disj(true, false)))
+    print
+    print p[1]
+    print conv.par_beta(p[0])
+    print conv.par_beta(p[1])

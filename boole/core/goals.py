@@ -37,7 +37,6 @@ class Goal(object):
         - `prop`: a proposition
         - `context`: a context potentially containing additional information
         """
-        #TODO: should this be a telescope?
         self.tele = tele
         self.prop = prop
         
@@ -168,22 +167,18 @@ class Destruct(Tactic):
             # to A <= C and B(x) <= D(x)
             lhs = prop.lhs
             rhs = prop.rhs
-            if lhs.is_sig() and rhs.is_sig():
-                if len(prop.lhs) == len(prop.rhs):
-                    lhs = prop.lhs.telescope
-                    rhs = prop.rhs.telescope
-                    fr_vars = [fresh_name.get_name(v) for v in lhs.vars]
-                    lhs = [p[1] for p in expr.open_tele(lhs, fr_vars)]
-                    rhs = [p[1] for p in expr.open_tele(rhs, fr_vars)]
-                    sub_pairs = zip(lhs, rhs)
-                    new_goals = []
-                    for t, u in sub_pairs:
-                        new_goals.append(Goal(tele, expr.Sub(t, u)))
-                    return new_goals
-                else:
-                    mess = "{0!s} and {1!s} have different length"\
-                           .format(prop.lhs, prop.rhs)
-                    raise TacticFailure(mess, self, goal)
+            if lhs.is_bound() and lhs.binder.is_sig()\
+                   and rhs.is_bound and rhs.binder.is_sig():
+                lhs_dom = prop.lhs.dom
+                rhs_dom = prop.rhs.dom
+                fr_var = fresh_name.get_name(lhs.binder.var)
+                lhs_codom = expr.open_expr(fr_var, lhs_dom, lhs.body)
+                #The lhs domain must be a subtype of the rhs domain
+                #for this expression to make sense
+                rhs_codom = expr.open_expr(fr_var, lhs_dom, rhs.body)
+                dom_goal = Goal(tele, expr.Sub(lhs_dom, rhs_dom))
+                codom_goal = Goal(tele, expr.Sub(lhs_codom, rhs_codom))
+                return [dom_goal, codom_goal]
             elif lhs.is_bound() and rhs.is_bound() and \
                      lhs.binder.is_pi() and rhs.binder.is_pi():
                 # Pi(x:A, B) <= Pi(x:C, D) is simplified to
