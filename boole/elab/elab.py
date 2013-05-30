@@ -15,6 +15,8 @@ import boole.core.expr_base as expr_base
 import boole.core.expr as e
 import boole.core.typing as t
 import boole.core.vargen as vargen
+import context
+import boole.core.goals as goals
 
 meta_var_gen = vargen.VarGen()
 
@@ -47,6 +49,28 @@ class Mvar(expr_base.Expr):
         self.value = val
 
 
+    def to_string(self):
+        return "Mvar_{0!s}".format(self.name)
+
+
+
+class MvarSubst(e.SubstExpr):
+
+    def __init__(self, exprs):
+        e.SubstExpr.__init__(self, exprs)
+
+
+    def visit_mvar(self, expr, *args, **kwargs):
+        #return the actual object here, as we want values to
+        #be propagated
+        return expr
+
+
+def subst_expr(exprs, expr):
+    subster = MvarSubst(exprs)
+    return subster.visit(expr, 0)
+
+
 class MvarInfer(t.ExprInfer):
     """Infer the type and generate constraints for a term containing
     meta-variables.
@@ -54,6 +78,8 @@ class MvarInfer(t.ExprInfer):
     
     def __init__(self):
         t.ExprInfer.__init__(self)
+        self.check = MvarCheck
+        self.sub = subst_expr
 
     #TODO: Should this add a constraint?
     def visit_mvar(self, expr, *args, **kwargs):
@@ -61,17 +87,69 @@ class MvarInfer(t.ExprInfer):
         if t.is_sort(sort):
             return expr.type
 
+class MvarCheck(t.ExprCheck):
+    """Check the type and generate constraints for
+    a term containing meta-variables
+    """
+    
+    def __init__(self):
+        t.ExprCheck.__init__(self)
+        self.infer = MvarInfer
+
+    #TODO: Should this add a constraint?
+    def visit_mvar(self, expr, type, *args, **kwargs):
+        expr_ty = self.infer().visit(expr, *args, **kwargs)
+        if expr_ty.equals(type):
+            return True
+        else:
+            return False
+
+
 
 def mk_meta(name, type):
     """Create a meta-variable with a fresh
     name and the given type.
     
     Arguments:
-    - `name`:
-    - `type`:
+    - `name`: a string denoting the name of the Mvar
+    - `type`: an expression denoting the type of the Mvar
     """
     fresh_name = meta_var_gen.get_name(name)
+    print
+    print 'Made meta-var ', fresh_name
+    print
     return Mvar(fresh_name, type)
+
+def mvar_infer(expr, type=None, ctxt=None):
+    """Infer the type of an expression and return the pair
+    (type, proof obligations) or raise an exception of type
+    ExprTypeError.
+    
+    Arguments:
+    - `expr`: an expression
+    """
+    if ctxt == None:
+        ty_ctxt_name = meta_var_gen.get_name('_unif_ctxt')
+        ty_ctxt = context.Context(ty_ctxt_name)
+    else:
+        ty_ctxt = ctxt
+    prf_obl_name = meta_var_gen.get_name('_unif_goals')
+    prf_obl = goals.empty_goals(prf_obl_name, ty_ctxt)
+    #slight hack here: we compare pointers to avoid calling the
+    # __eq__ method of type. There should only be one instance of
+    # the None object, so pointer equality is valid.
+    if type is None:
+        ty = MvarInfer().visit(expr, prf_obl)
+        return (ty, prf_obl)
+    else:
+        if MvarCheck().visit(expr, type, prf_obl):
+            return (type, prf_obl)
+        else:
+            mess = "Expected {0!s} to be of type {1!s}"\
+                   .format(expr, type)
+            raise t.ExprTypeError(mess, expr)
+
+
 
 
 def app_expr(f, f_ty, conv, args):
@@ -93,12 +171,13 @@ def app_expr(f, f_ty, conv, args):
         if rem_ty.is_bound() and rem_ty.binder.is_pi()\
            and rem_ty.dom.info.implicit:
             mvar = mk_meta(rem_ty.binder.var, rem_ty.dom)
-            mconv = mk_meta('Meta_conv', e.Sub(rem_ty.dom, rem_ty.dom))
+            mconv = mk_meta('{0!s}_conv'.format(mvar.name), \
+                            e.Sub(rem_ty.dom, rem_ty.dom))
             tm = t.App(mconv, tm, mvar)
-            rem_ty = e.subst_expr([mvar], rem_ty.body)
+            rem_ty = subst_expr([mvar], rem_ty.body)
         elif rem_ty.is_bound() and rem_ty.binder.is_pi():
             tm = t.App(rem_conv[0], tm, rem_args[0])
-            rem_ty = e.subst_expr([rem_args[0]], rem_ty.body)
+            rem_ty = subst_expr([rem_args[0]], rem_ty.body)
             rem_conv = rem_conv[1:]
             rem_args = rem_args[1:]
         else:

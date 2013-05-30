@@ -79,7 +79,8 @@ class ExprInfer(ExprVisitor):
     
     def __init__(self):
         ExprVisitor.__init__(self)
-        #self.check = ExprCheck()
+        self.check = ExprCheck
+        self.sub = subst_expr
 
     def visit_const(self, expr, *args, **kwargs):
         if expr.info.checked:
@@ -125,12 +126,13 @@ class ExprInfer(ExprVisitor):
                 #We force Pis and Sigmas to be at least in Type()
                 return max_sort(max_sort(dom_ty, expr_ty), Type())
             else:
-                mess = "The type of {0!s} must be a sort".format(expr.body)
+                mess = "The type of {0!s} is {1!s} which must be a sort"\
+                       .format(open_expr, expr_ty)
                 raise ExprTypeError(mess, expr)
         elif expr.binder.is_abst():
             #Just need to check to see if the product is well-kinded:
             #for example: abs(x:Bool, Type) is not well-kinded
-            body_sort = self.visit(expr_ty, *args, **kwargs)
+            self.visit(expr_ty, *args, **kwargs)
             return Bound(Pi(expr.binder.var), expr.dom, expr_ty)
         else:
             assert(expr.binder.is_forall() or expr.binder.is_exists())
@@ -148,17 +150,17 @@ class ExprInfer(ExprVisitor):
             #a subtype of the domain using expr.conv as
             #evidence.
             sub_dom = Sub(arg_ty, fun_ty.dom)
-            ExprCheck().visit(expr.conv, sub_dom, *args, **kwargs)
-            return subst_expr([expr.arg], fun_ty.body)
+            self.check().visit(expr.conv, sub_dom, *args, **kwargs)
+            return self.sub([expr.arg], fun_ty.body)
         else:
             raise ExprTypeError("Non functional application in {0!s}"\
                                 .format(expr), expr)
 
     def visit_pair(self, expr, *args, **kwargs):
         if expr.type.is_bound() and expr.type.binder.is_sig():
-            ExprCheck().visit(expr.fst, expr.type.dom, *args, **kwargs)
-            codom = subst_expr([expr.fst], expr.type.body)
-            ExprCheck().visit(expr.snd, codom, *args, **kwargs)
+            self.check().visit(expr.fst, expr.type.dom, *args, **kwargs)
+            codom = self.sub([expr.fst], expr.type.body)
+            self.check().visit(expr.snd, codom, *args, **kwargs)
             return expr.type
         else:
             mess = "Expected a Sig type, obtained {0!s} instead"\
@@ -178,7 +180,7 @@ class ExprInfer(ExprVisitor):
         arg_ty = self.visit(expr.expr, *args, **kwargs)
         if arg_ty.is_bound() and arg_ty.binder.is_sig():
             fst_proj = Fst(expr.expr)
-            return subst_expr([fst_proj], arg_ty.body)
+            return self.sub([fst_proj], arg_ty.body)
         else:
             mess = "Expected a Sig type, got {0!s} instead"\
                    .format(arg_ty)
@@ -198,7 +200,7 @@ class ExprInfer(ExprVisitor):
     def visit_box(self, expr, *args, **kwargs):
         expr_ty = self.visit(expr.expr)
         sub_ty = Sub(expr_ty, expr.type)
-        ExprCheck().visit(expr.conv, sub_ty, *args, **kwargs)
+        self.check().visit(expr.conv, sub_ty, *args, **kwargs)
         ty_sort = self.visit(expr.type)
         if is_sort(ty_sort):
             return expr.type
@@ -239,7 +241,7 @@ class ExprCheck(ExprVisitor):
     
     def __init__(self):
         ExprVisitor.__init__(self)
-        #self.infer = ExprInfer()
+        self.infer = ExprInfer
 
     def visit_ev(self, expr, prop, constrs, *args, **kwargs):
         """Check that prop is a proposition, and return
@@ -252,7 +254,7 @@ class ExprCheck(ExprVisitor):
         - `constr`: a list of constraints
         """
         #check that expr is well-formed
-        ExprInfer().visit(expr, constrs, *args, **kwargs)
+        self.infer().visit(expr, constrs, *args, **kwargs)
         if self.visit(prop, Bool(), constrs, *args, **kwargs):
             constrs.append(goals.Goal(expr.tele, prop))
             return True
@@ -267,7 +269,7 @@ class ExprCheck(ExprVisitor):
         - `expr`: an expression
         - `type`: a type
         """
-        expr_ty = ExprInfer().visit(expr, *args, **kwargs)
+        expr_ty = self.infer().visit(expr, *args, **kwargs)
         if expr_ty.equals(type):
             return True
         else:
@@ -281,7 +283,7 @@ class ExprCheck(ExprVisitor):
         - `expr`: an expression
         - `type`: a type
         """
-        expr_ty = ExprInfer().visit(expr, *args, **kwargs)
+        expr_ty = self.infer().visit(expr, *args, **kwargs)
         if expr_ty.equals(type):
             return True
         else:
@@ -296,7 +298,7 @@ class ExprCheck(ExprVisitor):
         - `type`: a type
         - `**kwargs`:
         """
-        expr_ty = ExprInfer().visit(expr, *args, **kwargs)
+        expr_ty = self.infer().visit(expr, *args, **kwargs)
         if expr_ty.equals(type):
             return True
         else:
@@ -310,7 +312,7 @@ class ExprCheck(ExprVisitor):
         - `expr`: an expression
         - `type`: a type
         """
-        expr_ty = ExprInfer().visit(expr, *args, **kwargs)
+        expr_ty = self.infer().visit(expr, *args, **kwargs)
         if expr_ty.equals(type):
             return True
         else:
@@ -324,7 +326,7 @@ class ExprCheck(ExprVisitor):
         - `expr`: an expression
         - `type`: a type
         """
-        expr_ty = ExprInfer().visit(expr, *args, **kwargs)
+        expr_ty = self.infer().visit(expr, *args, **kwargs)
         if expr_ty.equals(type):
             return True
         else:
@@ -338,7 +340,7 @@ class ExprCheck(ExprVisitor):
         - `expr`: an expression
         - `type`: a type
         """
-        expr_ty = ExprInfer().visit(expr, *args, **kwargs)
+        expr_ty = self.infer().visit(expr, *args, **kwargs)
         if expr_ty.equals(type):
             return True
         else:
@@ -352,7 +354,7 @@ class ExprCheck(ExprVisitor):
         - `expr`: an expression
         - `type`: a type
         """
-        expr_ty = ExprInfer().visit(expr, *args, **kwargs)
+        expr_ty = self.infer().visit(expr, *args, **kwargs)
         if expr_ty.equals(type):
             return True
         else:
@@ -366,7 +368,7 @@ class ExprCheck(ExprVisitor):
         - `expr`: an expression
         - `type`: a type
         """
-        expr_ty = ExprInfer().visit(expr, *args, **kwargs)
+        expr_ty = self.infer().visit(expr, *args, **kwargs)
         if expr_ty.equals(type):
             return True
         else:
@@ -380,7 +382,7 @@ class ExprCheck(ExprVisitor):
         - `expr`: an expression
         - `type`: a type
         """
-        expr_ty = ExprInfer().visit(expr, *args, **kwargs)
+        expr_ty = self.infer().visit(expr, *args, **kwargs)
         if expr_ty.equals(type):
             return True
         else:
@@ -394,7 +396,7 @@ class ExprCheck(ExprVisitor):
         - `expr`: an expression
         - `type`: a type
         """
-        expr_ty = ExprInfer().visit(expr, *args, **kwargs)
+        expr_ty = self.infer().visit(expr, *args, **kwargs)
         if expr_ty.equals(type):
             return True
         else:
@@ -408,7 +410,7 @@ class ExprCheck(ExprVisitor):
         - `expr`: an expression
         - `type`: a type
         """
-        expr_ty = ExprInfer().visit(expr, *args, **kwargs)
+        expr_ty = self.infer().visit(expr, *args, **kwargs)
         if expr_ty.equals(type):
             return True
         else:
@@ -423,7 +425,7 @@ class ExprCheck(ExprVisitor):
         - `type`: a type
         - `**kwargs`:
         """
-        expr_ty = ExprInfer().visit(expr, *args, **kwargs)
+        expr_ty = self.infer().visit(expr, *args, **kwargs)
         if expr_ty.equals(type):
             return True
         else:
@@ -437,7 +439,7 @@ class ExprCheck(ExprVisitor):
         - `expr`: an expression
         - `type`: a type
         """
-        expr_ty = ExprInfer().visit(expr, *args, **kwargs)
+        expr_ty = self.infer().visit(expr, *args, **kwargs)
         if expr_ty.equals(type):
             return True
         else:

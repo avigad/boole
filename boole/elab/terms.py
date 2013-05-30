@@ -42,6 +42,8 @@ def print_app(expr):
         while rem_tm.is_app():
             args.append(rem_tm.arg)
             rem_tm = rem_tm.fun
+        #The arguments were collected in reverse order
+        args.reverse()
         args_str = map(str, args)
         args_str = ", ".join(args_str)
         return "{0!s}({1!s})".format(rem_tm, args_str)
@@ -424,10 +426,10 @@ zero = defconst('0', real)
 one = defconst('1', real)
 
 #create a single instance of Bool() and Type().
-Bool = Bool()
+Bool = expr.Bool()
 Bool.info.update(StTyp())
 
-Type = Type()
+Type = expr.Type()
 Type.info.update(StTyp())
 
 #TODO: add methods allowing infix input
@@ -444,92 +446,119 @@ true = defconst('true', Bool)
 
 false = defconst('false', Bool)
 
+
+#Implicit type declarations
+Type_ = expr.Type()
+Type_.info.update(StTyp())
+Type_.info['implicit'] = True
+
+
 if __name__ == '__main__':
 
 
-    print dummy()
 
-    nat = deftype('nat')
-    
-    not_bin_op = nat >> nat >> nat
+    z = real('z')
 
-    nat_sub_real = (nat <= real)('nat_sub_real')
+    X = Type_('X')
+    X.info.update(StTyp())
 
-    #TODO: should we add the hypothesis or the constant?
-    st_context.add_to_field('nat_sub_real', nat_sub_real.type, 'hyps')
 
-    print not_bin_op
+    poly = defconst('poly', pi(X, Type_, X >> X))
 
-    x = nat('x')
-    y = nat('y')
-    z = (real * real)('z')
-    w = real('w')
-    t = real('t')
+    poly_z = poly(z)
 
-    abs_plus = defexpr('abs_plus', abst(t, real, t + w))
+    #WARNING: calling poly(z) twice will produce
+    #distinct meta-variables.
+    poly_t = elab.mvar_infer(poly_z)
 
-    print abs_plus
-
-    typing.check(abs_plus(x), context=st_context)
-    
-    typing.check(pair(x, y))
-
-    typing.check(x + y, \
-                 context=st_context)
-
-    typing.check(z[0] * z[1] == z[1] * z[0])
-
-    typing.check(abst(z, real * real, pair(x, x)))
-
-    typing.check(forall(z, real * real, (z[0] + z[1]) == (z[1] + z[0])))
-
-    fa = forall(z, real * real, (z[0] + z[1]) == (z[1] + z[0]))
-
-    plus_commut_stmt = defexpr('plus_commut_stmt', fa, type=Bool)
-    
-    typing.check(st_context.decls['real'])
+    print poly_z, ':', poly_t[0]
     print
+    print 'with goals:\n', poly_t[1]
+    
 
-    def definition_of(expr):
-        """Return the definition of a defined constant.
+    # print dummy()
+
+    # nat = deftype('nat')
+    
+    # not_bin_op = nat >> nat >> nat
+
+    # nat_sub_real = (nat <= real)('nat_sub_real')
+
+    # #TODO: should we add the hypothesis or the constant?
+    # st_context.add_to_field('nat_sub_real', nat_sub_real.type, 'hyps')
+
+    # print not_bin_op
+
+    # x = nat('x')
+    # y = nat('y')
+    # z = (real * real)('z')
+    # w = real('w')
+    # t = real('t')
+
+    # abs_plus = defexpr('abs_plus', abst(t, real, t + w))
+
+    # print abs_plus
+
+    # typing.check(abs_plus(x), context=st_context)
+    
+    # typing.check(pair(x, y))
+
+    # typing.check(x + y, \
+    #              context=st_context)
+
+    # typing.check(z[0] * z[1] == z[1] * z[0])
+
+    # typing.check(abst(z, real * real, pair(x, x)))
+
+    # typing.check(forall(z, real * real, (z[0] + z[1]) == (z[1] + z[0])))
+
+    # fa = forall(z, real * real, (z[0] + z[1]) == (z[1] + z[0]))
+
+    # plus_commut_stmt = defexpr('plus_commut_stmt', fa, type=Bool)
+    
+    # typing.check(st_context.decls['real'])
+    # print
+
+    # def definition_of(expr):
+    #     """Return the definition of a defined constant.
         
-        Arguments:
-        - `expr`:
-        """
-        if expr.is_const():
-            if expr.info.defined:
-                print st_context.get_from_field(expr.name+"_def", 'defs')\
-                      .type
-                print
-            else:
-                print expr, " is not defined!"
-                print
-        else:
-            print expr, " is not a constant!"
-            print
+    #     Arguments:
+    #     - `expr`:
+    #     """
+    #     if expr.is_const():
+    #         if expr.info.defined:
+    #             print st_context.get_from_field(expr.name+"_def", 'defs')\
+    #                   .type
+    #             print
+    #         else:
+    #             print expr, " is not defined!"
+    #             print
+    #     else:
+    #         print expr, " is not a constant!"
+    #         print
 
-    two = defexpr('two', one+one, real)
+    # two = defexpr('two', one+one, real)
 
-    definition_of(plus_commut_stmt)
+    # definition_of(plus_commut_stmt)
 
-    definition_of(two)
+    # definition_of(two)
 
-    plus_commut = defexpr('plus_commut', trivial(), fa)
+    # plus_commut = defexpr('plus_commut', trivial(), fa)
 
-    p = pair(x, y)
+    # p = pair(x, y)
 
-    proj_x_y_0 = defexpr('proj_x_y_0', trivial(), p[0] == x, tactic=goals.simpl)
+    # proj_x_y_0 = defexpr('proj_x_y_0', trivial(), p[0] == x, tactic=goals.simpl)
 
-    boolop = Bool * Bool >> Bool
+    # boolop = Bool * Bool >> Bool
 
-    typeop = Type * Type >> Type
+    # typeop = Type * Type >> Type
 
-    typing.check(boolop)
-    print
-    typing.check(typeop)
-    print
-    typing.check(conj(true, disj(true, false)))
-    print
-    print p[1]
-    print conv.par_beta(p[0])
-    print conv.par_beta(p[1])
+    # typing.check(boolop)
+    # print
+    # typing.check(typeop)
+    # print
+    # typing.check(conj(true, disj(true, false)))
+    # print
+    # print p[1]
+    # print conv.par_beta(p[0])
+    # print conv.par_beta(p[1])

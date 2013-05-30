@@ -100,7 +100,7 @@ class DB(Expr):
         Expr.__init__(self)
         self.index = index
 
-    def incr(self, inc=1):
+    def incr(self, inc):
         """Increment the index
         
         Arguments:
@@ -284,6 +284,11 @@ class Bound(Expr):
         open_expr = subst_expr([var], self.body)
         return "{0!s}({1!s},{2!s},{3!s})".format(\
             self.binder.name, self.binder.var, self.dom, open_expr)
+
+    def to_string_raw(self):
+        return "{0!s}({1!s},{2!s},{3!s})".format(\
+            self.binder.name, self.binder.var, self.dom, self.body)
+
 
     def is_bound(self):
         return True
@@ -1078,7 +1083,7 @@ class SubstExpr(ExprVisitor):
 
     def visit_bound(self, expr, depth):
         dom = self.visit(expr.dom, depth)
-        b_expr = self.visit(expr.dom, depth + 1)
+        b_expr = self.visit(expr.body, depth + 1)
         return Bound(expr.binder, dom, b_expr)
 
     def visit_app(self, expr, *args, **kwargs):
