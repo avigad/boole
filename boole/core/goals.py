@@ -128,6 +128,15 @@ class Tactic(object):
         """
         return comp(self, tac)
 
+    def __or__(self, tac):
+        """Try the self tactic, if it fails, apply
+        tac
+        
+        Arguments:
+        - `tac`: a tactic
+        """
+        return trywith(self, tac)
+
 
 class Trivial(Tactic):
     """Solve trivial goals. Checks if the
@@ -274,7 +283,7 @@ class trywith(Tactic):
         - `tac1`: a tactic
         - `tac2`: a tactic
         """
-        Tactic.__init__(self, 'try {0!s} with {1!s}'.format(tac1, tac2))
+        Tactic.__init__(self, '{0!s} | {1!s}'.format(tac1, tac2))
         self.tac1 = tac1
         self.tac2 = tac2
 
