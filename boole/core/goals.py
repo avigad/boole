@@ -320,10 +320,13 @@ class repeat(Tactic):
         
     def solve(self, goal, context):
         goals = [goal]
-        while len(goals) != 0:
-            goals = [gtac for g in goals\
-                     for gtac in self.tac.solve(g, context)]
-        return goals
+        try:
+            while len(goals) != 0:
+                goals = [gtac for g in goals\
+                         for gtac in self.tac.solve(g, context)]
+            return goals
+        except TacticFailure:
+            return goals
 
 ##############################################################################
 #

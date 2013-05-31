@@ -279,6 +279,9 @@ class SolveMvar(Tactic):
             else:
                 mess = "No top-level meta-variable in {0!s}".format(goal)
                 raise TacticFailure(mess, self, goal)
+        else:
+            mess = "Goal {0!s} is not a disequality".format(goal)
+            raise TacticFailure(mess, self, goal)
 
 
 solve_mvar = SolveMvar()
