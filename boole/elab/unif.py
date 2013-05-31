@@ -289,6 +289,4 @@ solve_mvar = SolveMvar()
 #
 ###############################################################################
 
-# solve_mvars = sub_mvar_goal >> trywith(solve_mvar, trytac(destruct))
-
-solve_mvars = sub_mvar_goal >> trivial >> trywith(solve_mvar, destruct)
+solve_mvars = repeat(sub_mvar_goal >> trivial >> (solve_mvar | destruct))

@@ -91,7 +91,7 @@ class ExprInfer(ExprVisitor):
                 return expr.type
             else:
                 mess = 'The type of {0!s} is {1!s} which should be Type, Kind or Bool'\
-                       .format(expr, expr.type)
+                       .format(expr.type, sort)
                 raise ExprTypeError(mess, expr)
 
     def visit_db(self, expr, *args, **kwargs):

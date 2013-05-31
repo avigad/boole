@@ -167,20 +167,12 @@ st_term = infobox(None)
 st_typ = infobox(None)
 
 
-def nullctxt():
-    return Tele([], [])
-
-
 def unit():
     return Const('unit', Type)
 
 
 def dummy():
     return Const('_', unit())
-
-
-def trivial():
-    return Ev(nullctxt())
 
 
 @with_info(st_term)
@@ -317,37 +309,28 @@ def mktype(name, implicit=False):
 #
 ###############################################################################
 
-st_context = Context("st_context")
+local_ctxt = Context("local_ctxt")
 
-def deftype(name, implicit=None, tactic=None):
+
+def deftype(name, implicit=None):
     """Define a type constant, and add it
-    to st_context.
+    to local_ctxt.
     
     Arguments:
     - `name`:
     """
-    if implicit == None:
+    if implicit is None:
         c = mktype(name)
     else:
         c = mktype(name, implicit=True)
-    ty, obl = typing.infer(c)
-    if tactic == None:
-        obl.solve_with(goals.trivial)
-    else:
-        obl.solve_with(tactic)
-    st_context.add_const(c)
-    if obl.is_solved():
-        print "{0!s} : {1!s} is assumed.\n".format(c, ty)
-    else:
-        st_context.add_to_field(obl.name, obl, 'unsolved_goals')
-        print "In the declaration:\n{0!s} : {1!s}".format(name, type)
-        print "remaining type-checking constraints!"
-        print obl
+    local_ctxt.add_const(c)
+    print "{0!s} : {1!s} is assumed.\n".format(c, c.type)
     return c
+
 
 def defconst(name, type, infix=False, tactic=None):
     """Define a constant, add it to
-    st_context and return it.
+    local_ctxt and return it.
     
     Arguments:
     - `name`:
@@ -355,16 +338,26 @@ def defconst(name, type, infix=False, tactic=None):
     - `infix`:
     """
     c = const(name, type, infix=infix)
+
+    #first try to solve the meta-vars in the type of c
+    _, obl = elab.mvar_infer(c)
+    obl.solve_with(unif.solve_mvars)
+    #Now re-define c with all meta-variables substituted,
+    #fail if there are undefined meta-vars.
+    c = const(name, unif.sub_mvar(type, undef=True))
+    
+    #Now type check the resulting term and try to solve the
+    #TCCs
     _, obl = typing.infer(c)
-    if tactic == None:
+    if tactic is None:
         obl.solve_with(goals.trivial)
     else:
         obl.solve_with(tactic)
-    st_context.add_const(c)
+    local_ctxt.add_const(c)
     if obl.is_solved():
         print "{0!s} : {1!s} is assumed.\n".format(c, type)
     else:
-        st_context.add_to_field(obl.name, obl, 'unsolved_goals')
+        local_ctxt.add_to_field(obl.name, obl, 'unsolved_goals')
         print "In the declaration:\n{0!s} : {1!s}".format(name, type)
         print "remaining type-checking constraints!"
         print obl
@@ -372,7 +365,7 @@ def defconst(name, type, infix=False, tactic=None):
 
 
 #TODO: clean this function!
-#TODO: abstract over st_context
+#TODO: abstract over local_ctxt
 def defexpr(name, value, type=None, tactic=None):
     """Define an expression with a given type and value.
     Checks that the type of value is correct, and adds the defining
@@ -383,31 +376,43 @@ def defexpr(name, value, type=None, tactic=None):
     - `type`: an expression
     - `value`: an expression
     """
-    if type != None:
-        ty, obl = typing.infer(value, type=type)
+    if type is None:
+        _, obl = elab.mvar_infer(value)
     else:
-        ty, obl = typing.infer(value)
+        _, obl = elab.mvar_infer(value, type=type)
 
-    if tactic == None:
+    obl.solve_with(unif.solve_mvars)
+    val = unif.sub_mvar(value, undef=True)
+
+    if not (type is None):
+        ty = unif.sub_mvar(type, undef=True)
+    
+    if type is None:
+        ty, obl = typing.infer(val)
+    else:
+        ty, obl = typing.infer(val, type=ty)
+
+    if tactic is None:
         obl.solve_with(goals.trivial)
     else:
         obl.solve_with(tactic)
 
     c = const(name, ty)
     c.info['defined'] = True
-    st_context.add_const(c)
+    local_ctxt.add_const(c)
 
-    eq_c = (c == value)
+    eq_c = (c == val)
     def_name = "{0!s}_def".format(name)
     c_def = const(def_name, eq_c)
-    st_context.add_to_field(def_name, c_def, 'defs')
-    st_context.add_const(c_def)
+    local_ctxt.add_to_field(def_name, c_def, 'defs')
+    local_ctxt.add_const(c_def)
 
     if obl.is_solved():
         print "{0!s} : {1!s} is defined.\n".format(c, ty)
     else:
-        st_context.add_to_field(obl.name, obl, 'unsolved_goals')
-        print "In the definition\n  {0!s} = {1!s} : {2!s}".format(name, value, ty)
+        local_ctxt.add_to_field(obl.name, obl, 'unsolved_goals')
+        print "In the definition\n"
+        " {0!s} = {1!s} : {2!s}".format(name, val, ty)
         print "remaining type-checking constraints!"
         print obl
     return c
@@ -435,10 +440,9 @@ Bool.info.update(StTyp())
 Type = expr.Type()
 Type.info.update(StTyp())
 
-#TODO: add methods allowing infix input
 conj = defconst('&', Bool >> (Bool >> Bool), infix=True)
 disj = defconst('|', Bool >> (Bool >> Bool), infix=True)
-neg = defconst('neg', Bool >> Bool, infix=True)
+neg = defconst('neg', Bool >> Bool)
 #TODO: make Sub(p, q) print as p ==> q for terms of type bool
 # impl = defconst('==>', Bool * Bool >> Bool, infix=True)
 
@@ -468,18 +472,7 @@ if __name__ == '__main__':
 
     poly = defconst('poly', pi(X, Type_, X >> (X >> X)))
 
-    poly_z = poly(z)
-
-    #WARNING: calling poly(z) twice will produce
-    #distinct meta-variables.
-    poly_t = elab.mvar_infer(poly_z)
-
-    remaining = poly_t[1].solve_with(unif.solve_mvars)
-
-    print unif.sub_mvar(poly_z, undef=True), ':', unif.sub_mvar(poly_t[0], undef=True)
-    print
-    print 'with goals:\n', remaining
-
+    poly_z = defexpr('poly_z', poly(z))
 
     nat = deftype('nat')
 
@@ -503,106 +496,91 @@ if __name__ == '__main__':
 
     v3 = defconst('v3', Vec(three))
 
-    rev_3 = rev(v3)
+    rev_3 = defexpr('rev_3', rev(v3))
 
-    rev_3_t = elab.mvar_infer(rev_3)
+    print dummy()
 
-    rev_3_t[1].solve_with(goals.trivial) #.solve_with(unif.solve_mvars)
+    nat = deftype('nat')
 
-    print rev_3_t[1]
+    not_bin_op = nat >> nat >> nat
 
-    rev_3_t[1].solve_with(goals.repeat(unif.solve_mvars))
+    nat_sub_real = (nat <= real)('nat_sub_real')
 
-    print rev_3_t[1]
+    #TODO: should we add the hypothesis or the constant?
+    local_ctxt.add_to_field('nat_sub_real', nat_sub_real.type, 'hyps')
 
+    print not_bin_op
+
+    x = nat('x')
+    y = nat('y')
+    z = (real * real)('z')
+    w = real('w')
+    t = real('t')
+
+    abs_plus = defexpr('abs_plus', abst(t, real, t + w))
+
+    print abs_plus
+
+    typing.check(abs_plus(x), context=local_ctxt)
+    
+    typing.check(pair(x, y))
+
+    typing.check(x + y, \
+                 context=local_ctxt)
+
+    typing.check(z[0] * z[1] == z[1] * z[0])
+
+    typing.check(abst(z, real * real, pair(x, x)))
+
+    typing.check(forall(z, real * real, (z[0] + z[1]) == (z[1] + z[0])))
+
+    fa = forall(z, real * real, (z[0] + z[1]) == (z[1] + z[0]))
+
+    plus_commut_stmt = defexpr('plus_commut_stmt', fa, type=Bool)
+    
+    typing.check(local_ctxt.decls['real'])
     print
-    print unif.sub_mvar(rev_3), ':', unif.sub_mvar(rev_3_t[0])
-    print
-    
 
-    # print dummy()
-
-    # nat = deftype('nat')
-    
-    # not_bin_op = nat >> nat >> nat
-
-    # nat_sub_real = (nat <= real)('nat_sub_real')
-
-    # #TODO: should we add the hypothesis or the constant?
-    # st_context.add_to_field('nat_sub_real', nat_sub_real.type, 'hyps')
-
-    # print not_bin_op
-
-    # x = nat('x')
-    # y = nat('y')
-    # z = (real * real)('z')
-    # w = real('w')
-    # t = real('t')
-
-    # abs_plus = defexpr('abs_plus', abst(t, real, t + w))
-
-    # print abs_plus
-
-    # typing.check(abs_plus(x), context=st_context)
-    
-    # typing.check(pair(x, y))
-
-    # typing.check(x + y, \
-    #              context=st_context)
-
-    # typing.check(z[0] * z[1] == z[1] * z[0])
-
-    # typing.check(abst(z, real * real, pair(x, x)))
-
-    # typing.check(forall(z, real * real, (z[0] + z[1]) == (z[1] + z[0])))
-
-    # fa = forall(z, real * real, (z[0] + z[1]) == (z[1] + z[0]))
-
-    # plus_commut_stmt = defexpr('plus_commut_stmt', fa, type=Bool)
-    
-    # typing.check(st_context.decls['real'])
-    # print
-
-    # def definition_of(expr):
-    #     """Return the definition of a defined constant.
+    def definition_of(expr):
+        """Return the definition of a defined constant.
         
-    #     Arguments:
-    #     - `expr`:
-    #     """
-    #     if expr.is_const():
-    #         if expr.info.defined:
-    #             print st_context.get_from_field(expr.name+"_def", 'defs')\
-    #                   .type
-    #             print
-    #         else:
-    #             print expr, " is not defined!"
-    #             print
-    #     else:
-    #         print expr, " is not a constant!"
-    #         print
+        Arguments:
+        - `expr`:
+        """
+        if expr.is_const():
+            if expr.info.defined:
+                print local_ctxt.get_from_field(expr.name + "_def", 'defs')\
+                      .type
+                print
+            else:
+                print expr, " is not defined!"
+                print
+        else:
+            print expr, " is not a constant!"
+            print
 
-    # two = defexpr('two', one+one, real)
+    two = defexpr('two', one + one, real)
 
-    # definition_of(plus_commut_stmt)
+    definition_of(plus_commut_stmt)
 
-    # definition_of(two)
+    definition_of(two)
 
-    # plus_commut = defexpr('plus_commut', trivial(), fa)
+    plus_commut = defexpr('plus_commut', trivial(), fa)
 
-    # p = pair(x, y)
+    p = pair(x, y)
 
-    # proj_x_y_0 = defexpr('proj_x_y_0', trivial(), p[0] == x, tactic=goals.simpl)
+    proj_x_y_0 = defexpr('proj_x_y_0', trivial(), p[0] == x, tactic=goals.simpl)
 
-    # boolop = Bool * Bool >> Bool
+    boolop = Bool * Bool >> Bool
 
-    # typeop = Type * Type >> Type
+    typeop = Type * Type >> Type
 
-    # typing.check(boolop)
-    # print
-    # typing.check(typeop)
-    # print
-    # typing.check(conj(true, disj(true, false)))
-    # print
-    # print p[1]
-    # print conv.par_beta(p[0])
-    # print conv.par_beta(p[1])
+    typing.check(boolop)
+    print
+    typing.check(typeop)
+    print
+    typing.check(conj(true, disj(true, false)))
+    print
+    print p[1]
+    print conv.par_beta(p[0])
+    print conv.par_beta(p[1])

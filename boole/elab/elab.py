@@ -20,6 +20,7 @@ import boole.core.goals as goals
 
 meta_var_gen = vargen.VarGen()
 
+
 class Mvar(expr_base.Expr):
     """Unification variables for implicit arguments
     """
@@ -33,6 +34,7 @@ class Mvar(expr_base.Expr):
         self.name = name
         self.type = type
         self.value = None
+        self.tele = e.nullctxt()
         for k in kwargs:
             self.info[k] = kwargs[k]
         self.info['is_mvar'] = True
@@ -48,10 +50,8 @@ class Mvar(expr_base.Expr):
         """
         self.value = val
 
-
     def to_string(self):
         return "Mvar_{0!s}".format(self.name)
-
 
     def equals(self, expr):
         #There should only be one instance of
@@ -64,7 +64,6 @@ class MvarSubst(e.SubstExpr):
 
     def __init__(self, exprs):
         e.SubstExpr.__init__(self, exprs)
-
 
     def visit_mvar(self, expr, *args, **kwargs):
         #return the actual object here, as we want values to
@@ -79,7 +78,8 @@ def subst_expr(exprs, expr):
 
 class MvarInfer(t.ExprInfer):
     """Infer the type and generate constraints for a term containing
-    meta-variables.
+    meta-variables. A constraint is created when a meta-variable is of
+    type Bool.
     """
     
     def __init__(self):
@@ -87,11 +87,22 @@ class MvarInfer(t.ExprInfer):
         self.check = MvarCheck
         self.sub = subst_expr
 
-    #TODO: Should this add a constraint?
-    def visit_mvar(self, expr, *args, **kwargs):
-        sort = self.visit(expr.type, *args, **kwargs)
+    def visit_mvar(self, expr, constrs, *args, **kwargs):
+        sort = self.visit(expr.type, constrs, *args, **kwargs)
         if t.is_sort(sort):
+            #If the meta-variable stands as evidence for a proposition
+            #we add that proposition to the set of constraints, and
+            #set the value of the meta-variable to Ev.
+            if sort.is_bool():
+                expr.set_val(e.Ev(expr.tele))
+                constrs.append(goals.Goal(expr.tele, expr.type))
             return expr.type
+        else:
+            mess = 'The type of {0!s} is {1!s} '
+            'which should be Type, Kind or Bool'\
+                   .format(expr.type, sort)
+            raise t.ExprTypeError(mess, expr)
+        
 
 class MvarCheck(t.ExprCheck):
     """Check the type and generate constraints for
@@ -102,7 +113,6 @@ class MvarCheck(t.ExprCheck):
         t.ExprCheck.__init__(self)
         self.infer = MvarInfer
 
-    #TODO: Should this add a constraint?
     def visit_mvar(self, expr, type, *args, **kwargs):
         expr_ty = self.infer().visit(expr, *args, **kwargs)
         if expr_ty.equals(type):
