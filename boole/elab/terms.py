@@ -21,7 +21,7 @@ import boole.core.goals as goals
 import boole.core.expr as expr
 import boole.core.conv as conv
 import elab
-
+import unif
 
 def print_app(expr):
     """Takes an application and prints it in the following manner:
@@ -205,7 +205,7 @@ def tm_call(fun, *args):
     - `arg`:
     """
     fun_typ = typing.infer(fun)[0]
-    conv = [trivial()]*len(args)
+    conv = [trivial()] * len(args)
     return elab.app_expr(fun, fun_typ, conv, args)
     
 
@@ -242,7 +242,12 @@ def get_pair(expr, index):
 @with_info(st_term)
 def eq_tm(expr1, expr2):
     return Sub(expr1, expr2)
-    
+
+
+@with_info(st_typ)
+def type_arrow(type1, type2):
+    return pi(dummy(), type1, type2)
+
 
 class StTerm(StExpr):
     """The information associated to terms
@@ -253,6 +258,7 @@ class StTerm(StExpr):
         self.info['__call__'] = tm_call
         self.info['__add__'] = add_tm
         self.info['__mul__'] = mul_tm
+        self.info['__rshift__'] = type_arrow
         self.info['__getitem__'] = get_pair
         self.info['__eq__'] = eq_tm
         self.info['__str__'] = str_tm
@@ -272,11 +278,6 @@ def typ_call(type, name):
 @with_info(st_typ)
 def typ_mul(type1, type2):
     return sig(dummy(), type1, type2)
-
-
-@with_info(st_typ)
-def type_arrow(type1, type2):
-    return pi(dummy(), type1, type2)
 
 
 @with_info(st_typ)
@@ -300,13 +301,12 @@ st_typ._info = StTyp()
 
 
 @with_info(st_typ)
-def mktype(name):
+def mktype(name, implicit=False):
     """
     
     Arguments:
     - `name`:
     """
-
     return Const(name, expr.Type())
 
 
@@ -319,14 +319,17 @@ def mktype(name):
 
 st_context = Context("st_context")
 
-def deftype(name, tactic=None):
+def deftype(name, implicit=None, tactic=None):
     """Define a type constant, and add it
     to st_context.
     
     Arguments:
     - `name`:
     """
-    c = mktype(name)
+    if implicit == None:
+        c = mktype(name)
+    else:
+        c = mktype(name, implicit=True)
     ty, obl = typing.infer(c)
     if tactic == None:
         obl.solve_with(goals.trivial)
@@ -463,7 +466,7 @@ if __name__ == '__main__':
     X.info.update(StTyp())
 
 
-    poly = defconst('poly', pi(X, Type_, X >> X))
+    poly = defconst('poly', pi(X, Type_, X >> (X >> X)))
 
     poly_z = poly(z)
 
@@ -471,9 +474,50 @@ if __name__ == '__main__':
     #distinct meta-variables.
     poly_t = elab.mvar_infer(poly_z)
 
-    print poly_z, ':', poly_t[0]
+    remaining = poly_t[1].solve_with(unif.solve_mvars)
+
+    print unif.sub_mvar(poly_z, undef=True), ':', unif.sub_mvar(poly_t[0], undef=True)
     print
-    print 'with goals:\n', poly_t[1]
+    print 'with goals:\n', remaining
+
+
+    nat = deftype('nat')
+
+    def ii(n):
+        if isinstance(n, int) and n >= 0:
+            return defconst(str(n), nat)
+        else:
+            raise Exception("Expected a non-negative integer!")
+
+    n = nat('n')
+    
+    Vec = defconst('Vec', pi(n, nat, Type))
+
+    nat_ = deftype('nat', implicit=True)
+
+    m = nat_('m')
+
+    rev = defconst('rev', pi(m, nat_, Vec(m) >> Vec(m)))
+
+    three = ii(3)
+
+    v3 = defconst('v3', Vec(three))
+
+    rev_3 = rev(v3)
+
+    rev_3_t = elab.mvar_infer(rev_3)
+
+    rev_3_t[1].solve_with(goals.trivial) #.solve_with(unif.solve_mvars)
+
+    print rev_3_t[1]
+
+    rev_3_t[1].solve_with(goals.repeat(unif.solve_mvars))
+
+    print rev_3_t[1]
+
+    print
+    print unif.sub_mvar(rev_3), ':', unif.sub_mvar(rev_3_t[0])
+    print
     
 
     # print dummy()

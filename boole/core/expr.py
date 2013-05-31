@@ -860,7 +860,7 @@ def open_tele_with_fresh(tele, checked=False):
 ###############################################################################
 
 class ExprVisitor(object):
-    """
+    """The visitor class for Expr and Tele
     """
     
     def __init__(self):
@@ -887,9 +887,6 @@ class ExprVisitor(object):
         raise NotImplementedError()
 
     def visit_app(self, expr, *args, **kwargs):
-        raise NotImplementedError()
-
-    def visit_sig(self, expr, *args, **kwargs):
         raise NotImplementedError()
 
     def visit_pair(self, expr, *args, **kwargs):
@@ -1261,6 +1258,7 @@ def sig(var, dom, codom):
     codom_abs = abstract_expr([name], codom)
     return Bound(Sig(name), dom, codom_abs)
 
+
 def true():
     """The true constant.
     """
@@ -1271,3 +1269,15 @@ def false():
     """The false constant.
     """
     return Const('false', Bool())
+
+
+def nullctxt():
+    """The empty telescope
+    """
+    return Tele([], [])
+
+
+def trivial():
+    """The trivial evidence term
+    """
+    return Ev(nullctxt())

@@ -15,7 +15,7 @@ import boole.core.expr_base as expr_base
 import boole.core.expr as e
 import boole.core.typing as t
 import boole.core.vargen as vargen
-import context
+import boole.core.context as context
 import boole.core.goals as goals
 
 meta_var_gen = vargen.VarGen()
@@ -52,6 +52,12 @@ class Mvar(expr_base.Expr):
     def to_string(self):
         return "Mvar_{0!s}".format(self.name)
 
+
+    def equals(self, expr):
+        #There should only be one instance of
+        #each meta-variable, so pointer equality is
+        #sufficient
+        return self is expr
 
 
 class MvarSubst(e.SubstExpr):
@@ -115,9 +121,6 @@ def mk_meta(name, type):
     - `type`: an expression denoting the type of the Mvar
     """
     fresh_name = meta_var_gen.get_name(name)
-    print
-    print 'Made meta-var ', fresh_name
-    print
     return Mvar(fresh_name, type)
 
 def mvar_infer(expr, type=None, ctxt=None):
@@ -150,8 +153,6 @@ def mvar_infer(expr, type=None, ctxt=None):
             raise t.ExprTypeError(mess, expr)
 
 
-
-
 def app_expr(f, f_ty, conv, args):
     """Applies a function to a list of
     arguments, some of which are implicit.
@@ -171,8 +172,13 @@ def app_expr(f, f_ty, conv, args):
         if rem_ty.is_bound() and rem_ty.binder.is_pi()\
            and rem_ty.dom.info.implicit:
             mvar = mk_meta(rem_ty.binder.var, rem_ty.dom)
-            mconv = mk_meta('{0!s}_conv'.format(mvar.name), \
-                            e.Sub(rem_ty.dom, rem_ty.dom))
+            # mconv = mk_meta('{0!s}_conv'.format(mvar.name), \
+            #                 e.Sub(rem_ty.dom, rem_ty.dom))
+            #For now we generate the trivial evidence.
+            #If more information is needed, we need to go through the whole
+            #term to collect local information (variables), to add them
+            #the evidence term
+            mconv = e.trivial()
             tm = t.App(mconv, tm, mvar)
             rem_ty = subst_expr([mvar], rem_ty.body)
         elif rem_ty.is_bound() and rem_ty.binder.is_pi():
