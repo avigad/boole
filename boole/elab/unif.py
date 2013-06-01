@@ -216,7 +216,7 @@ def mvar_is_present(expr, mvar=None):
 
 ###############################################################################
 #
-# Tactics for solving unification-type goals
+# Tactics for solving unification goals
 #
 ###############################################################################
 
@@ -292,4 +292,5 @@ solve_mvar = SolveMvar()
 #
 ###############################################################################
 
-solve_mvars = repeat(sub_mvar_goal >> trivial >> (solve_mvar | destruct))
+
+unify = repeat(sub_mvar_goal >> trivial >> (solve_mvar | destruct))

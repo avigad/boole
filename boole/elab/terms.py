@@ -328,7 +328,7 @@ def deftype(name, implicit=None):
     return c
 
 
-def defconst(name, type, infix=False, tactic=None):
+def defconst(name, type, infix=None, tactic=None):
     """Define a constant, add it to
     local_ctxt and return it.
     
@@ -338,13 +338,13 @@ def defconst(name, type, infix=False, tactic=None):
     - `infix`:
     """
     c = const(name, type, infix=infix)
-
+    
     #first try to solve the meta-vars in the type of c
     _, obl = elab.mvar_infer(c)
-    obl.solve_with(unif.solve_mvars)
-    #Now re-define c with all meta-variables substituted,
+    obl.solve_with(unif.unify)
+    #Now update the meta-variables of the type of c
     #fail if there are undefined meta-vars.
-    c = const(name, unif.sub_mvar(type, undef=True))
+    c.type = unif.sub_mvar(type, undef=True)
     
     #Now type check the resulting term and try to solve the
     #TCCs
@@ -381,7 +381,7 @@ def defexpr(name, value, type=None, tactic=None):
     else:
         _, obl = elab.mvar_infer(value, type=type)
 
-    obl.solve_with(unif.solve_mvars)
+    obl.solve_with(unif.unify)
     val = unif.sub_mvar(value, undef=True)
 
     if not (type is None):
@@ -404,8 +404,8 @@ def defexpr(name, value, type=None, tactic=None):
     eq_c = (c == val)
     def_name = "{0!s}_def".format(name)
     c_def = const(def_name, eq_c)
-    local_ctxt.add_to_field(def_name, c_def, 'defs')
     local_ctxt.add_const(c_def)
+    local_ctxt.add_to_field(name, val, 'defs')
 
     if obl.is_solved():
         print "{0!s} : {1!s} is defined.\n".format(c, ty)

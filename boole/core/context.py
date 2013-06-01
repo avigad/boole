@@ -17,12 +17,9 @@ def init_context():
 
     - `decls`: declarations, a name corresponds to a constant.
     - `hyps`:  declerations of constants of type Bool
-    - `defs`:  declarations of defined constants
-    - `def_rules`: declarations of equalities between a defined constant
-    and its definition.
+    - `defs`: sends the name of a defined constant to its definition.
     - `rew_rules`: declarations of equalities to be treated as reduction
     rules.
-    - `coercions`: declarations of functions representing implicit casts.
     - `classes`: declarations of constants of type Type -> Type, represening
     type classes, paired with a list of constants representing the methods
     to those classes.
@@ -39,9 +36,7 @@ def init_context():
         'decls'           :{},\
         'hyps'            :{},\
         'defs'            :{},\
-        'def_rules'       :{},\
         'rew_rules'       :{},\
-        'coercions'       :{},\
         'classes'         :{},\
         'class_def'       :{},\
         'class_instances' :{},\

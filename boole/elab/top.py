@@ -98,6 +98,8 @@ if __name__ == '__main__':
     typing.check(local_ctxt.decls['real'])
     print
 
+    print plus.info.infix
+
     def definition_of(expr):
         """Return the definition of a defined constant.
         
@@ -106,8 +108,7 @@ if __name__ == '__main__':
         """
         if expr.is_const():
             if expr.info.defined:
-                print local_ctxt.get_from_field(expr.name + "_def", 'defs')\
-                      .type
+                print expr, ':=', local_ctxt.get_from_field(expr.name, 'defs')
                 print
             else:
                 print expr, " is not defined!"

@@ -1143,16 +1143,16 @@ def subst_expr(exprs, expr):
     return subster.visit(expr, 0)
 
 
-def sub_in(substitutor, var, substitutee):
-    """Replace constants with name var by substitutor
-    in substitutee
+def sub_in(exprs, vars, expr):
+    """Replace constants with names given by vars
+    by exprs in expr.
     
     Arguments:
-    - `substitutor`: an expression
-    - `var`: a variable name
-    - `substitutee`: an expression
+    - `exprs`: a list of expression
+    - `vars`: a list of variable names
+    - `expr`: an expression
     """
-    return subst_expr([substitutor], abstract_expr([var], substitutee))
+    return subst_expr([exprs], abstract_expr([vars], expr))
 
 
 def open_expr(var, typ, expr, checked=None):

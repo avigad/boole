@@ -112,7 +112,7 @@ class Tactic(object):
         
         Arguments:
         - `goal`: an instance of the Goal class
-        - `context`: a context
+        - `context`: a global context
         """
         raise TacticFailure("Undefined tactic {0!s}"\
                             .format(self.name), self, goal)
@@ -141,7 +141,8 @@ class Tactic(object):
 class Trivial(Tactic):
     """Solve trivial goals. Checks if the
     goal is equal to true, and otherwise checks if it is a
-    trivial equality, or is in the hypotheses.
+    trivial equality, or is in the hypotheses. Never fails:
+    returns the original goal if it does not succeed.
     
     """
     
@@ -311,7 +312,8 @@ class comp(Tactic):
 
 class repeat(Tactic):
     """Take a tactic, and repeatedly apply it to a goal until solved
-    or it raises an exception.
+    or it raises an exception, in which case it returns the
+    last obtained goal list.
     """
     
     def __init__(self, tac):
@@ -327,6 +329,53 @@ class repeat(Tactic):
             return goals
         except TacticFailure:
             return goals
+
+class Idtac(Tactic):
+    """The tactic that does nothing, simply return the goal.
+    """
+    
+    def __init__(self):
+        Tactic.__init__(self, "idtac")
+
+    def solve(self, goal, context):
+        return [goal]
+
+idtac = Idtac()
+
+
+class unfold(Tactic):
+    """Takes a list of identifiers and tries to unfold them by their
+    definition in the context. Raises an error if one of the
+    identifiers is not defined.
+    """
+    
+    def __init__(self, *names):
+        """
+        
+        Arguments:
+        - `*names`: the list of names to unfold.
+        """
+        names_str = ','.join(names)
+        Tactic.__init__(self, 'unfold {0!s}'.format(names_str))
+        self.names = names
+        self.sub_in = expr.sub_in
+        
+    def solve(self, goal, context):
+        exprs = []
+        for name in self.names:
+            try:
+                e = context.get_from_field(name, 'defs')
+                exprs.append(e)
+            except KeyError, k:
+                mess = "{0!s} is not defined in context"
+                " {1!s}".format(k, context)
+                raise TacticFailure(mess, self, goal)
+
+            return [self.sub_in(exprs, self.names, goal)]
+
+        
+        
+
 
 ##############################################################################
 #
