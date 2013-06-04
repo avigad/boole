@@ -116,7 +116,7 @@ class SubMvar(e.ExprVisitor):
 
     def visit_mvar(self, expr):
         if expr.value is None:
-            if self.undef == None:
+            if self.undef is None:
                 return expr
             else:
                 mess = "Cannot find a value for {0!s}".format(expr)
@@ -288,9 +288,10 @@ solve_mvar = SolveMvar()
 
 ###############################################################################
 #
-# The main tactic for solving constraints with meta-vars
+# The main tactics for solving constraints with meta-vars
 #
 ###############################################################################
 
+unif_step = sub_mvar_goal >> trivial >> (solve_mvar | destruct)
 
-unify = repeat(sub_mvar_goal >> trivial >> (solve_mvar | destruct))
+unify = repeat(unif_step)

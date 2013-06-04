@@ -420,7 +420,7 @@ class Goals(object):
             goal_str += "({0!s}) : {1!s}\n".format(i, g)
         return goal_str
 
-    def __len__(self, ):
+    def __len__(self):
         return len(self.goals)
 
     def solve_with(self, tactic):
@@ -437,6 +437,6 @@ class Goals(object):
 
 def empty_goals(name, context):
     """The empty proof obligation.
-    Used e.g. to initialize the type inference.
+    Used e.g. to initialize type inference.
     """
     return Goals(name, context)

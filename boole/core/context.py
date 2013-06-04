@@ -18,6 +18,7 @@ def init_context():
     - `decls`: declarations, a name corresponds to a constant.
     - `hyps`:  declerations of constants of type Bool
     - `defs`: sends the name of a defined constant to its definition.
+    - `defs`: declarations of inequalities to be treated as subtype assertions
     - `rew_rules`: declarations of equalities to be treated as reduction
     rules.
     - `classes`: declarations of constants of type Type -> Type, represening
@@ -36,6 +37,7 @@ def init_context():
         'decls'           :{},\
         'hyps'            :{},\
         'defs'            :{},\
+        'sub'             :{},\
         'rew_rules'       :{},\
         'classes'         :{},\
         'class_def'       :{},\
@@ -60,8 +62,6 @@ class ContextErr(Exception):
         Exception.__init__(self, mess)
         self.mess = mess
         self.ctxt = ctxt
-        
-
 
 
 class Context(object):
@@ -82,7 +82,6 @@ class Context(object):
             self._context = init_context()
         else:
             self._context = context
-        
 
     def __getattr__(self, attr):
         """Return the dictionary with name attr
@@ -119,7 +118,6 @@ class Context(object):
             return self._context['unsolved_goals'].popitem()[1]
         except KeyError:
             return None
-        
 
     #TODO: should this be __setitem__?
     def add_to_field(self, name, expr, field):
@@ -136,7 +134,6 @@ class Context(object):
             mess = "Field {0!s} not found in context {1!s}"\
                    .format(field, self.name)
             raise ContextErr(mess, self)
-        
 
     def get_from_field(self, name, field):
         """Get the object associated to name in the

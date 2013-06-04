@@ -14,20 +14,18 @@
 
 import boole.core.expr as expr
 import boole.core.goals as goals
+import boole.core.conv as conv
 from terms import *
 
 
 if __name__ == '__main__':
-
-
 
     z = real('z')
 
     X = Type_('X')
     X.info.update(StTyp())
 
-
-    poly = defconst('poly', pi(X, Type_, X >> (X >> X)))
+    poly = defconst('poly', pi(X, X >> (X >> X)))
 
     poly_z = defexpr('poly_z', poly(z))
 
@@ -41,13 +39,13 @@ if __name__ == '__main__':
 
     n = nat('n')
     
-    Vec = defconst('Vec', pi(n, nat, Type))
+    Vec = defconst('Vec', pi(n, Type))
 
     nat_ = deftype('nat', implicit=True)
 
     m = nat_('m')
 
-    rev = defconst('rev', pi(m, nat_, Vec(m) >> Vec(m)))
+    rev = defconst('rev', pi(m, Vec(m) >> Vec(m)))
 
     three = ii(3)
 
@@ -55,18 +53,9 @@ if __name__ == '__main__':
 
     rev_3 = defexpr('rev_3', rev(v3))
 
-    print dummy()
-
     nat = deftype('nat')
 
-    not_bin_op = nat >> nat >> nat
-
-    nat_sub_real = (nat <= real)('nat_sub_real')
-
-    #TODO: should we add the hypothesis or the constant?
-    local_ctxt.add_to_field('nat_sub_real', nat_sub_real.type, 'hyps')
-
-    print not_bin_op
+    nat_sub_real = defsub('nat_sub_real', nat <= real)
 
     x = nat('x')
     y = nat('y')
@@ -74,7 +63,7 @@ if __name__ == '__main__':
     w = real('w')
     t = real('t')
 
-    abs_plus = defexpr('abs_plus', abst(t, real, t + w))
+    abs_plus = defexpr('abs_plus', abst(t, t + w))
 
     print abs_plus
 
@@ -87,18 +76,16 @@ if __name__ == '__main__':
 
     typing.check(z[0] * z[1] == z[1] * z[0])
 
-    typing.check(abst(z, real * real, pair(x, x)))
+    typing.check(abst(z, pair(x, x)))
 
-    typing.check(forall(z, real * real, (z[0] + z[1]) == (z[1] + z[0])))
+    typing.check(forall(z, (z[0] + z[1]) == (z[1] + z[0])))
 
-    fa = forall(z, real * real, (z[0] + z[1]) == (z[1] + z[0]))
+    fa = forall(z, (z[0] + z[1]) == (z[1] + z[0]))
 
     plus_commut_stmt = defexpr('plus_commut_stmt', fa, type=Bool)
     
     typing.check(local_ctxt.decls['real'])
     print
-
-    print plus.info.infix
 
     def definition_of(expr):
         """Return the definition of a defined constant.

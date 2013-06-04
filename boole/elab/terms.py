@@ -19,7 +19,6 @@ from boole.core.context import *
 import boole.core.typing as typing
 import boole.core.goals as goals
 import boole.core.expr as expr
-import boole.core.conv as conv
 import elab
 import unif
 
@@ -167,14 +166,6 @@ st_term = infobox(None)
 st_typ = infobox(None)
 
 
-def unit():
-    return Const('unit', Type)
-
-
-def dummy():
-    return Const('_', unit())
-
-
 @with_info(st_term)
 def pair(expr1, expr2):
     """Turn a pair of simply typed arguments
@@ -200,7 +191,6 @@ def tm_call(fun, *args):
     conv = [trivial()] * len(args)
     return elab.app_expr(fun, fun_typ, conv, args)
     
-
 
 @with_info(st_term)
 def add_tm(expr, arg):
@@ -230,7 +220,7 @@ def get_pair(expr, index):
                         .format(expr))
 
 
-#TODO: change this to a real equality
+#TODO: change this to a real equality?
 @with_info(st_term)
 def eq_tm(expr1, expr2):
     return Sub(expr1, expr2)
@@ -238,7 +228,7 @@ def eq_tm(expr1, expr2):
 
 @with_info(st_typ)
 def type_arrow(type1, type2):
-    return pi(dummy(), type1, type2)
+    return pi(Const('_', type1), type2)
 
 
 class StTerm(StExpr):
@@ -269,7 +259,7 @@ def typ_call(type, name):
 
 @with_info(st_typ)
 def typ_mul(type1, type2):
-    return sig(dummy(), type1, type2)
+    return sig(Const('_', type1), type2)
 
 
 @with_info(st_typ)
@@ -418,14 +408,41 @@ def defexpr(name, value, type=None, tactic=None):
     return c
 
 
-#TODO: create a defhyp function, then check the hyps when calling trivial
+def defhyp(name, prop):
+    """Declare a constant of type bool, add it to the
+    list of hypotheses.
+    
+    Arguments:
+    - `name`: the name of the hypothesis
+    - `prop`: the proposition
+    """
+    c = defconst(name, prop)
+    typing.infer(c.type, type=Bool)
+    local_ctxt.add_to_field(name, c.type, 'hyps')
+    return c
+
+
+def defsub(name, prop):
+    """Declare a hypothesis of type A <= B
+    
+    Arguments:
+    - `name`: the name of the hypothesis
+    - `prop`: a proposition of the form A <= B
+    """
+    if prop.is_sub():
+        c = defhyp(name, prop)
+        local_ctxt.add_to_field(name, c.type, 'sub')
+        return c
+    else:
+        raise Exception("Error in definition {0!s}:"
+        "expected a proposition of the form A <= B".format(name))
+
 
 ###############################################################################
 #
 # Declarations for the simply typed theory.
 #
 ###############################################################################
-
 
 real = deftype('real')
 plus = defconst('+', real >> (real >> real), infix=True)

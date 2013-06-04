@@ -282,8 +282,8 @@ class Bound(Expr):
         # with the appropriate name.
         var = Const(self.binder.var, self.dom)
         open_expr = subst_expr([var], self.body)
-        return "{0!s}({1!s},{2!s},{3!s})".format(\
-            self.binder.name, self.binder.var, self.dom, open_expr)
+        return "{0!s}({1!s},{2!s})".format(\
+            self.binder.name, self.binder.var, open_expr)
 
     def to_string_raw(self):
         return "{0!s}({1!s},{2!s},{3!s})".format(\
@@ -1189,74 +1189,84 @@ def open_bound_fresh(expr, checked=None):
     return (var, open_expr(var, expr.dom, expr.body, checked=checked))
 
 
-def pi(var, dom, codom):
+def pi(var, codom):
     """Create the term
     Pi x:A.B from its constituents
     
     Arguments:
     - `var`: a constant expr
-    - `dom`: an expression
     - `codom`: an expression possibly containing var
     """
-    name = var.name
-    codom_abs = abstract_expr([name], codom)
-    return Bound(Pi(name), dom, codom_abs)
+    if var.is_const():
+        codom_abs = abstract_expr([var.name], codom)
+        return Bound(Pi(var.name), var.type, codom_abs)
+    else:
+        mess = "Expected {0!s} to be a constant".format(var)
+        raise ExprError(mess, var)
 
 
-def abst(var, dom, expr):
+def abst(var, body):
     """Create the term
     lambda x:A.t from its constituents
     
     Arguments:
     - `var`: a constant expr
-    - `dom`: an expression
-    - `expr`: an expression possibly containing var
+    - `body`: an expression possibly containing var
     """
-    name = var.name
-    expr_abs = abstract_expr([name], expr)
-    return Bound(Abst(name), dom, expr_abs)
+    if var.is_const():
+        body_abs = abstract_expr([var.name], body)
+        return Bound(Abst(var.name), var.type, body_abs)
+    else:
+        mess = "Expected {0!s} to be a constant".format(var)
+        raise ExprError(mess, var)
 
 
-def forall(var, dom, prop):
+def forall(var, prop):
     """Create the term
-    forall x:A.P from its constituents
+    forall x:A.t from its constituents
     
     Arguments:
     - `var`: a constant expr
-    - `dom`: an expression
     - `prop`: an expression possibly containing var
     """
-    name = var.name
-    prop_abs = abstract_expr([name], prop)
-    return Bound(Forall(name), dom, prop_abs)
+    if var.is_const():
+        prop_abs = abstract_expr([var.name], prop)
+        return Bound(Forall(var.name), var.type, prop_abs)
+    else:
+        mess = "Expected {0!s} to be a constant".format(var)
+        raise ExprError(mess, var)
 
 
-def exists(var, dom, prop):
+def exists(var, prop):
     """Create the term
-    exists x:A.P from its constituents
+    exists x:A.t from its constituents
     
     Arguments:
-    - `var`: a variable name
-    - `dom`: an expression
+    - `var`: a constant expr
     - `prop`: an expression possibly containing var
     """
-    name = var.name
-    prop_abs = abstract_expr([name], prop)
-    return Exists(Exists(name), dom, prop_abs)
+    if var.is_const():
+        prop_abs = abstract_expr([var.name], prop)
+        return Bound(Exists(var.name), var.type, prop_abs)
+    else:
+        mess = "Expected {0!s} to be a constant".format(var)
+        raise ExprError(mess, var)
 
 
-def sig(var, dom, codom):
+def sig(var, codom):
     """Create the term
     Sig x:A.B from its constituents
     
     Arguments:
     - `var`: a constant expr
-    - `dom`: an expression
     - `codom`: an expression possibly containing var
     """
-    name = var.name
-    codom_abs = abstract_expr([name], codom)
-    return Bound(Sig(name), dom, codom_abs)
+    if var.is_const():
+        codom_abs = abstract_expr([var.name], codom)
+        return Bound(Sig(var.name), var.type, codom_abs)
+    else:
+        mess = "Expected {0!s} to be a constant".format(var)
+        raise ExprError(mess, var)
 
 
 def true():

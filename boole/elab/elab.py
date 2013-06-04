@@ -51,7 +51,7 @@ class Mvar(expr_base.Expr):
         self.value = val
 
     def to_string(self):
-        return "Mvar_{0!s}".format(self.name)
+        return "?{0!s}".format(self.name)
 
     def equals(self, expr):
         #There should only be one instance of
