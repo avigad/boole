@@ -418,6 +418,8 @@ class unfold(Tactic):
         self.sub_in = expr.sub_in
         
     def solve(self, goal, context):
+        tele = goal.tele
+        prop = goal.prop
         exprs = []
         for name in self.names:
             try:
@@ -427,8 +429,8 @@ class unfold(Tactic):
                 mess = "{0!s} is not defined in context"
                 " {1!s}".format(k, context)
                 raise TacticFailure(mess, self, goal)
-
-            return [self.sub_in(exprs, self.names, goal)]
+        prop_sub = self.sub_in(exprs, self.names, prop)
+        return [Goal(tele, prop_sub)]
 
 
 auto = logic >> simpl >> trivial

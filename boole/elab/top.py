@@ -20,7 +20,7 @@ from terms import *
 
 if __name__ == '__main__':
 
-    z = real('z')
+    z = Real('z')
 
     X = Type_('X')
 
@@ -32,13 +32,13 @@ if __name__ == '__main__':
 
     nat = deftype('nat')
     
-    nat_sub_real = defsub('nat_sub_real', nat <= real)
+    nat_sub_real = defsub('nat_sub_real', nat <= Real)
 
-    def ii(n):
-        if isinstance(n, int) and n >= 0:
-            return defconst(str(n), nat)
-        else:
-            raise Exception("Expected a non-negative integer!")
+    # def ii(n):
+    #     if isinstance(n, int) and n >= 0:
+    #         return defconst(str(n), Int)
+    #     else:
+    #         raise Exception("Expected a non-negative integer!")
 
     Y = deftype('Y')
 
@@ -51,42 +51,59 @@ if __name__ == '__main__':
 
     iop = defconst('op', ibinop)
 
-    Mul = defclass('Mul', pi(Y, pi(op, Bool)))
+    Mul = defclass('Mul', pi(Y, pi(op, Bool)), abst(Y, abst(op, true)))
 
     mul_app = Mul(X, iop)
     mul_app.info['implicit'] = True
 
     mul = defconst('mul', pi(X, pi(iop, mul_app >> (X >> (X >> X)))))
 
-    nat_mul = defconst('nat_mul', nat >> (nat >> nat))
+    int_mul = defconst('int_mul', Int >> (Int >> Int))
 
-    definstance('mul_nat', Mul(nat, nat_mul))
+    definstance('mul_int', Mul(Int, int_mul), trivial())
 
-    test = defexpr('test', mul(ii(3), ii(2)))
+    test = defexpr('test', mul(3, 2))
 
-    n = nat('n')
-
-    print n
+    n = Int('n')
     
     Vec = defconst('Vec', pi(n, Type))
 
-    nat_ = deftype('nat', implicit=True)
+    Int_ = deftype('Int', implicit=True)
 
-    m = nat_('m')
+    m = Int_('m')
+
+    succ = defconst('succ', Int >> Int)
+
+    nil = defconst('nil', Vec(0))
+
+    cons = defconst('cons', pi(m, Real >> (Vec(m) >> Vec(succ(m)))))
+
+    sum_vec = defconst('sum_vec', pi(m, Vec(m) >> (Vec(m) >> Vec(m))))
+
+    add_nil = defhyp('add_nil', sum_vec(nil, nil) == nil)
+
+    v1 = defconst('v1', Vec(m))
+
+    v2 = defconst('v2', Vec(m))
+
+    a = defconst('a', Real)
+
+    b = defconst('b', Real)
+
+    add_cons = defhyp('add_cons', sum_vec(cons(a, v1), cons(b, v2)) == cons(a+b, sum_vec(v1, v2)))
+
 
     rev = defconst('rev', pi(m, Vec(m) >> Vec(m)))
 
-    three = ii(3)
-
-    v3 = defconst('v3', Vec(three))
+    v3 = defconst('v3', Vec(3))
 
     rev_3 = defexpr('rev_3', rev(v3))
 
-    x = nat('x')
-    y = nat('y')
-    z = (real * real)('z')
-    w = real('w')
-    t = real('t')
+    x = Int('x')
+    y = Int('y')
+    z = (Real * Real)('z')
+    w = Real('w')
+    t = Real('t')
 
     abs_plus = defexpr('abs_plus', abst(t, t + w))
 
@@ -109,7 +126,7 @@ if __name__ == '__main__':
 
     plus_commut_stmt = defexpr('plus_commut_stmt', fa, type=Bool)
     
-    typing.check(local_ctxt.decls['real'])
+    typing.check(local_ctxt.decls['Real'])
     print
 
     def definition_of(expr):
@@ -129,11 +146,11 @@ if __name__ == '__main__':
             print expr, " is not a constant!"
             print
 
-    two = defexpr('two', one + one, real)
+    x_plus_one = defexpr('x_plus_one', x + 1, Real)
 
     definition_of(plus_commut_stmt)
 
-    definition_of(two)
+    definition_of(x_plus_one)
 
     plus_commut = defexpr('plus_commut', trivial(), fa)
 

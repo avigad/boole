@@ -277,15 +277,14 @@ class Bound(Expr):
         # Printing a bound expression involves
         # substituting the DB index by a constant
         # with the appropriate name.
-        var = Const(self.binder.var, self.dom)
-        open_expr = subst_expr([var], self.body)
+        var = self.binder.var
+        open_self = open_expr(var, self.dom, self.body)
         return "{0!s}({1!s},{2!s})".format(\
-            self.binder.name, self.binder.var, open_expr)
+            self.binder.name, self.binder.var, open_self)
 
     def to_string_raw(self):
         return "{0!s}({1!s},{2!s},{3!s})".format(\
             self.binder.name, self.binder.var, self.dom, self.body)
-
 
     def is_bound(self):
         return True
@@ -369,7 +368,7 @@ class Pair(Expr):
         Expr.__init__(self)
         self.fst = fst
         self.snd = snd
-        self.type = type        
+        self.type = type
 
     def accept(self, visitor, *args, **kwargs):
         """
@@ -400,6 +399,7 @@ class Pair(Expr):
                    self.type.equals(expr.type)
         else:
             return False
+
 
 class Fst(Expr):
     """First projection for Sigma types
@@ -445,6 +445,7 @@ class Fst(Expr):
             return self.expr.equals(expr.expr)
         else:
             return False
+
 
 class Snd(Expr):
     """Second projection for Sigma types
@@ -754,7 +755,6 @@ class Tele(BaseExpr):
         self.len = len(self.types)
         assert(len(self.vars) == self.len)
 
-
     def accept(self, visitor, *args, **kwargs):
         """
         
@@ -764,7 +764,6 @@ class Tele(BaseExpr):
         - `**kwargs`:
         """
         return visitor.visit_tele(self, *args, **kwargs)
-
 
     def to_string(self):
         """
@@ -783,7 +782,8 @@ class Tele(BaseExpr):
         - `expr`: an expression
         """
         if self.len == tele.len:
-            eq_info = [ t1.equals(t2) for (t1, t2) in zip(self.types, tele.types)]
+            eq_info = [t1.equals(t2)\
+                       for (t1, t2) in zip(self.types, tele.types)]
             return reduce(lambda x, y: x and y, eq_info, True)
         else:
             return False
@@ -848,14 +848,12 @@ def open_tele_fresh(tele, checked=False):
     fr_vars = [fresh_name.get_name(v) for v in tele.vars]
     return open_tele(tele, fr_vars, checked=checked)
 
-
-
-
 ###############################################################################
 #
 # The visitor class for Expr and Tele
 #
 ###############################################################################
+
 
 class ExprVisitor(object):
     """The visitor class for Expr and Tele
@@ -987,7 +985,7 @@ class AbstractExpr(ExprVisitor):
     def visit_pair(self, expr, *args, **kwargs):
         type = self.visit(expr.type, *args, **kwargs)
         fst = self.visit(expr.fst, *args, **kwargs)
-        snd =  self.visit(expr.snd, *args, **kwargs)
+        snd = self.visit(expr.snd, *args, **kwargs)
         return Pair(fst, snd, type)
 
     def visit_fst(self, expr, *args, **kwargs):
@@ -1144,11 +1142,11 @@ def sub_in(exprs, vars, expr):
     by exprs in expr.
     
     Arguments:
-    - `exprs`: a list of expression
+    - `exprs`: a list of expressions
     - `vars`: a list of variable names
     - `expr`: an expression
     """
-    return subst_expr([exprs], abstract_expr([vars], expr))
+    return subst_expr(exprs, abstract_expr(vars, expr))
 
 
 def open_expr(var, typ, expr, checked=None):
@@ -1200,117 +1198,3 @@ def root_app(expr):
         #The arguments were collected in reverse order
     args.reverse()
     return (root, args)
-
-
-def pi(*args):
-    """Create the term
-    Pi x:A.B from its constituents
-    
-    Arguments:
-    - `var`: a constant expr
-    - `codom`: an expression possibly containing var
-    """
-    if len(args) == 2:
-        var = args[0]
-        codom = args[1]
-        if var.is_const():
-            codom_abs = abstract_expr([var.name], codom)
-            return Bound(Pi(var.name), var.type, codom_abs)
-        else:
-            mess = "Expected {0!s} to be a constant".format(var)
-            raise ExprError(mess, var)
-    elif len(args) == 3:
-        name = args[0]
-        dom = args[1]
-        codom = args[2]
-        return Bound(Pi(name), dom, codom)
-    else:
-        raise Exception("Wrong number of arguments!")
-
-
-def abst(var, body):
-    """Create the term
-    lambda x:A.t from its constituents
-    
-    Arguments:
-    - `var`: a constant expr
-    - `body`: an expression possibly containing var
-    """
-    if var.is_const():
-        body_abs = abstract_expr([var.name], body)
-        return Bound(Abst(var.name), var.type, body_abs)
-    else:
-        mess = "Expected {0!s} to be a constant".format(var)
-        raise ExprError(mess, var)
-
-
-def forall(var, prop):
-    """Create the term
-    forall x:A.t from its constituents
-    
-    Arguments:
-    - `var`: a constant expr
-    - `prop`: an expression possibly containing var
-    """
-    if var.is_const():
-        prop_abs = abstract_expr([var.name], prop)
-        return Bound(Forall(var.name), var.type, prop_abs)
-    else:
-        mess = "Expected {0!s} to be a constant".format(var)
-        raise ExprError(mess, var)
-
-
-def exists(var, prop):
-    """Create the term
-    exists x:A.t from its constituents
-    
-    Arguments:
-    - `var`: a constant expr
-    - `prop`: an expression possibly containing var
-    """
-    if var.is_const():
-        prop_abs = abstract_expr([var.name], prop)
-        return Bound(Exists(var.name), var.type, prop_abs)
-    else:
-        mess = "Expected {0!s} to be a constant".format(var)
-        raise ExprError(mess, var)
-
-
-def sig(var, codom):
-    """Create the term
-    Sig x:A.B from its constituents
-    
-    Arguments:
-    - `var`: a constant expr
-    - `codom`: an expression possibly containing var
-    """
-    if var.is_const():
-        codom_abs = abstract_expr([var.name], codom)
-        return Bound(Sig(var.name), var.type, codom_abs)
-    else:
-        mess = "Expected {0!s} to be a constant".format(var)
-        raise ExprError(mess, var)
-
-
-def true():
-    """The true constant.
-    """
-    return Const('true', Bool())
-
-
-def false():
-    """The false constant.
-    """
-    return Const('false', Bool())
-
-
-def nullctxt():
-    """The empty telescope
-    """
-    return Tele([], [])
-
-
-def trivial():
-    """The trivial evidence term
-    """
-    return Ev(nullctxt())

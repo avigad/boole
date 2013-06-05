@@ -14,13 +14,38 @@
 ##############################################################################
 
 from boole.core.info import *
-from boole.core.expr import *
 from boole.core.context import *
+from boole.core.expr import Const, Sub, Pair, Fst, Snd, root_app
+import boole.core.expr as e
 import boole.core.typing as typing
 import boole.core.goals as goals
-import boole.core.expr as expr
 import elab
+from elab import app_expr, mvar_infer, open_expr
 import unif
+
+###############################################################################
+#
+# various utility functions on expressions
+#
+###############################################################################
+
+
+def ii(n):
+    return Const(str(n), Int)
+
+
+def rr(n):
+    return Const(str(n), Real)
+
+
+def to_expr(expr):
+    if isinstance(expr, int):
+        return ii(expr)
+    elif isinstance(expr, float):
+        return rr(expr)
+    else:
+        return expr
+
 
 def print_app(expr):
     """Takes an application and prints it in the following manner:
@@ -86,6 +111,7 @@ def print_pi(expr):
     """
     return "({0!s})>>{1!s}".format(expr.dom, expr.body)
 
+
 def print_sig(expr):
     """
     
@@ -103,14 +129,18 @@ def print_sub(expr):
     """
     return "{0!s} <= {1!s}".format(expr.lhs, expr.rhs)
 
+
 def print_eq(expr):
     return "{0!s} == {1!s}".format(expr.lhs, expr.rhs)
 
-def print_bool(expr):
+
+def print_bool():
     return "Bool"
 
-def print_type(expr):
+
+def print_type():
     return "Type"
+
 
 def str_typ(expr):
     if expr.is_app():
@@ -122,11 +152,18 @@ def str_typ(expr):
     elif expr.is_sub():
         return print_sub(expr)
     elif expr.is_bool():
-        return print_bool(expr)
+        return print_bool()
     elif expr.is_type():
-        return print_type(expr)
+        return print_type()
     else:
         return expr.to_string()
+
+
+def print_bound(expr):
+    var = expr.binder.var
+    open_self = open_expr(var, expr.dom, expr.body)
+    return "{0!s}({1!s},{2!s})".format(\
+        expr.binder.name, expr.binder.var, open_self)
 
 
 def str_tm(expr):
@@ -140,6 +177,8 @@ def str_tm(expr):
         return print_snd(expr)
     elif expr.is_sub():
         return print_eq(expr)
+    elif expr.is_bound():
+        return print_bound(expr)
     else:
         return expr.to_string()
 
@@ -183,9 +222,10 @@ def tm_call(fun, *args):
     - `fun`: an expression
     - `arg`: a list of expresstions
     """
-    fun_typ, obl = typing.infer(fun, ctxt=local_ctxt)
+    fun_typ, _ = typing.infer(fun, ctxt=local_ctxt)
     conv = [trivial()] * len(args)
-    return elab.app_expr(fun, fun_typ, conv, args)
+    cast_args = map(to_expr, args)
+    return app_expr(fun, fun_typ, conv, cast_args)
     
 
 @with_info(st_term)
@@ -287,8 +327,58 @@ def mktype(name, implicit=None):
     Arguments:
     - `name`:
     """
-    return Const(name, expr.Type())
+    return Const(name, e.Type())
 
+###############################################################################
+#
+# Alias the constructors so that they live in the appropriate worlds.
+#
+###############################################################################
+
+
+@with_info(st_term)
+def pi(*args):
+    return elab.pi(*args)
+
+
+@with_info(st_term)
+def abst(var, body):
+    return elab.abst(var, body)
+
+
+@with_info(st_term)
+def forall(var, prop):
+    return elab.forall(var, prop)
+
+
+@with_info(st_term)
+def exists(var, prop):
+    return elab.exists(var, prop)
+
+
+@with_info(st_term)
+def sig(var, codom):
+    return elab.sig(var, codom)
+
+
+@with_info(st_term)
+def true():
+    return elab.true()
+
+
+@with_info(st_term)
+def false():
+    return elab.false()
+
+
+@with_info(st_term)
+def nullctxt():
+    return elab.nullctxt()
+
+
+@with_info(st_term)
+def trivial():
+    return elab.trivial()
 
 ###############################################################################
 #
@@ -328,7 +418,7 @@ def defconst(name, type, infix=None, tactic=None, implicit=None):
     c = const(name, type, infix=infix)
     
     #first try to solve the meta-vars in the type of c
-    _, obl = elab.mvar_infer(c, ctxt=local_ctxt)
+    _, obl = mvar_infer(c, ctxt=local_ctxt)
     obl.solve_with(unif.unify)
     #Now update the meta-variables of the type of c
     #fail if there are undefined meta-vars.
@@ -345,7 +435,7 @@ def defconst(name, type, infix=None, tactic=None, implicit=None):
         obl.solve_with(tactic)
     local_ctxt.add_const(c)
     if obl.is_solved():
-        print "{0!s} : {1!s} is assumed.\n".format(c, type)
+        print "{0!s} : {1!s} is assumed.\n".format(c, c.type)
     else:
         local_ctxt.add_to_field(obl.name, obl, 'goals')
         print "In the declaration:\n{0!s} : {1!s}".format(name, type)
@@ -367,9 +457,9 @@ def defexpr(name, value, type=None, tactic=None):
     - `value`: an expression
     """
     if type is None:
-        _, obl = elab.mvar_infer(value, ctxt=local_ctxt)
+        _, obl = mvar_infer(value, ctxt=local_ctxt)
     else:
-        _, obl = elab.mvar_infer(value, type=type, ctxt=local_ctxt)
+        _, obl = mvar_infer(value, type=type, ctxt=local_ctxt)
 
     obl.solve_with(unif.unify)
 
@@ -402,7 +492,7 @@ def defexpr(name, value, type=None, tactic=None):
         print "{0!s} : {1!s} is defined.\n".format(c, ty)
     else:
         local_ctxt.add_to_field(obl.name, obl, 'goals')
-        print "In the definition\n"
+        print "In the definition\n"\
         " {0!s} = {1!s} : {2!s}".format(name, val, ty)
         print "remaining type-checking constraints!"
         print obl
@@ -418,7 +508,7 @@ def defhyp(name, prop):
     - `prop`: the proposition
     """
     c = defconst(name, prop)
-    typing.infer(c.type, type=Bool, ctxt=local_ctxt)
+    typing.infer(c.type, type=e.Bool(), ctxt=local_ctxt)
     local_ctxt.add_to_field(name, c.type, 'hyps')
     return c
 
@@ -440,32 +530,35 @@ def defsub(name, prop):
                         .format(name))
 
 
-#TODO: give a definition as well.
-def defclass(name, ty):
+def defclass(name, ty, defn):
     """Define a type class with the given name and type
     
     Arguments:
     - `name`: a string
     - `ty`: an expression
+    - `def`: the definition of the class
     """
-    c = defconst(name, ty)
+    c = defexpr(name, defn, type=ty)
     c.info['is_class'] = True
     local_ctxt.add_to_field(name, c.type, 'classes')
+    c_def = local_ctxt.defs[name]
+    local_ctxt.add_to_field(name, c_def, 'class_def')
     return c
 
 
-#TODO: give a definition as well.
 #TODO: should an instance be a hypothesis?
-def definstance(name, ty):
+def definstance(name, ty, value):
     """
     
     Arguments:
     - `name`: a string
     - `ty`: a type of the form ClassName(t1,...,tn)
     """
-    c = defconst(name, ty)
     root, _ = root_app(ty)
     if root.info.is_class:
+        class_name = root.name
+        class_tac = goals.unfold(class_name) >> goals.auto
+        c = defexpr(name, value, type=ty, tactic=class_tac)
         local_ctxt.add_to_field(name, c.type, 'class_instances')
         local_ctxt.add_to_field(name, c.type, 'hyps')
         return c
@@ -481,17 +574,18 @@ def definstance(name, ty):
 #
 ###############################################################################
 
-real = deftype('real')
-plus = defconst('+', real >> (real >> real), infix=True)
-mult = defconst('*', real >> (real >> real), infix=True)
-zero = defconst('0', real)
-one = defconst('1', real)
+Real = deftype('Real')
+plus = defconst('+', Real >> (Real >> Real), infix=True)
+mult = defconst('*', Real >> (Real >> Real), infix=True)
+
+Int = deftype('Int')
+int_sub_real = defsub('int_sub_real', Int <= Real)
 
 #create a single instance of Bool() and Type().
-Bool = expr.Bool()
+Bool = e.Bool()
 Bool.info.update(StTyp())
 
-Type = expr.Type()
+Type = e.Type()
 Type.info.update(StTyp())
 
 conj = defconst('&', Bool >> (Bool >> Bool), infix=True)
@@ -509,11 +603,11 @@ false = defconst('false', Bool)
 
 
 #Implicit type declarations
-Type_ = expr.Type()
+Type_ = e.Type()
 Type_.info.update(StTyp())
 Type_.info['implicit'] = True
 
 
-Bool_ = expr.Bool()
+Bool_ = e.Bool()
 Bool_.info.update(StTyp())
 Bool_.info['implicit'] = True

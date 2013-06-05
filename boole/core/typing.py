@@ -81,6 +81,7 @@ class ExprInfer(ExprVisitor):
         ExprVisitor.__init__(self)
         self.check = ExprCheck
         self.sub = subst_expr
+        self.abst = abstract_expr
         self.open_fresh = open_bound_fresh
         self.open_tele_fresh = open_tele_fresh
 
@@ -136,6 +137,7 @@ class ExprInfer(ExprVisitor):
             #Just need to check to see if the product is well-kinded:
             #for example: abs(x:Bool, Type) is not well-kinded
             self.visit(expr_ty, *args, **kwargs)
+            expr_ty = self.abst([var], expr_ty)
             return Bound(Pi(expr.binder.var), expr.dom, expr_ty)
         else:
             assert(expr.binder.is_forall() or expr.binder.is_exists())
@@ -192,7 +194,9 @@ class ExprInfer(ExprVisitor):
     def visit_ev(self, expr, *args, **kwargs):
         #Check if the telescope is well-formed
         self.visit(expr.tele, *args, **kwargs)
-        return true()
+        #This is a bit ad-hoc, as it relies on
+        #terms being compared by name only.
+        return Const('true', Bool())
 
     def visit_sub(self, expr, *args, **kwargs):
         #Just check that the lhs and rhs have some type
@@ -498,59 +502,3 @@ def check(expr, type=None, tactic=None, context=None):
     else:
         print "With remaining obligations:\n"
         print obl
-
-
-if __name__ == "__main__":
-
-    nullctxt = Tele([], [])
-
-    def app(fun, arg):
-        return App(Ev(nullctxt), fun, arg)
-
-    def ty_prod(ty1, ty2):
-        return sig(Const('_', ty1), ty2)
-
-    nat = Const('nat', Type())
-
-    print nat, ":", nat.type
-
-    # print nat.equals(nat)
-
-    typair = ty_prod(Type(), Type())
-
-    print 'type * type = ', typair
-    # print typair.equals(typair)
-    print 'type * type :', infer(typair)[0]
-    print 'With obligations:\n', infer(typair)[1]
-    
-    natpair = ty_prod(nat, nat)
-
-    # print natpair
-    # print natpair.equals(natpair)
-
-    def arrow(dom, codom):
-        return pi(Const('_', dom), codom)
-    
-    plusty = pi(Const('_', natpair), nat)
-
-    print plusty, ':', infer(plusty)[0]
-    print 'With obligations:\n', infer(plusty)[1]
-
-    plus = Const("plus", plusty)
-
-    x = Const("x", nat)
-    y = Const("y", nat)
-
-    pair_x_y = Pair(x, y, natpair)
-
-    plus_x_y = app(plus, pair_x_y)
-    
-    ty, obl = infer(plus_x_y)
-    
-    print "x + y = ", plus_x_y, ':', ty
-    print 'With obligations:\n', obl
-    obl.solve_with(goals.simpl)
-    if obl.is_solved():
-        print "Which are trivially solved"
-    else:
-        raise Exception("Which should be solved!")

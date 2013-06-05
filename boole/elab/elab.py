@@ -20,6 +20,14 @@ import boole.core.goals as goals
 
 meta_var_gen = vargen.VarGen()
 
+##############################################################################
+#
+# We add a new constructor to the Expr class: it represents meta-variables
+# which can be given a value when determined to be equal to an expression
+# by unification.
+#
+##############################################################################
+
 
 class Mvar(expr_base.Expr):
     """Unification variables for implicit arguments
@@ -34,7 +42,7 @@ class Mvar(expr_base.Expr):
         self.name = name
         self.type = type
         self.value = None
-        self.tele = e.nullctxt()
+        self.tele = nullctxt()
         for k in kwargs:
             self.info[k] = kwargs[k]
         self.info['is_mvar'] = True
@@ -63,6 +71,28 @@ class Mvar(expr_base.Expr):
         #sufficient
         return self is expr
 
+##############################################################################
+#
+# We re-write all the function defined on Expr
+#  to handle the extra constructor
+#
+##############################################################################
+
+
+class MvarAbst(e.AbstractExpr):
+    
+    def __init__(self, names):
+        e.AbstractExpr.__init__(self, names)
+
+    def visit_mvar(self, expr, *args, **kwargs):
+        #return the actual object here, as we want values to
+        #be propagated
+        if not (expr.value is None):
+            expr.value = self.visit(expr.value, *args, **kwargs)
+            return expr
+        else:
+            return expr
+
 
 class MvarSubst(e.SubstExpr):
 
@@ -72,10 +102,19 @@ class MvarSubst(e.SubstExpr):
     def visit_mvar(self, expr, *args, **kwargs):
         #return the actual object here, as we want values to
         #be propagated
-        return expr
+        if not (expr.value is None):
+            expr.value = self.visit(expr.value, *args, **kwargs)
+            return expr
+        else:
+            return expr
 
 
-#A bit of code duplication here
+#A bit of code duplication here from expr.py
+def abstract_expr(vars, expr):
+    abstractor = MvarAbst(vars)
+    return abstractor.visit(expr, 0)
+
+
 def subst_expr(exprs, expr):
     subster = MvarSubst(exprs)
     return subster.visit(expr, 0)
@@ -131,6 +170,7 @@ class MvarInfer(t.ExprInfer):
         t.ExprInfer.__init__(self)
         self.check = MvarCheck
         self.sub = subst_expr
+        self.abst = abstract_expr
         self.open_fresh = open_bound_fresh
         self.open_tele_fresh = open_tele_fresh
 
@@ -168,7 +208,6 @@ class MvarCheck(t.ExprCheck):
             return False
 
 
-
 def mk_meta(name, type):
     """Create a meta-variable with a fresh
     name and the given type.
@@ -179,6 +218,7 @@ def mk_meta(name, type):
     """
     fresh_name = meta_var_gen.get_name(name)
     return Mvar(fresh_name, type)
+
 
 def mvar_infer(expr, type=None, ctxt=None):
     """Infer the type of an expression and return the pair
@@ -233,7 +273,7 @@ def app_expr(f, f_ty, conv, args):
             #If more information is needed, we need to go through the whole
             #term to collect local information (variables), to add them
             #the evidence term
-            mconv = e.trivial()
+            mconv = trivial()
             tm = t.App(mconv, tm, mvar)
             rem_ty = subst_expr([mvar], rem_ty.body)
         elif rem_ty.is_bound() and rem_ty.binder.is_pi():
@@ -249,4 +289,117 @@ def app_expr(f, f_ty, conv, args):
             rem_conv = rem_conv[1:]
             rem_args = rem_args[1:]
     return tm
-        
+
+
+def pi(*args):
+    """Create the term
+    Pi x:A.B from its constituents
+    
+    Arguments:
+    - `var`: a constant expr
+    - `codom`: an expression possibly containing var
+    """
+    if len(args) == 2:
+        var = args[0]
+        codom = args[1]
+        if var.is_const():
+            codom_abs = abstract_expr([var.name], codom)
+            return e.Bound(e.Pi(var.name), var.type, codom_abs)
+        else:
+            mess = "Expected {0!s} to be a constant".format(var)
+            raise e.ExprError(mess, var)
+    elif len(args) == 3:
+        name = args[0]
+        dom = args[1]
+        codom = args[2]
+        return e.Bound(e.Pi(name), dom, codom)
+    else:
+        raise Exception("Wrong number of arguments!")
+
+
+def abst(var, body):
+    """Create the term
+    lambda x:A.t from its constituents
+    
+    Arguments:
+    - `var`: a constant expr
+    - `body`: an expression possibly containing var
+    """
+    if var.is_const():
+        body_abs = abstract_expr([var.name], body)
+        return e.Bound(e.Abst(var.name), var.type, body_abs)
+    else:
+        mess = "Expected {0!s} to be a constant".format(var)
+        raise e.ExprError(mess, var)
+
+
+def forall(var, prop):
+    """Create the term
+    forall x:A.t from its constituents
+    
+    Arguments:
+    - `var`: a constant expr
+    - `prop`: an expression possibly containing var
+    """
+    if var.is_const():
+        prop_abs = abstract_expr([var.name], prop)
+        return e.Bound(e.Forall(var.name), var.type, prop_abs)
+    else:
+        mess = "Expected {0!s} to be a constant".format(var)
+        raise e.ExprError(mess, var)
+
+
+def exists(var, prop):
+    """Create the term
+    exists x:A.t from its constituents
+    
+    Arguments:
+    - `var`: a constant expr
+    - `prop`: an expression possibly containing var
+    """
+    if var.is_const():
+        prop_abs = abstract_expr([var.name], prop)
+        return e.Bound(e.Exists(var.name), var.type, prop_abs)
+    else:
+        mess = "Expected {0!s} to be a constant".format(var)
+        raise e.ExprError(mess, var)
+
+
+def sig(var, codom):
+    """Create the term
+    Sig x:A.B from its constituents
+    
+    Arguments:
+    - `var`: a constant expr
+    - `codom`: an expression possibly containing var
+    """
+    if var.is_const():
+        codom_abs = abstract_expr([var.name], codom)
+        return e.Bound(e.Sig(var.name), var.type, codom_abs)
+    else:
+        mess = "Expected {0!s} to be a constant".format(var)
+        raise e.ExprError(mess, var)
+
+
+def true():
+    """The true constant.
+    """
+    return e.Const('true', e.Bool())
+
+
+def false():
+    """The false constant.
+    """
+    return e.Const('false', e.Bool())
+
+
+def nullctxt():
+    """The empty telescope
+    """
+    return e.Tele([], [])
+
+
+def trivial():
+    """The trivial evidence term
+    """
+    return e.Ev(nullctxt())

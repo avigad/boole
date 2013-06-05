@@ -28,7 +28,7 @@ def head_beta(expr):
     """
     if expr.is_app() and expr.fun.is_bound() and \
            expr.fun.binder.is_abst():
-        return subst_expr([expr.arg], expr.fun.expr)
+        return subst_expr([expr.arg], expr.fun.body)
     elif expr.is_fst() and expr.expr.is_pair():
         return expr.expr.fst
     elif expr.is_snd() and expr.expr.is_pair():
