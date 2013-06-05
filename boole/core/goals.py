@@ -250,6 +250,34 @@ class Destruct(Tactic):
 destruct = Destruct()
 
 
+class Logic(Tactic):
+    """Applies some simple logical facts.
+    """
+    
+    def __init__(self):
+        Tactic.__init__(self, 'logic')
+        
+    def solve(self, goal, context):
+        """
+        
+        Arguments:
+        - `goal`:
+        - `context`:
+        """
+        tele = goal.tele
+        prop = goal.prop
+        if prop.is_sub():
+            if prop.lhs.is_const():
+                if prop.lhs.name == 'true':
+                    return [Goal(tele, prop.rhs)]
+                elif prop.lhs.name == 'false':
+                    return []
+        return [goal]
+
+
+logic = Logic()
+
+
 class trytac(Tactic):
     """Takes a tactic as input, and returns the
     tactic that tries to apply tac and does
@@ -316,9 +344,10 @@ class repeat(Tactic):
     last obtained goal list.
     """
     
-    def __init__(self, tac):
+    def __init__(self, tac, fail=None):
         Tactic.__init__(self, "repeat {0!s}".format(tac))
         self.tac = tac
+        self.fail = fail
         
     def solve(self, goal, context):
         goals = [goal]
@@ -327,8 +356,12 @@ class repeat(Tactic):
                 goals = [gtac for g in goals\
                          for gtac in self.tac.solve(g, context)]
             return goals
-        except TacticFailure:
-            return goals
+        except TacticFailure as f:
+            if self.fail:
+                raise f
+            else:
+                return goals
+
 
 class Idtac(Tactic):
     """The tactic that does nothing, simply return the goal.
@@ -341,6 +374,30 @@ class Idtac(Tactic):
         return [goal]
 
 idtac = Idtac()
+
+
+class now(Tactic):
+    """Tries to apply the tactic, and fails if the goal
+    is unsolved
+    """
+    
+    def __init__(self, tac):
+        """
+        
+        Arguments:
+        - `tac`: a tactic
+        """
+        Tactic.__init__(self, "now {0!s}".format(tac))
+        self.tac = tac
+
+    def solve(self, goal, context):
+        new_goal = self.tac.solve(goal, context)
+        if len(new_goal) == 0:
+            return new_goal
+        else:
+            mess = "Tactic {0!s} did not solve {1!s}"\
+            .format(self.tac, goal)
+            raise TacticFailure(mess, self, goal)
 
 
 class unfold(Tactic):
@@ -373,8 +430,8 @@ class unfold(Tactic):
 
             return [self.sub_in(exprs, self.names, goal)]
 
-        
-        
+
+auto = logic >> simpl >> trivial
 
 
 ##############################################################################
@@ -433,6 +490,15 @@ class Goals(object):
         new_goals = [g_new for g in self.goals\
                      for g_new in tactic.solve(g, self.context)]
         self.goals = new_goals
+
+    def interact(self, tactic):
+        """Apply the tactic and print the goal
+        
+        Arguments:
+        - `tactic`:
+        """
+        self.solve_with(tactic)
+        print self
 
 
 def empty_goals(name, context):

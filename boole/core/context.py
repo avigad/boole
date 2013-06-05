@@ -42,7 +42,7 @@ def init_context():
         'classes'         :{},\
         'class_def'       :{},\
         'class_instances' :{},\
-        'unsolved_goals'  :{},\
+        'goals'           :{},\
         'parent_contexts' :{}
         }
     return ctxt

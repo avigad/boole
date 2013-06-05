@@ -23,13 +23,16 @@ if __name__ == '__main__':
     z = real('z')
 
     X = Type_('X')
-    X.info.update(StTyp())
 
     poly = defconst('poly', pi(X, X >> (X >> X)))
 
     poly_z = defexpr('poly_z', poly(z))
+    
+    print local_ctxt.defs['poly_z']
 
     nat = deftype('nat')
+    
+    nat_sub_real = defsub('nat_sub_real', nat <= real)
 
     def ii(n):
         if isinstance(n, int) and n >= 0:
@@ -37,7 +40,33 @@ if __name__ == '__main__':
         else:
             raise Exception("Expected a non-negative integer!")
 
+    Y = deftype('Y')
+
+    binop = Y >> (Y >> Y)
+
+    op = defconst('op', binop)
+
+    ibinop = X >> (X >> X)
+    ibinop.info['implicit'] = True
+
+    iop = defconst('op', ibinop)
+
+    Mul = defclass('Mul', pi(Y, pi(op, Bool)))
+
+    mul_app = Mul(X, iop)
+    mul_app.info['implicit'] = True
+
+    mul = defconst('mul', pi(X, pi(iop, mul_app >> (X >> (X >> X)))))
+
+    nat_mul = defconst('nat_mul', nat >> (nat >> nat))
+
+    definstance('mul_nat', Mul(nat, nat_mul))
+
+    test = defexpr('test', mul(ii(3), ii(2)))
+
     n = nat('n')
+
+    print n
     
     Vec = defconst('Vec', pi(n, Type))
 
@@ -52,10 +81,6 @@ if __name__ == '__main__':
     v3 = defconst('v3', Vec(three))
 
     rev_3 = defexpr('rev_3', rev(v3))
-
-    nat = deftype('nat')
-
-    nat_sub_real = defsub('nat_sub_real', nat <= real)
 
     x = nat('x')
     y = nat('y')

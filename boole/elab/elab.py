@@ -49,6 +49,10 @@ class Mvar(expr_base.Expr):
         - `val`: an expression
         """
         self.value = val
+        #update the info field to correspond to that
+        #of the value: this makes mvar substitution
+        #behave correctly with respect to info
+        self.info.update(val.info)
 
     def to_string(self):
         return "?{0!s}".format(self.name)
@@ -71,9 +75,50 @@ class MvarSubst(e.SubstExpr):
         return expr
 
 
+#A bit of code duplication here
 def subst_expr(exprs, expr):
     subster = MvarSubst(exprs)
     return subster.visit(expr, 0)
+
+
+def open_expr(var, typ, expr, checked=None):
+    if checked == None:
+        const = e.Const(var, typ, checked=True)
+    else:
+        const = e.Const(var, typ, checked=checked)
+    return subst_expr([const], expr)
+
+
+def open_bound_fresh(expr, checked=None):
+    var = e.fresh_name.get_name(expr.binder.var)
+    return (var, open_expr(var, expr.dom, expr.body, checked=checked))
+
+
+def open_tele(tele, vars, checked=False):
+    """Takes a telescope and returns a list of pairs
+    (constant, type) where the subsequent types may depend
+    on the constant.
+    
+    Arguments:
+    - `tele`:
+    """
+    opened_ty = tele.types
+    consts = []
+    for i in range(0, tele.len):
+        opened_ty[i] = subst_expr(consts, opened_ty[i])
+        x = e.Const(vars[i], opened_ty[i], checked=checked)
+        consts.append(x)
+    return (consts, opened_ty)
+
+
+def open_tele_fresh(tele, checked=False):
+    """Open a telescope with fresh variables
+    
+    Arguments:
+    - `tele`: a telescope
+    """
+    fr_vars = [e.fresh_name.get_name(v) for v in tele.vars]
+    return open_tele(tele, fr_vars, checked=checked)
 
 
 class MvarInfer(t.ExprInfer):
@@ -86,6 +131,8 @@ class MvarInfer(t.ExprInfer):
         t.ExprInfer.__init__(self)
         self.check = MvarCheck
         self.sub = subst_expr
+        self.open_fresh = open_bound_fresh
+        self.open_tele_fresh = open_tele_fresh
 
     def visit_mvar(self, expr, constrs, *args, **kwargs):
         sort = self.visit(expr.type, constrs, *args, **kwargs)
@@ -98,8 +145,8 @@ class MvarInfer(t.ExprInfer):
                 constrs.append(goals.Goal(expr.tele, expr.type))
             return expr.type
         else:
-            mess = 'The type of {0!s} is {1!s} '
-            'which should be Type, Kind or Bool'\
+            mess = "The type of {0!s} is {1!s} "
+            "which should be Type, Kind or Bool"\
                    .format(expr.type, sort)
             raise t.ExprTypeError(mess, expr)
         
@@ -182,8 +229,6 @@ def app_expr(f, f_ty, conv, args):
         if rem_ty.is_bound() and rem_ty.binder.is_pi()\
            and rem_ty.dom.info.implicit:
             mvar = mk_meta(rem_ty.binder.var, rem_ty.dom)
-            # mconv = mk_meta('{0!s}_conv'.format(mvar.name), \
-            #                 e.Sub(rem_ty.dom, rem_ty.dom))
             #For now we generate the trivial evidence.
             #If more information is needed, we need to go through the whole
             #term to collect local information (variables), to add them

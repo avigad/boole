@@ -16,9 +16,6 @@
 
 from expr_base import *
 
-
-
-
 ##############################################################################
 #
 # Expressions and types: these implement the term language of a dependent,
@@ -831,7 +828,8 @@ def open_tele(tele, vars, checked=False):
         consts.append(x)
     return (consts, opened_ty)
 
-def open_tele_with_default(tele):
+
+def open_tele_default(tele):
     """Open a telescope with the default variables provided by
     the telescope definition.
     
@@ -841,13 +839,13 @@ def open_tele_with_default(tele):
     return open_tele(tele, tele.vars)
 
 
-def open_tele_with_fresh(tele, checked=False):
+def open_tele_fresh(tele, checked=False):
     """Open a telescope with fresh variables
     
     Arguments:
     - `tele`: a telescope
     """
-    fr_vars = [fresh_name.get_name(name = v) for v in tele.vars]
+    fr_vars = [fresh_name.get_name(v) for v in tele.vars]
     return open_tele(tele, fr_vars, checked=checked)
 
 
@@ -918,8 +916,6 @@ class ExprVisitor(object):
         - `expr`: an expression
         """
         return expr.accept(self, *args, **kwargs)
-
-
 
 
 ###############################################################################
@@ -1189,7 +1185,24 @@ def open_bound_fresh(expr, checked=None):
     return (var, open_expr(var, expr.dom, expr.body, checked=checked))
 
 
-def pi(var, codom):
+def root_app(expr):
+    """Returns the pair (r, args)
+    where expr = r(*args)
+    
+    Arguments:
+    - `expr`: an expression
+    """
+    root = expr
+    args = []
+    while root.is_app():
+        args.append(root.arg)
+        root = root.fun
+        #The arguments were collected in reverse order
+    args.reverse()
+    return (root, args)
+
+
+def pi(*args):
     """Create the term
     Pi x:A.B from its constituents
     
@@ -1197,12 +1210,22 @@ def pi(var, codom):
     - `var`: a constant expr
     - `codom`: an expression possibly containing var
     """
-    if var.is_const():
-        codom_abs = abstract_expr([var.name], codom)
-        return Bound(Pi(var.name), var.type, codom_abs)
+    if len(args) == 2:
+        var = args[0]
+        codom = args[1]
+        if var.is_const():
+            codom_abs = abstract_expr([var.name], codom)
+            return Bound(Pi(var.name), var.type, codom_abs)
+        else:
+            mess = "Expected {0!s} to be a constant".format(var)
+            raise ExprError(mess, var)
+    elif len(args) == 3:
+        name = args[0]
+        dom = args[1]
+        codom = args[2]
+        return Bound(Pi(name), dom, codom)
     else:
-        mess = "Expected {0!s} to be a constant".format(var)
-        raise ExprError(mess, var)
+        raise Exception("Wrong number of arguments!")
 
 
 def abst(var, body):

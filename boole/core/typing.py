@@ -81,6 +81,8 @@ class ExprInfer(ExprVisitor):
         ExprVisitor.__init__(self)
         self.check = ExprCheck
         self.sub = subst_expr
+        self.open_fresh = open_bound_fresh
+        self.open_tele_fresh = open_tele_fresh
 
     def visit_const(self, expr, *args, **kwargs):
         if expr.info.checked:
@@ -90,7 +92,8 @@ class ExprInfer(ExprVisitor):
             if is_sort(sort):
                 return expr.type
             else:
-                mess = 'The type of {0!s} is {1!s} which should be Type, Kind or Bool'\
+                mess = 'The type of {0!s} is {1!s}"\
+                " which should be Type, Kind or Bool'\
                        .format(expr.type, sort)
                 raise ExprTypeError(mess, expr)
 
@@ -117,7 +120,7 @@ class ExprInfer(ExprVisitor):
             or have as type a sort".format(expr.dom, dom_ty)
             raise ExprTypeError(mess, expr)
         #substitute a fresh constant in the body of the binder
-        var, open_expr = open_bound_fresh(expr)
+        var, open_expr = self.open_fresh(expr)
         #compute the type of the resulting expression
         expr_ty = self.visit(open_expr, *args, **kwargs)
         #Infer the type for each different binder
@@ -212,7 +215,7 @@ class ExprInfer(ExprVisitor):
         #There is no need to check that the constants
         # are well-kinded as this will be done when
         # checking each type in the telescope.
-        open_tel = open_tele_with_fresh(expr, checked=True)[1]
+        open_tel = self.open_tele_fresh(expr, checked=True)[1]
         sorts = []
         for ty in open_tel:
             sorts.append(self.visit(ty, *args, **kwargs))
@@ -501,15 +504,11 @@ if __name__ == "__main__":
 
     nullctxt = Tele([], [])
 
-    unit = Const('unit', Type())
-
-    dummy = Const('_', unit)
-
     def app(fun, arg):
         return App(Ev(nullctxt), fun, arg)
 
     def ty_prod(ty1, ty2):
-        return sig(dummy, ty1, ty2)
+        return sig(Const('_', ty1), ty2)
 
     nat = Const('nat', Type())
 
@@ -530,9 +529,9 @@ if __name__ == "__main__":
     # print natpair.equals(natpair)
 
     def arrow(dom, codom):
-        return pi(dummy, dom, codom)
+        return pi(Const('_', dom), codom)
     
-    plusty = pi(dummy, natpair, nat)
+    plusty = pi(Const('_', natpair), nat)
 
     print plusty, ':', infer(plusty)[0]
     print 'With obligations:\n', infer(plusty)[1]

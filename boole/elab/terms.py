@@ -36,16 +36,10 @@ def print_app(expr):
         fun = expr.fun.fun
         return  "({0!s} {1!s} {2!s})".format(lhs, fun, rhs)
     else:
-        rem_tm = expr
-        args = []
-        while rem_tm.is_app():
-            args.append(rem_tm.arg)
-            rem_tm = rem_tm.fun
-        #The arguments were collected in reverse order
-        args.reverse()
+        root, args = root_app(expr)
         args_str = map(str, args)
         args_str = ", ".join(args_str)
-        return "{0!s}({1!s})".format(rem_tm, args_str)
+        return "{0!s}({1!s})".format(root, args_str)
 
     
 def print_pair(expr):
@@ -158,7 +152,7 @@ class StExpr(ExprInfo):
     def __init__(self):
         """
         """
-        ExprInfo.__init__(self, {})
+        ExprInfo.__init__(self, 'st_expr', {})
 
 
 st_term = infobox(None)
@@ -174,20 +168,22 @@ def pair(expr1, expr2):
     Arguments:
     - `args`: a list of expressions.
     """
-    ty1 = typing.infer(expr1)[0]
-    ty2 = typing.infer(expr2)[0]
+    ty1 = typing.infer(expr1, ctxt=local_ctxt)[0]
+    ty2 = typing.infer(expr2, ctxt=local_ctxt)[0]
     return Pair(expr1, expr2, typ_mul(ty1, ty2))
 
 
 @with_info(st_term)
 def tm_call(fun, *args):
-    """
+    """Return the result of the application of
+    fun to the arguments *args, using trivial
+    conversion certificates.
     
     Arguments:
-    - `fun`:
-    - `arg`:
+    - `fun`: an expression
+    - `arg`: a list of expresstions
     """
-    fun_typ = typing.infer(fun)[0]
+    fun_typ, obl = typing.infer(fun, ctxt=local_ctxt)
     conv = [trivial()] * len(args)
     return elab.app_expr(fun, fun_typ, conv, args)
     
@@ -237,6 +233,7 @@ class StTerm(StExpr):
     
     def __init__(self):
         StExpr.__init__(self)
+        self.name = 'st_term'
         self.info['__call__'] = tm_call
         self.info['__add__'] = add_tm
         self.info['__mul__'] = mul_tm
@@ -273,6 +270,7 @@ class StTyp(StExpr):
     
     def __init__(self):
         StExpr.__init__(self)
+        self.name = 'st_typ'
         self.info['__call__'] = typ_call
         self.info['__mul__'] = typ_mul
         self.info['__rshift__'] = type_arrow
@@ -283,7 +281,7 @@ st_typ._info = StTyp()
 
 
 @with_info(st_typ)
-def mktype(name, implicit=False):
+def mktype(name, implicit=None):
     """
     
     Arguments:
@@ -318,7 +316,7 @@ def deftype(name, implicit=None):
     return c
 
 
-def defconst(name, type, infix=None, tactic=None):
+def defconst(name, type, infix=None, tactic=None, implicit=None):
     """Define a constant, add it to
     local_ctxt and return it.
     
@@ -330,24 +328,26 @@ def defconst(name, type, infix=None, tactic=None):
     c = const(name, type, infix=infix)
     
     #first try to solve the meta-vars in the type of c
-    _, obl = elab.mvar_infer(c)
+    _, obl = elab.mvar_infer(c, ctxt=local_ctxt)
     obl.solve_with(unif.unify)
     #Now update the meta-variables of the type of c
     #fail if there are undefined meta-vars.
     c.type = unif.sub_mvar(type, undef=True)
+    if implicit:
+        c.type.info['implicit'] = True
     
     #Now type check the resulting term and try to solve the
     #TCCs
-    _, obl = typing.infer(c)
+    _, obl = typing.infer(c, ctxt=local_ctxt)
     if tactic is None:
-        obl.solve_with(goals.trivial)
+        obl.solve_with(goals.auto)
     else:
         obl.solve_with(tactic)
     local_ctxt.add_const(c)
     if obl.is_solved():
         print "{0!s} : {1!s} is assumed.\n".format(c, type)
     else:
-        local_ctxt.add_to_field(obl.name, obl, 'unsolved_goals')
+        local_ctxt.add_to_field(obl.name, obl, 'goals')
         print "In the declaration:\n{0!s} : {1!s}".format(name, type)
         print "remaining type-checking constraints!"
         print obl
@@ -367,23 +367,24 @@ def defexpr(name, value, type=None, tactic=None):
     - `value`: an expression
     """
     if type is None:
-        _, obl = elab.mvar_infer(value)
+        _, obl = elab.mvar_infer(value, ctxt=local_ctxt)
     else:
-        _, obl = elab.mvar_infer(value, type=type)
+        _, obl = elab.mvar_infer(value, type=type, ctxt=local_ctxt)
 
     obl.solve_with(unif.unify)
+
     val = unif.sub_mvar(value, undef=True)
 
     if not (type is None):
         ty = unif.sub_mvar(type, undef=True)
     
     if type is None:
-        ty, obl = typing.infer(val)
+        ty, obl = typing.infer(val, ctxt=local_ctxt)
     else:
-        ty, obl = typing.infer(val, type=ty)
+        ty, obl = typing.infer(val, type=ty, ctxt=local_ctxt)
 
     if tactic is None:
-        obl.solve_with(goals.trivial)
+        obl.solve_with(goals.auto)
     else:
         obl.solve_with(tactic)
 
@@ -400,7 +401,7 @@ def defexpr(name, value, type=None, tactic=None):
     if obl.is_solved():
         print "{0!s} : {1!s} is defined.\n".format(c, ty)
     else:
-        local_ctxt.add_to_field(obl.name, obl, 'unsolved_goals')
+        local_ctxt.add_to_field(obl.name, obl, 'goals')
         print "In the definition\n"
         " {0!s} = {1!s} : {2!s}".format(name, val, ty)
         print "remaining type-checking constraints!"
@@ -417,7 +418,7 @@ def defhyp(name, prop):
     - `prop`: the proposition
     """
     c = defconst(name, prop)
-    typing.infer(c.type, type=Bool)
+    typing.infer(c.type, type=Bool, ctxt=local_ctxt)
     local_ctxt.add_to_field(name, c.type, 'hyps')
     return c
 
@@ -434,8 +435,44 @@ def defsub(name, prop):
         local_ctxt.add_to_field(name, c.type, 'sub')
         return c
     else:
-        raise Exception("Error in definition {0!s}:"
-        "expected a proposition of the form A <= B".format(name))
+        raise Exception("Error in definition {0!s}:"\
+                        "expected a proposition of the form A <= B"\
+                        .format(name))
+
+
+#TODO: give a definition as well.
+def defclass(name, ty):
+    """Define a type class with the given name and type
+    
+    Arguments:
+    - `name`: a string
+    - `ty`: an expression
+    """
+    c = defconst(name, ty)
+    c.info['is_class'] = True
+    local_ctxt.add_to_field(name, c.type, 'classes')
+    return c
+
+
+#TODO: give a definition as well.
+#TODO: should an instance be a hypothesis?
+def definstance(name, ty):
+    """
+    
+    Arguments:
+    - `name`: a string
+    - `ty`: a type of the form ClassName(t1,...,tn)
+    """
+    c = defconst(name, ty)
+    root, _ = root_app(ty)
+    if root.info.is_class:
+        local_ctxt.add_to_field(name, c.type, 'class_instances')
+        local_ctxt.add_to_field(name, c.type, 'hyps')
+        return c
+    else:
+        raise Exception("Error in definition of {0!s}:"\
+                        "expected {1!s} to be a class name"\
+                        .format(name, root))
 
 
 ###############################################################################
@@ -465,7 +502,7 @@ neg = defconst('neg', Bool >> Bool)
 
 #This is equivalent to the constant returned by the
 # true() function in expr.py, as constants are only compared
-# by name. As a result, it is proven using the trivial tactic
+# by name. As a result, it is proven using the auto tactic
 true = defconst('true', Bool)
 
 false = defconst('false', Bool)
@@ -475,3 +512,8 @@ false = defconst('false', Bool)
 Type_ = expr.Type()
 Type_.info.update(StTyp())
 Type_.info['implicit'] = True
+
+
+Bool_ = expr.Bool()
+Bool_.info.update(StTyp())
+Bool_.info['implicit'] = True

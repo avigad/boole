@@ -19,13 +19,15 @@ class ExprInfo(object):
     attached to expressions
     """
     
-    def __init__(self, info):
+    def __init__(self, name, info):
         """
         
         Arguments:
+        - `name`: the name of the info instance
         - `info`: a python dictionary from strings
         to functions from expressions to objects.
         """
+        self.name = name
         self.info = info
         
     def __getitem__(self, key):
@@ -69,6 +71,9 @@ class ExprInfo(object):
         """
         return self.info.__delitem__(key)
 
+    def __str__(self):
+        return self.name
+
     def update(self, info):
         """Add the new fields in info to self
         
@@ -104,7 +109,7 @@ class DefaultInfo(ExprInfo):
     """
     
     def __init__(self):
-        ExprInfo.__init__(self, {})
+        ExprInfo.__init__(self, 'default', {})
         self.info['__str__'] = lambda x: x.to_string()
         self.info['checked'] = False
 
@@ -128,11 +133,9 @@ class infobox(object):
         self._info = info
 
     def info(self):
-        """
+        """returns the _info field when requested
         """
         return self._info
-
-
 
 
 #TODO: make this more elegant
@@ -147,6 +150,7 @@ def with_info(infobx):
         def call_f(*args, **kwargs):
             e = f(*args, **kwargs)
             e.info.update(infobx.info())
+            e.info.name = infobx.info().name
             for k in kwargs:
                 e.info[k] = kwargs[k]
             return e
