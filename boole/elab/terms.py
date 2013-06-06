@@ -20,7 +20,7 @@ import boole.core.expr as e
 import boole.core.typing as typing
 import boole.core.goals as goals
 import elab
-from elab import app_expr, mvar_infer, open_expr
+from elab import app_expr, mvar_infer, open_expr, sub_mvar
 import unif
 
 ###############################################################################
@@ -142,6 +142,13 @@ def print_type():
     return "Type"
 
 
+def print_ev(expr):
+    if len(expr.tele) == 0:
+        return "trivial()"
+    else:
+        return expr.to_string()
+
+
 def str_typ(expr):
     if expr.is_app():
         return print_app(expr)
@@ -179,6 +186,8 @@ def str_tm(expr):
         return print_eq(expr)
     elif expr.is_bound():
         return print_bound(expr)
+    elif expr.is_ev():
+        return print_ev(expr)
     else:
         return expr.to_string()
 
@@ -422,7 +431,7 @@ def defconst(name, type, infix=None, tactic=None, implicit=None):
     obl.solve_with(unif.unify)
     #Now update the meta-variables of the type of c
     #fail if there are undefined meta-vars.
-    c.type = unif.sub_mvar(type, undef=True)
+    c.type = sub_mvar(type, undef=True)
     if implicit:
         c.type.info['implicit'] = True
     
@@ -438,7 +447,7 @@ def defconst(name, type, infix=None, tactic=None, implicit=None):
         print "{0!s} : {1!s} is assumed.\n".format(c, c.type)
     else:
         local_ctxt.add_to_field(obl.name, obl, 'goals')
-        print "In the declaration:\n{0!s} : {1!s}".format(name, type)
+        print "In the declaration:\n{0!s} : {1!s}".format(name, c.type)
         print "remaining type-checking constraints!"
         print obl
     return c
@@ -463,10 +472,10 @@ def defexpr(name, value, type=None, tactic=None):
 
     obl.solve_with(unif.unify)
 
-    val = unif.sub_mvar(value, undef=True)
+    val = sub_mvar(value, undef=True)
 
     if not (type is None):
-        ty = unif.sub_mvar(type, undef=True)
+        ty = sub_mvar(type, undef=True)
     
     if type is None:
         ty, obl = typing.infer(val, ctxt=local_ctxt)
@@ -489,7 +498,7 @@ def defexpr(name, value, type=None, tactic=None):
     local_ctxt.add_to_field(name, val, 'defs')
 
     if obl.is_solved():
-        print "{0!s} : {1!s} is defined.\n".format(c, ty)
+        print "{0!s} : {1!s} := {2!s} is defined.\n".format(c, ty, val)
     else:
         local_ctxt.add_to_field(obl.name, obl, 'goals')
         print "In the definition\n"\

@@ -1061,7 +1061,8 @@ class SubstExpr(ExprVisitor):
         elif expr.index < depth + self.len:
             return self.exprs[expr.index - depth]
         else:
-            raise ExprError("Unbound DB variable", expr)
+            return DB(expr.index)
+            # raise ExprError("Unbound DB variable", expr)
            
     def visit_type(self, expr, *args, **kwargs):
         return Type()

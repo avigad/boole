@@ -27,24 +27,14 @@ if __name__ == '__main__':
     poly = defconst('poly', pi(X, X >> (X >> X)))
 
     poly_z = defexpr('poly_z', poly(z))
-    
-    print local_ctxt.defs['poly_z']
 
     nat = deftype('nat')
     
     nat_sub_real = defsub('nat_sub_real', nat <= Real)
 
-    # def ii(n):
-    #     if isinstance(n, int) and n >= 0:
-    #         return defconst(str(n), Int)
-    #     else:
-    #         raise Exception("Expected a non-negative integer!")
-
     Y = deftype('Y')
 
-    binop = Y >> (Y >> Y)
-
-    op = defconst('op', binop)
+    op = defconst('op', Y >> (Y >> Y))
 
     ibinop = X >> (X >> X)
     ibinop.info['implicit'] = True
@@ -90,7 +80,10 @@ if __name__ == '__main__':
 
     b = defconst('b', Real)
 
-    add_cons = defhyp('add_cons', sum_vec(cons(a, v1), cons(b, v2)) == cons(a+b, sum_vec(v1, v2)))
+    add_cons_eq = sum_vec(cons(a, v1), cons(b, v2)) == cons(a+b, sum_vec(v1, v2))
+
+    add_cons = defhyp('add_cons', \
+                      forall(m, forall(a, forall(b, forall(v1, forall(v2, add_cons_eq))))))
 
 
     rev = defconst('rev', pi(m, Vec(m) >> Vec(m)))
@@ -106,8 +99,6 @@ if __name__ == '__main__':
     t = Real('t')
 
     abs_plus = defexpr('abs_plus', abst(t, t + w))
-
-    print abs_plus
 
     typing.check(abs_plus(x), context=local_ctxt)
     
@@ -146,11 +137,9 @@ if __name__ == '__main__':
             print expr, " is not a constant!"
             print
 
-    x_plus_one = defexpr('x_plus_one', x + 1, Real)
+
 
     definition_of(plus_commut_stmt)
-
-    definition_of(x_plus_one)
 
     plus_commut = defexpr('plus_commut', trivial(), fa)
 
@@ -158,16 +147,4 @@ if __name__ == '__main__':
 
     proj_x_y_0 = defexpr('proj_x_y_0', trivial(), p[0] == x, tactic=goals.simpl)
 
-    boolop = Bool * Bool >> Bool
-
-    typeop = Type * Type >> Type
-
-    typing.check(boolop)
-    print
-    typing.check(typeop)
-    print
     typing.check(conj(true, disj(true, false)))
-    print
-    print p[1]
-    print conv.par_beta(p[0])
-    print conv.par_beta(p[1])

@@ -226,10 +226,10 @@ class Destruct(Tactic):
                 # Pi(x:A, B) <= Pi(x:C, D) is simplified to
                 # A <= C and C <= A and B(x) <= D(x)
                 var = fresh_name.get_name(lhs.binder.var)
-                codom_l = expr.open_expr(var, lhs.dom, lhs.expr)
+                codom_l = expr.open_expr(var, lhs.dom, lhs.body)
                 #We use the same domain here, as they must be equal
                 # anyways
-                codom_r = expr.open_expr(var, lhs.dom, rhs.expr)
+                codom_r = expr.open_expr(var, lhs.dom, rhs.body)
                 dom_goals = eq_goal(tele, lhs.dom, rhs.dom)
                 codom_goal = sub_goal(tele, codom_l, codom_r)
                 return dom_goals + codom_goal

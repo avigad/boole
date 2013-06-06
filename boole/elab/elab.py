@@ -16,9 +16,65 @@ import boole.core.expr as e
 import boole.core.typing as t
 import boole.core.vargen as vargen
 import boole.core.context as context
+import boole.core.info as info
 import boole.core.goals as goals
 
 meta_var_gen = vargen.VarGen()
+
+##############################################################################
+#
+# The type of Pending substitution and abstraction operations.
+# These are performed as the meta-variable is instanciated to a value
+#
+##############################################################################
+
+
+class Pending(object):
+    pass
+
+
+class PendAbs(Pending):
+    """A pending abstraction
+    """
+    
+    def __init__(self, names, depth):
+        """
+        
+        Arguments:
+        - `names`:
+        """
+        self.names = names
+        self.depth = depth
+        
+    def now(self, expr):
+        """Evaluate the abstraction
+        
+        Arguments:
+        - `expr`:
+        """
+        return MvarAbst(self.names).visit(expr, self.depth)
+
+
+class PendSub(Pending):
+    """A pending Substitution
+    """
+    
+    def __init__(self, exprs, depth):
+        """
+        
+        Arguments:
+        - `names`:
+        """
+        self.exprs = exprs
+        self.depth = depth
+
+    def now(self, expr):
+        """Evaluate the substitution
+        
+        Arguments:
+        - `expr`:
+        """
+        return MvarSubst(self.exprs).visit(expr, self.depth)
 
 ##############################################################################
 #
@@ -41,8 +97,9 @@ class Mvar(expr_base.Expr):
         expr_base.Expr.__init__(self)
         self.name = name
         self.type = type
-        self.value = None
+        self._value = None
         self.tele = nullctxt()
+        self.pending = []
         for k in kwargs:
             self.info[k] = kwargs[k]
         self.info['is_mvar'] = True
@@ -56,11 +113,11 @@ class Mvar(expr_base.Expr):
         Arguments:
         - `val`: an expression
         """
-        self.value = val
         #update the info field to correspond to that
         #of the value: this makes mvar substitution
         #behave correctly with respect to info
         self.info.update(val.info)
+        self._value = val
 
     def to_string(self):
         return "?{0!s}".format(self.name)
@@ -70,6 +127,19 @@ class Mvar(expr_base.Expr):
         #each meta-variable, so pointer equality is
         #sufficient
         return self is expr
+
+    def has_value(self):
+        """Returns True if the expression has a value
+        """
+        return not (self._value is None)
+
+    def value(self):
+        """Apply the pending operations and return the value
+        """
+        val = self._value
+        for p in self.pending:
+            val = p.now(val)
+        return val
 
 ##############################################################################
 #
@@ -84,14 +154,11 @@ class MvarAbst(e.AbstractExpr):
     def __init__(self, names):
         e.AbstractExpr.__init__(self, names)
 
-    def visit_mvar(self, expr, *args, **kwargs):
-        #return the actual object here, as we want values to
-        #be propagated
-        if not (expr.value is None):
-            expr.value = self.visit(expr.value, *args, **kwargs)
-            return expr
-        else:
-            return expr
+    def visit_mvar(self, expr, depth):
+        #return the actual object here, as we want the value to
+        #be propagated at each instance of the meta-variable
+        expr.pending.append(PendAbs(self.names, depth))
+        return expr
 
 
 class MvarSubst(e.SubstExpr):
@@ -99,14 +166,9 @@ class MvarSubst(e.SubstExpr):
     def __init__(self, exprs):
         e.SubstExpr.__init__(self, exprs)
 
-    def visit_mvar(self, expr, *args, **kwargs):
-        #return the actual object here, as we want values to
-        #be propagated
-        if not (expr.value is None):
-            expr.value = self.visit(expr.value, *args, **kwargs)
-            return expr
-        else:
-            return expr
+    def visit_mvar(self, expr, depth):
+        expr.pending.append(PendSub(self.exprs, depth))
+        return expr
 
 
 #A bit of code duplication here from expr.py
@@ -248,6 +310,186 @@ def mvar_infer(expr, type=None, ctxt=None):
             mess = "Expected {0!s} to be of type {1!s}"\
                    .format(expr, type)
             raise t.ExprTypeError(mess, expr)
+
+
+###############################################################################
+#
+# Utility functions for subtituting or locating an mvar in a term.
+#
+###############################################################################
+
+class SubMvar(e.ExprVisitor):
+    """Replace all meta-variables by their
+    value in a term.
+    
+    Arguments:
+    - `undef`: if this flag is set to True,
+    fail on unresolved meta-vars.
+    """
+    
+    def __init__(self, undef=None):
+        e.ExprVisitor.__init__(self)
+        self.undef = undef
+        
+    def visit_const(self, expr):
+        return expr
+
+    def visit_db(self, expr):
+        return expr
+
+    def visit_type(self, expr):
+        return expr
+
+    def visit_kind(self, expr):
+        return expr
+
+    def visit_bool(self, expr):
+        return expr
+
+    def visit_bound(self, expr):
+        dom = self.visit(expr.dom)
+        body = self.visit(expr.body)
+        return e.Bound(expr.binder, dom, body)
+
+    def visit_app(self, expr):
+        conv = self.visit(expr.conv)
+        fun = self.visit(expr.fun)
+        arg = self.visit(expr.arg)
+        return e.App(conv, fun, arg)
+
+    def visit_pair(self, expr):
+        fst = self.visit(expr.fst)
+        snd = self.visit(expr.snd)
+        type = self.visit(expr.type)
+        return e.Pair(fst, snd, type)
+
+    def visit_fst(self, expr):
+        return e.Fst(self.visit(expr.expr))
+
+    def visit_snd(self, expr):
+        return e.Snd(self.visit(expr.expr))
+
+    def visit_ev(self, expr):
+        return e.Ev(self.visit(expr.tele))
+
+    def visit_sub(self, expr):
+        lhs = self.visit(expr.lhs)
+        rhs = self.visit(expr.rhs)
+        return e.Sub(lhs, rhs)
+
+    def visit_box(self, expr):
+        conv = self.visit(expr.conv)
+        expr1 = self.visit(expr.expr)
+        type = self.visit(expr.type)
+        return e.Box(conv, expr1, type)
+
+    def visit_tele(self, expr):
+        types = [self.visit(t) for t in expr.types]
+        return e.Tele(expr.vars, types)
+
+    def visit_mvar(self, expr):
+        if expr.has_value():
+            if self.undef is None:
+                return expr._value
+            else:
+                return expr.value()
+        else:
+            if self.undef is None:
+                return expr
+            else:
+                mess = "Cannot find a value for {0!s}:{1!s}"\
+                       .format(expr, expr.type)
+                raise e.ExprError(mess, expr)
+
+    @info.same_info
+    def visit(self, expr, *args, **kwargs):
+        return expr.accept(self, *args, **kwargs)
+
+
+def sub_mvar(expr, undef=None):
+    """Replace all meta-variables by their
+    value in a term.
+    
+    Arguments:
+    - `undef`: if this flag is set to True,
+    fail on unresolved meta-vars.
+    """
+    return SubMvar(undef=undef).visit(expr)
+
+
+class MvarIsPresent(e.ExprVisitor):
+    """Determine if a meta-variable name is present in a term.
+    """
+    
+    def __init__(self, name=None):
+        e.ExprVisitor.__init__(self)
+        self.name = name
+        
+    def visit_const(self, expr):
+        pass
+
+    def visit_db(self, expr):
+        pass
+
+    def visit_type(self, expr):
+        pass
+
+    def visit_kind(self, expr):
+        pass
+
+    def visit_bool(self, expr):
+        return expr
+
+    def visit_bound(self, expr):
+        self.visit(expr.dom)
+        self.visit(expr.codom)
+
+    def visit_app(self, expr):
+        self.visit(expr.conv)
+        self.visit(expr.fun)
+        self.visit(expr.arg)
+
+    def visit_pair(self, expr):
+        self.visit(expr.fst)
+        self.visit(expr.snd)
+        self.visit(expr.type)
+
+    def visit_fst(self, expr):
+        self.visit(expr.expr)
+
+    def visit_snd(self, expr):
+        self.visit(expr.expr)
+
+    def visit_ev(self, expr):
+        self.visit(expr.tele)
+
+    def visit_sub(self, expr):
+        self.visit(expr.lhs)
+        self.visit(expr.rhs)
+
+    def visit_box(self, expr):
+        self.visit(expr.conv)
+        self.visit(expr.expr)
+        self.visit(expr.type)
+
+    def visit_tele(self, expr):
+        for t in expr.types:
+            self.visit(t)
+
+    def visit_mvar(self, expr):
+        if self.name != None:
+            if expr.name == self.name:
+                return True
+        else:
+            return True
+
+
+def mvar_is_present(expr, mvar=None):
+    if MvarIsPresent(name=mvar.name).visit(expr):
+        return True
+    else:
+        return False
+
 
 
 def app_expr(f, f_ty, conv, args):
