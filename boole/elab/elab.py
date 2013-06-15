@@ -133,13 +133,6 @@ class Mvar(expr_base.Expr):
         """
         return not (self._value is None)
 
-    def value(self):
-        """Apply the pending operations and return the value
-        """
-        val = self._value
-        for p in self.pending:
-            val = p.now(val)
-        return val
 
 ##############################################################################
 #
@@ -193,6 +186,16 @@ def open_expr(var, typ, expr, checked=None):
 def open_bound_fresh(expr, checked=None):
     var = e.fresh_name.get_name(expr.binder.var)
     return (var, open_expr(var, expr.dom, expr.body, checked=checked))
+
+
+def mvar_open_expr(var, typ, expr):
+    mvar = Mvar(var, typ)
+    return subst_expr([mvar], expr)
+
+
+def mvar_open_bound_fresh(expr):
+    var = meta_var_gen.get_name(expr.binder.var)
+    return (var, mvar_open_expr(var, expr.dom, expr.body))
 
 
 def open_tele(tele, vars, checked=False):
@@ -314,7 +317,7 @@ def mvar_infer(expr, type=None, ctxt=None):
 
 ###############################################################################
 #
-# Utility functions for subtituting or locating an mvar in a term.
+# Utility functions for manipulating a term with mvars.
 #
 ###############################################################################
 
@@ -387,12 +390,19 @@ class SubMvar(e.ExprVisitor):
         types = [self.visit(t) for t in expr.types]
         return e.Tele(expr.vars, types)
 
+    #TODO: make sure this is correct
     def visit_mvar(self, expr):
         if expr.has_value():
+            sub_val = self.visit(expr._value)
             if self.undef is None:
-                return expr._value
+                #we are in this case if we are still solving
+                #constraints: the instantiations should not be applied
+                #yet.
+                pass
             else:
-                return expr.value()
+                for p in expr.pending:
+                    sub_val = p.now(sub_val)
+            return sub_val
         else:
             if self.undef is None:
                 return expr
@@ -442,7 +452,7 @@ class MvarIsPresent(e.ExprVisitor):
 
     def visit_bound(self, expr):
         self.visit(expr.dom)
-        self.visit(expr.codom)
+        self.visit(expr.body)
 
     def visit_app(self, expr):
         self.visit(expr.conv)
@@ -491,6 +501,87 @@ def mvar_is_present(expr, mvar=None):
         return False
 
 
+class ClearMvar(e.ExprVisitor):
+    """Determine if a meta-variable name is present in a term.
+    """
+    
+    def __init__(self):
+        e.ExprVisitor.__init__(self)
+        
+    def visit_const(self, expr):
+        pass
+
+    def visit_db(self, expr):
+        pass
+
+    def visit_type(self, expr):
+        pass
+
+    def visit_kind(self, expr):
+        pass
+
+    def visit_bool(self, expr):
+        pass
+
+    def visit_bound(self, expr):
+        self.visit(expr.dom)
+        self.visit(expr.body)
+
+    def visit_app(self, expr):
+        self.visit(expr.conv)
+        self.visit(expr.fun)
+        self.visit(expr.arg)
+
+    def visit_pair(self, expr):
+        self.visit(expr.fst)
+        self.visit(expr.snd)
+        self.visit(expr.type)
+
+    def visit_fst(self, expr):
+        self.visit(expr.expr)
+
+    def visit_snd(self, expr):
+        self.visit(expr.expr)
+
+    def visit_ev(self, expr):
+        self.visit(expr.tele)
+
+    def visit_sub(self, expr):
+        self.visit(expr.lhs)
+        self.visit(expr.rhs)
+
+    def visit_box(self, expr):
+        self.visit(expr.conv)
+        self.visit(expr.expr)
+        self.visit(expr.type)
+
+    def visit_tele(self, expr):
+        for t in expr.types:
+            self.visit(t)
+
+    def visit_mvar(self, expr):
+        if expr._value is None:
+            pass
+        else:
+            expr._value = None
+
+
+def clear_mvar(expr):
+    """Reset the values of all the meta-vars
+    in expr to None. Returns expr.
+    
+    Arguments:
+    - `expr`: an expression
+    """
+    ClearMvar().visit(expr)
+    return expr
+
+
+###############################################################################
+#
+# utility functions for elaborating top-level expressions
+#
+###############################################################################
 
 def app_expr(f, f_ty, conv, args):
     """Applies a function to a list of

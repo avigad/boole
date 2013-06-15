@@ -15,7 +15,7 @@
 
 from boole.core.info import *
 from boole.core.context import *
-from boole.core.expr import Const, Sub, Pair, Fst, Snd, root_app
+from boole.core.expr import Const, Sub, Pair, Fst, Snd, root_app, root_clause
 import boole.core.expr as e
 import boole.core.typing as typing
 import boole.core.goals as goals
@@ -214,11 +214,14 @@ def pair(expr1, expr2):
     into a Pair.
     
     Arguments:
-    - `args`: a list of expressions.
+    - `expr1`: an expression or int or float
+    - `expr1`: an expression or int or float
     """
-    ty1 = typing.infer(expr1, ctxt=local_ctxt)[0]
-    ty2 = typing.infer(expr2, ctxt=local_ctxt)[0]
-    return Pair(expr1, expr2, typ_mul(ty1, ty2))
+    e1 = to_expr(expr1)
+    e2 = to_expr(expr2)
+    ty1 = typing.infer(e1, ctxt=local_ctxt)[0]
+    ty2 = typing.infer(e2, ctxt=local_ctxt)[0]
+    return Pair(e1, e2, typ_mul(ty1, ty2))
 
 
 @with_info(st_term)
@@ -291,11 +294,11 @@ class StTerm(StExpr):
         self.info['__eq__'] = eq_tm
         self.info['__str__'] = str_tm
 
-st_term._info = StTerm()
+st_term._info = StTerm
 
 
 @with_info(st_term)
-def const(name, type, infix=False):
+def const(name, type, infix=None):
     return Const(name, type)
 
 
@@ -326,7 +329,7 @@ class StTyp(StExpr):
         self.info['__str__'] = str_typ
         self.info['__le__'] = le_typ
 
-st_typ._info = StTyp()
+st_typ._info = StTyp
 
 
 @with_info(st_typ)
@@ -428,7 +431,9 @@ def defconst(name, type, infix=None, tactic=None, implicit=None):
     
     #first try to solve the meta-vars in the type of c
     _, obl = mvar_infer(c, ctxt=local_ctxt)
-    obl.solve_with(unif.unify)
+
+    unif.resolve_goals(obl)
+
     #Now update the meta-variables of the type of c
     #fail if there are undefined meta-vars.
     c.type = sub_mvar(type, undef=True)
@@ -470,7 +475,7 @@ def defexpr(name, value, type=None, tactic=None):
     else:
         _, obl = mvar_infer(value, type=type, ctxt=local_ctxt)
 
-    obl.solve_with(unif.unify)
+    unif.resolve_goals(obl)
 
     val = sub_mvar(value, undef=True)
 
@@ -555,7 +560,6 @@ def defclass(name, ty, defn):
     return c
 
 
-#TODO: should an instance be a hypothesis?
 def definstance(name, ty, value):
     """
     
@@ -563,7 +567,7 @@ def definstance(name, ty, value):
     - `name`: a string
     - `ty`: a type of the form ClassName(t1,...,tn)
     """
-    root, _ = root_app(ty)
+    root, _ = root_app(root_clause(ty))
     if root.info.is_class:
         class_name = root.name
         class_tac = goals.unfold(class_name) >> goals.auto
@@ -603,13 +607,12 @@ neg = defconst('neg', Bool >> Bool)
 #TODO: make Sub(p, q) print as p ==> q for terms of type bool
 # impl = defconst('==>', Bool * Bool >> Bool, infix=True)
 
-#This is equivalent to the constant returned by the
-# true() function in expr.py, as constants are only compared
+#This is equivalent to the constant given as type to terms
+# of the form Ev(tele), as constants are only compared
 # by name. As a result, it is proven using the auto tactic
 true = defconst('true', Bool)
 
 false = defconst('false', Bool)
-
 
 #Implicit type declarations
 Type_ = e.Type()

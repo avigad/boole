@@ -811,6 +811,17 @@ class Tele(BaseExpr):
     def __len__(self):
         return self.len
 
+    def append(self, var, ty):
+        """Add a variable and a type to the
+        telescope. Side-effect free:
+        returns a telescope
+        
+        Arguments:
+        - `var`: a variable
+        - `ty`: an expression
+        """
+        return Tele(self.vars + [var], self.types + [ty])
+
 
 def open_tele(tele, vars, checked=False):
     """Takes a telescope and returns a list of pairs
@@ -1151,7 +1162,7 @@ def sub_in(exprs, vars, expr):
 
 
 def open_expr(var, typ, expr, checked=None):
-    """Return the opened body of an expression
+    """Return the opened version of an expression
     with a bound variable, by substituting
     the bound name with a constant of type
     typ.
@@ -1186,7 +1197,7 @@ def open_bound_fresh(expr, checked=None):
 
 def root_app(expr):
     """Returns the pair (r, args)
-    where expr = r(*args)
+    such that expr = r(*args)
     
     Arguments:
     - `expr`: an expression
@@ -1199,3 +1210,19 @@ def root_app(expr):
         #The arguments were collected in reverse order
     args.reverse()
     return (root, args)
+
+
+def root_clause(expr):
+    """Returns r such that expr is of the form
+    forall(x1,...,forall(xn, p1 == (p2 == ... (pm == r))))
+    replacing xi with fresh variables
+    
+    Arguments:
+    - `expr`: an expression
+    """
+    root = expr
+    while root.is_bound() and root.binder.is_forall():
+        _, root = open_bound_fresh(root)
+    while root.is_sub():
+        root = root.rhs
+    return root

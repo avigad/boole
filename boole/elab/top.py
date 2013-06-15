@@ -21,6 +21,7 @@ from terms import *
 if __name__ == '__main__':
 
     z = Real('z')
+    w = Real('w')
 
     X = Type_('X')
 
@@ -35,18 +36,20 @@ if __name__ == '__main__':
     Y = deftype('Y')
 
     op = defconst('op', Y >> (Y >> Y))
-
+    
     ibinop = X >> (X >> X)
     ibinop.info['implicit'] = True
 
     iop = defconst('op', ibinop)
 
-    Mul = defclass('Mul', pi(Y, pi(op, Bool)), abst(Y, abst(op, true)))
+    Mul = defclass('Mul', pi(Y, pi('op', Y >> (Y >> Y), Bool)), abst(Y, abst(op, true)))
 
     mul_app = Mul(X, iop)
     mul_app.info['implicit'] = True
 
-    mul = defconst('mul', pi(X, pi(iop, mul_app >> (X >> (X >> X)))))
+    mul_ev = Const('mul_ev', mul_app)
+
+    mul = defexpr('mul', abst(X, abst(iop, abst(mul_ev, iop))))
 
     int_mul = defconst('int_mul', Int >> (Int >> Int))
 
@@ -54,6 +57,49 @@ if __name__ == '__main__':
 
     test = defexpr('test', mul(3, 2))
 
+    definstance('mul_real', Mul(Real, mult), trivial())
+
+    test2 = defexpr('test2', mul(3.0, 2.0))
+
+    A = deftype('A')
+    B = deftype('B')
+    op_a = defconst('op_a', A >> (A >> A))
+    op_b = defconst('op_b', B >> (B >> B))
+
+    p1 = defconst('p1', A*B)
+    p2 = defconst('p2', A*B)
+
+    op_pair = \
+            abst(p1, abst(p2, pair(op_a(p1[0], p2[0]), op_b(p1[1], p2[1]))))
+
+
+    definstance('mul_prod', \
+                forall(A, forall(op_a, forall(B, forall(op_b, \
+                Mul(A, op_a) == (Mul(B, op_b) == Mul(A*B, op_pair)))))), \
+                trivial())
+
+
+    test3 = mul(pair(3, 3.0), pair(2, 2.0))
+
+    ty, obl = elab.mvar_infer(test3, ctxt=local_ctxt)
+
+    print ty
+    print obl
+    obl.interact(goals.trivial)
+    obl.interact(goals.trytac(unif.solve_mvar))
+    obl.interact(unif.sub_mvar)
+    obl.interact(unif.mvar_unif(local_ctxt.class_instances['mul_prod']))
+
+    obl.interact(unif.sub_mvar)
+
+    obl.interact(unif.instances)
+
+    # unif.resolve_goals(obl)
+
+    # print obl
+
+    print elab.sub_mvar(test3, undef=True)
+    
     n = Int('n')
     
     Vec = defconst('Vec', pi(n, Type))

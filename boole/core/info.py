@@ -133,9 +133,9 @@ class infobox(object):
         self._info = info
 
     def info(self):
-        """returns the _info field when requested
+        """instanciates and returns the _info field when requested
         """
-        return self._info
+        return self._info()
 
 
 #TODO: make this more elegant

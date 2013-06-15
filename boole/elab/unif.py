@@ -39,6 +39,33 @@ class SubMvar(Tactic):
 sub_mvar = SubMvar()
 
 
+class DestructMvar(Destruct):
+    
+    def __init__(self, ):
+        Destruct.__init__(self)
+        self.open_expr = elab.open_expr
+
+
+destruct = DestructMvar()
+
+
+class ClearMvar(Tactic):
+    """Clear the values of all the meta-variables in the goal and
+    telescope
+    """
+    
+    def __init__(self):
+        Tactic.__init__(self, 'clear_mvar')
+
+    def solve(self, goal, context):
+        tele = elab.clear_mvar(goal.tele)
+        prop = elab.clear_mvar(goal.prop)
+        return [Goal(tele, prop)]
+        
+
+clear_mvar = ClearMvar()
+
+
 class SolveMvar(Tactic):
     """If a goal is of the form X <= T
     or T <= X, with X not in T, give the value
@@ -90,25 +117,36 @@ class SolveMvar(Tactic):
 solve_mvar = SolveMvar()
 
 
+#TODO: unsound with xi in empty domain
 class mvar_apply(Tactic):
-    """Generate an equality between the current goal
-    and the hypothesis and apply the unification tactic.
+    """Takes a hypothesis of the form
+    forall(x1,...,xn, p1 ==> ... pn ==> p)
+    and applies it to the goal r, generating
+    the goal
+    p[sub] ==> r
+    with [sub] sending each xi to a fresh meta-variable.
     """
     
     def __init__(self, hyp):
-        """
-        
-        Arguments:
-        - `hyp`: a term of type bool
-        """
-        Tactic.__init__(self, 'mvar_apply {0!s}'.format(hyp))
+        Tactic.__init__(self, 'mvar_apply')
         self.hyp = hyp
 
     def solve(self, goal, context):
-        tele = goal.tele
         prop = goal.prop
-        unif_pb = Goal(tele, e.Sub(self.hyp, prop))
-        return repeat(unif_step, fail=True).solve(unif_pb, context)
+        hyps = goal.tele
+        hyp = self.hyp
+        while hyp.is_bound() and hyp.binder.is_forall():
+            _, hyp = elab.mvar_open_bound_fresh(hyp)
+        new_goals = []
+        #TODO: add requirement that hyp.lhs is a Bool
+        while hyp.is_sub():
+            new_goals.append(Goal(hyps, hyp.lhs))
+            hyp = hyp.rhs
+        return sub_goal(hyps, hyp, prop) + new_goals
+
+
+def mvar_unif(hyp):
+    return mvar_apply(hyp) >> repeat(unif_step)
 
 
 class instance(Tactic):
@@ -134,7 +172,7 @@ class instance(Tactic):
         if root.info.is_class:
             if self.inst in context.class_instances:
                 inst_ty = context.class_instances[self.inst]
-                return mvar_apply(inst_ty).solve(goal, context)
+                return mvar_unif(inst_ty).solve(goal, context)
             else:
                 mess = "Instance {0!s} not found in context {1!s}"\
                        .format(self.inst, context)
@@ -159,7 +197,7 @@ class Instances(Tactic):
             try:
                 return now(instance(k)).solve(goal, context)
             except TacticFailure:
-                pass
+                clear_mvar.solve(goal, context)
         mess = "No class instances for goal {0!s}".format(goal)
         raise TacticFailure(mess, self, goal)
 
@@ -172,6 +210,30 @@ instances = Instances()
 ###############################################################################
 
 
-unif_step = sub_mvar >> trivial >> (solve_mvar | instances | destruct)
+unif_step = sub_mvar >> trivial >> (solve_mvar | destruct)
+
+
+def resolve(k):
+    return now(trytac(instance(k)) >> unify)
+
+# unif_step = sub_mvar >> trivial >> (solve_mvar | instances | destruct)
 
 unify = repeat(unif_step)
+
+
+def resolve_goals(g):
+    """Call resolve for each possible type-class and try to
+    solve the proof obligations
+    
+    Arguments:
+    - `g`: an instance of the goal class
+    """
+    insts = g.context.class_instances
+    # g.solve_with(unify)
+    for k in insts:
+        try:
+            g.solve_with(resolve(k))
+            break
+        except TacticFailure:
+            g.solve_with(clear_mvar)
+    g.solve_with(unify)

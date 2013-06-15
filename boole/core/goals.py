@@ -41,13 +41,14 @@ class Goal(object):
         self.prop = prop
         
     def __str__(self):
-        if len(self.tele) ==  0:
+        if len(self.tele) == 0:
             tele_string = ""
         else:
-            tele_string = str(self.tele)
+            tele_list = zip(self.tele.vars, self.tele.types)
+            tele_str_list = ["{0!s} : {1!s}".format(v, t)\
+                             for v, t in tele_list]
+            tele_string = ", ".join(tele_str_list)
         return "{0!s} |- {1!s}".format(tele_string, self.prop)
-
-
 
 ##############################################################################
 #
@@ -117,7 +118,7 @@ class Tactic(object):
         raise TacticFailure("Undefined tactic {0!s}"\
                             .format(self.name), self, goal)
 
-    def __show__(self):
+    def __str__(self):
         return self.name
 
     def __rshift__(self, tac):
@@ -164,6 +165,8 @@ class Trivial(Tactic):
         for h in hyps.types:
             if h.equals(prop):
                 return []
+            if h.is_const() and h.name == 'false':
+                return []
         glob_hyps = context.hyps
         for h in glob_hyps:
             if glob_hyps[h].equals(prop):
@@ -199,6 +202,7 @@ class Destruct(Tactic):
     
     def __init__(self):
         Tactic.__init__(self, 'destruct')
+        self.open_expr = expr.open_expr
 
     #TODO: refactor this code
     def solve(self, goal, context):
@@ -210,14 +214,14 @@ class Destruct(Tactic):
             lhs = prop.lhs
             rhs = prop.rhs
             if lhs.is_bound() and lhs.binder.is_sig()\
-                   and rhs.is_bound and rhs.binder.is_sig():
+                   and rhs.is_bound() and rhs.binder.is_sig():
                 lhs_dom = prop.lhs.dom
                 rhs_dom = prop.rhs.dom
                 fr_var = fresh_name.get_name(lhs.binder.var)
-                lhs_codom = expr.open_expr(fr_var, lhs_dom, lhs.body)
+                lhs_codom = self.open_expr(fr_var, lhs_dom, lhs.body)
                 #The lhs domain must be a subtype of the rhs domain
                 #for this expression to make sense
-                rhs_codom = expr.open_expr(fr_var, lhs_dom, rhs.body)
+                rhs_codom = self.open_expr(fr_var, lhs_dom, rhs.body)
                 dom_goal = sub_goal(tele, lhs_dom, rhs_dom)
                 codom_goal = sub_goal(tele, lhs_codom, rhs_codom)
                 return dom_goal + codom_goal
@@ -226,14 +230,16 @@ class Destruct(Tactic):
                 # Pi(x:A, B) <= Pi(x:C, D) is simplified to
                 # A <= C and C <= A and B(x) <= D(x)
                 var = fresh_name.get_name(lhs.binder.var)
-                codom_l = expr.open_expr(var, lhs.dom, lhs.body)
+                codom_l = self.open_expr(var, lhs.dom, lhs.body)
                 #We use the same domain here, as they must be equal
                 # anyways
-                codom_r = expr.open_expr(var, lhs.dom, rhs.body)
+                codom_r = self.open_expr(var, lhs.dom, rhs.body)
                 dom_goals = eq_goal(tele, lhs.dom, rhs.dom)
                 codom_goal = sub_goal(tele, codom_l, codom_r)
                 return dom_goals + codom_goal
             elif lhs.is_app() and rhs.is_app():
+                # A(t) <= B(u) is simplified to
+                # A <= B and B <= A and t <= u and u <= t
                 fun_eq = eq_goal(tele, lhs.fun, rhs.fun)
                 arg_eq = eq_goal(tele, lhs.arg, rhs.arg)
                 return fun_eq + arg_eq
@@ -250,32 +256,24 @@ class Destruct(Tactic):
 destruct = Destruct()
 
 
-class Logic(Tactic):
-    """Applies some simple logical facts.
+class apply_atom(Tactic):
+    """Generate an equality between the current goal
+    and the hypothesis and apply the unification tactic.
     """
     
-    def __init__(self):
-        Tactic.__init__(self, 'logic')
-        
-    def solve(self, goal, context):
+    def __init__(self, hyp):
         """
         
         Arguments:
-        - `goal`:
-        - `context`:
+        - `hyp`: a term of type bool
         """
+        Tactic.__init__(self, 'mvar_apply {0!s}'.format(hyp))
+        self.hyp = hyp
+
+    def solve(self, goal, context):
         tele = goal.tele
         prop = goal.prop
-        if prop.is_sub():
-            if prop.lhs.is_const():
-                if prop.lhs.name == 'true':
-                    return [Goal(tele, prop.rhs)]
-                elif prop.lhs.name == 'false':
-                    return []
-        return [goal]
-
-
-logic = Logic()
+        return sub_goal(tele, self.hyp, prop)
 
 
 class trytac(Tactic):
@@ -433,7 +431,34 @@ class unfold(Tactic):
         return [Goal(tele, prop_sub)]
 
 
-auto = logic >> simpl >> trivial
+class Intros(Tactic):
+    """Introduce all hypotheses
+    """
+    
+    def __init__(self):
+        Tactic.__init__(self, 'intros')
+
+    def solve(self, goal, context):
+        hyps = goal.tele
+        prop = goal.prop
+        while prop.is_bound() and prop.binder.is_forall():
+            dom = prop.dom
+            v, prop = expr.open_bound_fresh(prop)
+            hyps = hyps.append(v, dom)
+        #TODO: this is a hack: there should be an info tag on terms
+        #known to be of type Bool
+        while prop.is_sub():
+            if prop.lhs.is_const() and prop.lhs.type.is_bool():
+                v = fresh_name.get_name('_')
+                hyps = hyps.append(v, prop.lhs)
+                prop = prop.rhs
+            else:
+                break
+        return [Goal(hyps, prop)]
+
+intros = Intros()
+
+auto = simpl >> intros >> trivial
 
 
 ##############################################################################

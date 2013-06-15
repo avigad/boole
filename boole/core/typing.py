@@ -199,7 +199,7 @@ class ExprInfer(ExprVisitor):
         self.visit(expr.tele, *args, **kwargs)
         #This is a bit ad-hoc, as it relies on
         #terms being compared by name only.
-        return Const('true', Bool())
+        return Const('true', Bool(), is_prop=True)
 
     def visit_sub(self, expr, *args, **kwargs):
         #Just check that the lhs and rhs have some type
