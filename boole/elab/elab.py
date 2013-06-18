@@ -500,81 +500,16 @@ def mvar_is_present(expr, mvar=None):
     else:
         return False
 
-
-class ClearMvar(e.ExprVisitor):
-    """Determine if a meta-variable name is present in a term.
-    """
-    
-    def __init__(self):
-        e.ExprVisitor.__init__(self)
-        
-    def visit_const(self, expr):
-        pass
-
-    def visit_db(self, expr):
-        pass
-
-    def visit_type(self, expr):
-        pass
-
-    def visit_kind(self, expr):
-        pass
-
-    def visit_bool(self, expr):
-        pass
-
-    def visit_bound(self, expr):
-        self.visit(expr.dom)
-        self.visit(expr.body)
-
-    def visit_app(self, expr):
-        self.visit(expr.conv)
-        self.visit(expr.fun)
-        self.visit(expr.arg)
-
-    def visit_pair(self, expr):
-        self.visit(expr.fst)
-        self.visit(expr.snd)
-        self.visit(expr.type)
-
-    def visit_fst(self, expr):
-        self.visit(expr.expr)
-
-    def visit_snd(self, expr):
-        self.visit(expr.expr)
-
-    def visit_ev(self, expr):
-        self.visit(expr.tele)
-
-    def visit_sub(self, expr):
-        self.visit(expr.lhs)
-        self.visit(expr.rhs)
-
-    def visit_box(self, expr):
-        self.visit(expr.conv)
-        self.visit(expr.expr)
-        self.visit(expr.type)
-
-    def visit_tele(self, expr):
-        for t in expr.types:
-            self.visit(t)
-
-    def visit_mvar(self, expr):
-        if expr._value is None:
-            pass
-        else:
-            expr._value = None
-
-
 def clear_mvar(expr):
-    """Reset the values of all the meta-vars
-    in expr to None. Returns expr.
+    """Reset the values of the meta-variable expr.
     
     Arguments:
-    - `expr`: an expression
+    - `expr`: an Mvar
     """
-    ClearMvar().visit(expr)
-    return expr
+    if expr.has_value():
+        expr._value = None
+    else:
+        pass
 
 
 ###############################################################################

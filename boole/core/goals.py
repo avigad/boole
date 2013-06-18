@@ -86,7 +86,7 @@ class TacticFailure(Exception):
     """Raised when a tactic fails
     """
     
-    def __init__(self, mess, tactic, goal):
+    def __init__(self, mess, tactic, goals):
         """
         
         Arguments:
@@ -98,7 +98,7 @@ class TacticFailure(Exception):
         Exception.__init__(self, full_mess)
         self.mess = mess
         self.tactic = tactic
-        self.goal = goal
+        self.goals = goals
 
 
 class Tactic(object):
@@ -108,15 +108,15 @@ class Tactic(object):
     def __init__(self, name):
         self.name = name
         
-    def solve(self, goal, context):
-        """Takes a goal and returns a list of goals
+    def solve(self, goals, context):
+        """Takes a list of goals and returns a list of goals
         
         Arguments:
-        - `goal`: an instance of the Goal class
+        - `goals`: a list of instances of the Goal class
         - `context`: a global context
         """
         raise TacticFailure("Undefined tactic {0!s}"\
-                            .format(self.name), self, goal)
+                            .format(self.name), self, goals)
 
     def __str__(self):
         return self.name
@@ -139,60 +139,57 @@ class Tactic(object):
         return trywith(self, tac)
 
 
-class Trivial(Tactic):
-    """Solve trivial goals. Checks if the
-    goal is equal to true, and otherwise checks if it is a
-    trivial equality, or is in the hypotheses. Never fails:
-    returns the original goal if it does not succeed.
-    
+class tac_from_fun(Tactic):
+    """Creates a tactic using a function
+    which takes a goal, a context and returns
+    a list of goals
     """
     
-    def __init__(self):
-        Tactic.__init__(self, 'trivial')
-
-    def solve(self, goal, context):
-        prop = goal.prop
-        hyps = goal.tele
-        if prop.is_const() and prop.name == "true":
+    def __init__(self, name, fun):
+        Tactic.__init__(self, name)
+        self.fun = fun
+        
+    def solve(self, goals, context):
+        if len(goals) == 0:
             return []
-        elif prop.is_sub():
-            #try for pointer equality first.
-            if prop.lhs is prop.rhs:
-                return []
-            elif prop.lhs.equals(goal.prop.rhs):
-                return []
-
-        for h in hyps.types:
-            if h.equals(prop):
-                return []
-            if h.is_const() and h.name == 'false':
-                return []
-        glob_hyps = context.hyps
-        for h in glob_hyps:
-            if glob_hyps[h].equals(prop):
-                return []
-        return [goal]
+        else:
+            return self.fun(goals[0], context) + goals[1:]
 
 
-trivial = Trivial()
+def triv_fun(goal, context):
+    prop = goal.prop
+    hyps = goal.tele
+    if prop.is_const() and prop.name == "true":
+        return []
+    elif prop.is_sub():
+        #try for pointer equality first.
+        if prop.lhs is prop.rhs:
+            return []
+        elif prop.lhs.equals(goal.prop.rhs):
+            return []
+
+    for h in hyps.types:
+        if h.equals(prop):
+            return []
+        if h.is_const() and h.name == 'false':
+            return []
+    glob_hyps = context.hyps
+    for h in glob_hyps:
+        if glob_hyps[h].equals(prop):
+            return []
+    return [goal]
 
 
-class Simpl(Tactic):
-    """Solve goals by performing beta-reduction,
-    then calling trivial.
-
-    """
-
-    def __init__(self):
-        Tactic.__init__(self, 'simpl')
-
-    def solve(self, goal, context):
-        prop = goal.prop
-        simp_goal = Goal(goal.tele, conv.par_beta(prop))
-        return trivial.solve(simp_goal, context)
+trivial = tac_from_fun('trivial', triv_fun)
 
 
-simpl = Simpl()
+def simp_fun(goal, context):
+    prop = goal.prop
+    simp_goal = Goal(goal.tele, conv.par_beta(prop))
+    return triv_fun(simp_goal, context)
+
+
+simpl = tac_from_fun('simpl', simp_fun)
 
 
 class Destruct(Tactic):
@@ -205,53 +202,67 @@ class Destruct(Tactic):
         self.open_expr = expr.open_expr
 
     #TODO: refactor this code
-    def solve(self, goal, context):
-        prop = goal.prop
-        tele = goal.tele
-        if prop.is_sub():
-            # Sig(x:A,B) <= Sig(x:C,D) is simplified
-            # to A <= C and B(x) <= D(x)
-            lhs = prop.lhs
-            rhs = prop.rhs
-            if lhs.is_bound() and lhs.binder.is_sig()\
-                   and rhs.is_bound() and rhs.binder.is_sig():
-                lhs_dom = prop.lhs.dom
-                rhs_dom = prop.rhs.dom
-                fr_var = fresh_name.get_name(lhs.binder.var)
-                lhs_codom = self.open_expr(fr_var, lhs_dom, lhs.body)
-                #The lhs domain must be a subtype of the rhs domain
-                #for this expression to make sense
-                rhs_codom = self.open_expr(fr_var, lhs_dom, rhs.body)
-                dom_goal = sub_goal(tele, lhs_dom, rhs_dom)
-                codom_goal = sub_goal(tele, lhs_codom, rhs_codom)
-                return dom_goal + codom_goal
-            elif lhs.is_bound() and rhs.is_bound() and \
-                     lhs.binder.is_pi() and rhs.binder.is_pi():
-                # Pi(x:A, B) <= Pi(x:C, D) is simplified to
-                # A <= C and C <= A and B(x) <= D(x)
-                var = fresh_name.get_name(lhs.binder.var)
-                codom_l = self.open_expr(var, lhs.dom, lhs.body)
-                #We use the same domain here, as they must be equal
-                # anyways
-                codom_r = self.open_expr(var, lhs.dom, rhs.body)
-                dom_goals = eq_goal(tele, lhs.dom, rhs.dom)
-                codom_goal = sub_goal(tele, codom_l, codom_r)
-                return dom_goals + codom_goal
-            elif lhs.is_app() and rhs.is_app():
-                # A(t) <= B(u) is simplified to
-                # A <= B and B <= A and t <= u and u <= t
-                fun_eq = eq_goal(tele, lhs.fun, rhs.fun)
-                arg_eq = eq_goal(tele, lhs.arg, rhs.arg)
-                return fun_eq + arg_eq
-            else:
-                mess = "{0!s} and {1!s} are not of the same form"\
-                       .format(prop.lhs, prop.rhs)
-                raise TacticFailure(mess, self, goal)
-            
+    def solve(self, goals, context):
+        if len(goals) == 0:
+            return goals
         else:
-            mess = "Goal {0!s} is not of the form A<=B"\
-                   .format(goal)
-            raise TacticFailure(mess, self, goal)
+            goal = goals[0]
+            tail = goals[1:]
+            prop = goal.prop
+            tele = goal.tele
+            if prop.is_sub():
+                # Sig(x:A,B) <= Sig(x:C,D) is simplified
+                # to A <= C and B(x) <= D(x)
+                lhs = prop.lhs
+                rhs = prop.rhs
+                if lhs.is_bound() and lhs.binder.is_sig()\
+                       and rhs.is_bound() and rhs.binder.is_sig():
+                    lhs_dom = prop.lhs.dom
+                    rhs_dom = prop.rhs.dom
+                    fr_var = fresh_name.get_name(lhs.binder.var)
+                    lhs_codom = self.open_expr(fr_var, lhs_dom, lhs.body)
+                    #The lhs domain must be a subtype of the rhs domain
+                    #for this expression to make sense
+                    rhs_codom = self.open_expr(fr_var, lhs_dom, rhs.body)
+                    dom_goal = sub_goal(tele, lhs_dom, rhs_dom)
+                    codom_goal = sub_goal(tele, lhs_codom, rhs_codom)
+                    return dom_goal + codom_goal + tail
+                elif lhs.is_bound() and rhs.is_bound() and \
+                         ((lhs.binder.is_pi() and rhs.binder.is_pi()) or \
+                          (lhs.binder.is_abst() and rhs.binder.is_abst())):
+                    # Pi(x:A, B) <= Pi(x:C, D) is simplified to
+                    # A <= C and C <= A and B(x) <= D(x)
+                    # and similarly for lambda.
+                    var = fresh_name.get_name(lhs.binder.var)
+                    codom_l = self.open_expr(var, lhs.dom, lhs.body)
+                    #We use the same domain here, as they must be equal
+                    # anyways
+                    codom_r = self.open_expr(var, lhs.dom, rhs.body)
+                    dom_goals = eq_goal(tele, lhs.dom, rhs.dom)
+                    codom_goal = sub_goal(tele, codom_l, codom_r)
+                    return dom_goals + codom_goal + tail
+                elif lhs.is_app() and rhs.is_app():
+                    # A(t) <= B(u) is simplified to
+                    # A <= B and B <= A and t <= u and u <= t
+                    fun_eq = eq_goal(tele, lhs.fun, rhs.fun)
+                    arg_eq = eq_goal(tele, lhs.arg, rhs.arg)
+                    return fun_eq + arg_eq + tail
+                elif lhs.is_pair() and rhs.is_pair():
+                    fst_eq = eq_goal(tele, lhs.fst, rhs.fst)
+                    snd_eq = eq_goal(tele, lhs.snd, rhs.snd)
+                    return fst_eq + snd_eq + tail
+                elif (lhs.is_fst() and rhs.is_fst()) or \
+                     (lhs.is_snd() and rhs.is_snd()):
+                    return eq_goal(tele, lhs.expr, rhs.expr) + tail
+                else:
+                    mess = "{0!s} and {1!s} are not of the same form"\
+                           .format(prop.lhs, prop.rhs)
+                    raise TacticFailure(mess, self, goal)
+
+            else:
+                mess = "Goal {0!s} is not of the form A<=B"\
+                       .format(goal)
+                raise TacticFailure(mess, self, goal)
 
 destruct = Destruct()
 
@@ -267,13 +278,17 @@ class apply_atom(Tactic):
         Arguments:
         - `hyp`: a term of type bool
         """
-        Tactic.__init__(self, 'mvar_apply {0!s}'.format(hyp))
+        Tactic.__init__(self, 'apply_atom({0!s})'.format(hyp))
         self.hyp = hyp
 
-    def solve(self, goal, context):
-        tele = goal.tele
-        prop = goal.prop
-        return sub_goal(tele, self.hyp, prop)
+    def solve(self, goals, context):
+        if len(goals) == 0:
+            return []
+        else:
+            goal, tail = (goals[0], goals[1:])
+            tele = goal.tele
+            prop = goal.prop
+            return sub_goal(tele, self.hyp, prop) + tail
 
 
 class trytac(Tactic):
@@ -288,14 +303,14 @@ class trytac(Tactic):
         Arguments:
         - `tac`: a tactic
         """
-        Tactic.__init__(self, 'try {0!s}'.format(tac))
+        Tactic.__init__(self, 'try({0!s})'.format(tac))
         self.tac = tac
 
-    def solve(self, goal, context):
+    def solve(self, goals, context):
         try:
-            return self.tac.solve(goal, context)
+            return self.tac.solve(goals, context)
         except TacticFailure:
-            return [goal]
+            return goals
 
 
 class trywith(Tactic):
@@ -310,15 +325,15 @@ class trywith(Tactic):
         - `tac1`: a tactic
         - `tac2`: a tactic
         """
-        Tactic.__init__(self, '{0!s} | {1!s}'.format(tac1, tac2))
+        Tactic.__init__(self, '({0!s} | {1!s})'.format(tac1, tac2))
         self.tac1 = tac1
         self.tac2 = tac2
 
-    def solve(self, goal, context):
+    def solve(self, goals, context):
         try:
-            return self.tac1.solve(goal, context)
+            return self.tac1.solve(goals, context)
         except TacticFailure:
-            return self.tac2.solve(goal, context)
+            return self.tac2.solve(goals, context)
 
 
 class comp(Tactic):
@@ -331,9 +346,8 @@ class comp(Tactic):
         self.tac2 = tac2
         Tactic.__init__(self, '({0!s} >> {1!s})'.format(tac1, tac2))
         
-    def solve(self, goal, context):
-        new_goals = self.tac1.solve(goal, context)
-        return [g for g1 in new_goals for g in self.tac2.solve(g1, context)]
+    def solve(self, goals, context):
+        return self.tac2.solve(self.tac1.solve(goals, context), context)
 
 
 class repeat(Tactic):
@@ -342,23 +356,30 @@ class repeat(Tactic):
     last obtained goal list.
     """
     
-    def __init__(self, tac, fail=None):
-        Tactic.__init__(self, "repeat {0!s}".format(tac))
+    def __init__(self, tac, num = None, fail=None):
+        Tactic.__init__(self, "repeat({0!s})".format(tac))
         self.tac = tac
         self.fail = fail
+        self.num = num
         
-    def solve(self, goal, context):
-        goals = [goal]
+    def solve(self, goals, context):
+        new_goals = goals
         try:
-            while len(goals) != 0:
-                goals = [gtac for g in goals\
-                         for gtac in self.tac.solve(g, context)]
-            return goals
+            #If a tactic loops, we timeout after
+            #a million tries (to avoid crashing the runtime)
+            if self.num:
+                timeout = self.num
+            else:
+                timeout = 1000000
+            while len(new_goals) != 0 and timeout > 0:
+                new_goals = self.tac.solve(new_goals, context)
+                timeout -= 1
+            return new_goals
         except TacticFailure as f:
             if self.fail:
                 raise f
             else:
-                return goals
+                return new_goals
 
 
 class Idtac(Tactic):
@@ -368,8 +389,8 @@ class Idtac(Tactic):
     def __init__(self):
         Tactic.__init__(self, "idtac")
 
-    def solve(self, goal, context):
-        return [goal]
+    def solve(self, goals, context):
+        return goals
 
 idtac = Idtac()
 
@@ -385,17 +406,18 @@ class now(Tactic):
         Arguments:
         - `tac`: a tactic
         """
-        Tactic.__init__(self, "now {0!s}".format(tac))
+        Tactic.__init__(self, "now({0!s})".format(tac))
         self.tac = tac
 
-    def solve(self, goal, context):
-        new_goal = self.tac.solve(goal, context)
-        if len(new_goal) == 0:
-            return new_goal
+    def solve(self, goals, context):
+        new_goals = self.tac.solve(goals, context)
+        if len(new_goals) == 0:
+            return []
         else:
+            goal_str = map(str, goals)
             mess = "Tactic {0!s} did not solve {1!s}"\
-            .format(self.tac, goal)
-            raise TacticFailure(mess, self, goal)
+            .format(self.tac, goal_str)
+            raise TacticFailure(mess, self, goals)
 
 
 class unfold(Tactic):
@@ -411,54 +433,64 @@ class unfold(Tactic):
         - `*names`: the list of names to unfold.
         """
         names_str = ','.join(names)
-        Tactic.__init__(self, 'unfold {0!s}'.format(names_str))
+        Tactic.__init__(self, 'unfold({0!s})'.format(names_str))
         self.names = names
         self.sub_in = expr.sub_in
         
-    def solve(self, goal, context):
-        tele = goal.tele
-        prop = goal.prop
-        exprs = []
-        for name in self.names:
-            try:
-                e = context.get_from_field(name, 'defs')
-                exprs.append(e)
-            except KeyError, k:
-                mess = "{0!s} is not defined in context"
-                " {1!s}".format(k, context)
-                raise TacticFailure(mess, self, goal)
-        prop_sub = self.sub_in(exprs, self.names, prop)
-        return [Goal(tele, prop_sub)]
+    def solve(self, goals, context):
+        if len(goals) == 0:
+            return []
+        else:
+            goal, tail = (goals[0], goals[1:])
+            tele = goal.tele
+            prop = goal.prop
+            exprs = []
+            for name in self.names:
+                try:
+                    e = context.get_from_field(name, 'defs')
+                    exprs.append(e)
+                except KeyError, k:
+                    mess = "{0!s} is not defined in context"
+                    " {1!s}".format(k, context)
+                    raise TacticFailure(mess, self, goal)
+            prop_sub = self.sub_in(exprs, self.names, prop)
+            return [Goal(tele, prop_sub)] + tail
 
 
-class Intros(Tactic):
-    """Introduce all hypotheses
+def intro_fun(goal, context):
+    hyps = goal.tele
+    prop = goal.prop
+    while prop.is_bound() and prop.binder.is_forall():
+        dom = prop.dom
+        v, prop = expr.open_bound_fresh(prop)
+        hyps = hyps.append(v, dom)
+    #TODO: this is a hack: there should be an info tag on terms
+    #known to be of type Bool
+    while prop.is_sub():
+        if prop.lhs.is_const() and prop.lhs.type.is_bool():
+            v = fresh_name.get_name('_')
+            hyps = hyps.append(v, prop.lhs)
+            prop = prop.rhs
+        else:
+            break
+    return [Goal(hyps, prop)]
+
+intros = tac_from_fun('intros', intro_fun)
+
+
+class par(Tactic):
+    """Apply the tactic tac in parallel to each goal
     """
-    
-    def __init__(self):
-        Tactic.__init__(self, 'intros')
+    def __init__(self, tac):
+        Tactic.__init__(self, 'par({0!s})'.format(tac))
+        self.tac = tac
+        
+    def solve(self, goals, context):
+        new_goals = [self.tac.solve([g], context) for g in goals]
+        return [g for gs in new_goals for g in gs]
 
-    def solve(self, goal, context):
-        hyps = goal.tele
-        prop = goal.prop
-        while prop.is_bound() and prop.binder.is_forall():
-            dom = prop.dom
-            v, prop = expr.open_bound_fresh(prop)
-            hyps = hyps.append(v, dom)
-        #TODO: this is a hack: there should be an info tag on terms
-        #known to be of type Bool
-        while prop.is_sub():
-            if prop.lhs.is_const() and prop.lhs.type.is_bool():
-                v = fresh_name.get_name('_')
-                hyps = hyps.append(v, prop.lhs)
-                prop = prop.rhs
-            else:
-                break
-        return [Goal(hyps, prop)]
 
-intros = Intros()
-
-auto = simpl >> intros >> trivial
+auto = par(simpl >> intros >> trivial)
 
 
 ##############################################################################
@@ -514,9 +546,7 @@ class Goals(object):
         Arguments:
         - `tactic`: an instance of Tactic
         """
-        new_goals = [g_new for g in self.goals\
-                     for g_new in tactic.solve(g, self.context)]
-        self.goals = new_goals
+        self.goals = tactic.solve(self.goals, self.context)
 
     def interact(self, tactic):
         """Apply the tactic and print the goal

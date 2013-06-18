@@ -497,11 +497,11 @@ def check(expr, type=None, tactic=None, context=None):
     print expr, ':', ty
     print
     if tactic == None:
-        obl.solve_with(goals.trivial)
+        obl.solve_with(goals.par(goals.trivial))
     else:
         obl.solve_with(tactic)
     if obl.is_solved():
-        print "With no remaning obligations!"
+        print "With no remaning obligations!\n"
     else:
         print "With remaining obligations:\n"
         print obl

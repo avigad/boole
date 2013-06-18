@@ -19,24 +19,63 @@ import elab
 
 ###############################################################################
 #
+# A class of Mvar stacks to manage backtracking
+#
+###############################################################################
+
+class MvarStk(object):
+    """A wrapper for a list of
+    Mvar lists.
+    """
+    
+    def __init__(self):
+        self.stacks = []
+        
+    def new(self):
+        """Add a stack to the list
+        """
+        self.stacks.append([])
+
+    def free(self):
+        """Remove the assignment of all meta-variables
+        in the last stack, then remove it.
+        """
+        map(elab.clear_mvar, self.stacks[-1])
+        self.stacks = self.stacks[:-1]
+
+    def push(self, mv):
+        """Add a meta-variable to the last
+        stack
+        
+        Arguments:
+        - `mv`: a Mvar
+        """
+        self.stacks[-1].append(mv)
+
+    def clear(self):
+        """Clear the whole stack of stacks.
+        """
+        self.stacks = []
+
+
+mvar_stack = MvarStk()
+
+###############################################################################
+#
 # Tactics for solving unification goals
 #
 ###############################################################################
 
-class SubMvar(Tactic):
+
+def sub_fun(goal, context):
     """Substitute all the meta-variables in the
     goal and the telescope
     """
-    
-    def __init__(self):
-        Tactic.__init__(self, 'sub_mvar')
+    tele = elab.sub_mvar(goal.tele)
+    prop = elab.sub_mvar(goal.prop)
+    return [Goal(tele, prop)]
 
-    def solve(self, goal, context):
-        tele = elab.sub_mvar(goal.tele)
-        prop = elab.sub_mvar(goal.prop)
-        return [Goal(tele, prop)]
-
-sub_mvar = SubMvar()
+sub_mvar = tac_from_fun('sub_mvar', sub_fun)
 
 
 class DestructMvar(Destruct):
@@ -49,23 +88,6 @@ class DestructMvar(Destruct):
 destruct = DestructMvar()
 
 
-class ClearMvar(Tactic):
-    """Clear the values of all the meta-variables in the goal and
-    telescope
-    """
-    
-    def __init__(self):
-        Tactic.__init__(self, 'clear_mvar')
-
-    def solve(self, goal, context):
-        tele = elab.clear_mvar(goal.tele)
-        prop = elab.clear_mvar(goal.prop)
-        return [Goal(tele, prop)]
-        
-
-clear_mvar = ClearMvar()
-
-
 class SolveMvar(Tactic):
     """If a goal is of the form X <= T
     or T <= X, with X not in T, give the value
@@ -75,43 +97,39 @@ class SolveMvar(Tactic):
     def __init__(self):
         Tactic.__init__(self, 'solve_mvar')
 
-    def solve(self, goal, context):
+    def solve(self, goals, context):
         """
         
         Arguments:
         - `goal`:
         - `context`:
         """
-        prop = goal.prop
-        if prop.is_sub():
-            if isinstance(prop.lhs, elab.Mvar):
-                mvar = prop.lhs
-                tm = prop.rhs
-                if not elab.mvar_is_present(tm, mvar):
-                    mvar.set_val(tm)
-                    return []
-                else:
-                    mess = "occurs check: the variable {0!s} occurs in {1!s}"\
-                    .format(mvar, tm)
-                    raise TacticFailure(mess, self, goal)
-                    
-            elif isinstance(prop.rhs, elab.Mvar):
-                mvar = prop.rhs
-                tm = prop.lhs
-                if not elab.mvar_is_present(tm, mvar):
-                    mvar.set_val(tm)
-                    return []
-                else:
-                    mess = "occurs check: the variable {0!s} occurs in {1!s}"\
-                    .format(mvar, tm)
-                    raise TacticFailure(mess, self, goal)
-                
-            else:
-                mess = "No top-level meta-variable in {0!s}".format(goal)
-                raise TacticFailure(mess, self, goal)
+        if len(goals) == 0:
+            return []
         else:
-            mess = "Goal {0!s} is not a disequality".format(goal)
-            raise TacticFailure(mess, self, goal)
+            goal, tail = (goals[0], goals[1:])
+            prop = goal.prop
+            if prop.is_sub():
+                if isinstance(prop.lhs, elab.Mvar):
+                    mvar = prop.lhs
+                    tm = prop.rhs
+                elif isinstance(prop.rhs, elab.Mvar):
+                    mvar = prop.rhs
+                    tm = prop.lhs
+                else:
+                    mess = "No top-level meta-variable in {0!s}".format(goal)
+                    raise TacticFailure(mess, self, goals)
+                if not elab.mvar_is_present(tm, mvar):
+                    mvar.set_val(tm)
+                    mvar_stack.push(mvar)
+                    return tail
+                else:
+                    mess = "occurs check: the variable {0!s} occurs in {1!s}"\
+                           .format(mvar, tm)
+                    raise TacticFailure(mess, self, goals)
+            else:
+                mess = "Goal {0!s} is not a disequality".format(goal)
+                raise TacticFailure(mess, self, goals)
 
 
 solve_mvar = SolveMvar()
@@ -131,22 +149,22 @@ class mvar_apply(Tactic):
         Tactic.__init__(self, 'mvar_apply')
         self.hyp = hyp
 
-    def solve(self, goal, context):
-        prop = goal.prop
-        hyps = goal.tele
-        hyp = self.hyp
-        while hyp.is_bound() and hyp.binder.is_forall():
-            _, hyp = elab.mvar_open_bound_fresh(hyp)
-        new_goals = []
-        #TODO: add requirement that hyp.lhs is a Bool
-        while hyp.is_sub():
-            new_goals.append(Goal(hyps, hyp.lhs))
-            hyp = hyp.rhs
-        return sub_goal(hyps, hyp, prop) + new_goals
-
-
-def mvar_unif(hyp):
-    return mvar_apply(hyp) >> repeat(unif_step)
+    def solve(self, goals, context):
+        if len(goals) == 0:
+            return []
+        else:
+            goal, tail = (goals[0], goals[1:])
+            prop = goal.prop
+            hyps = goal.tele
+            hyp = self.hyp
+            while hyp.is_bound() and hyp.binder.is_forall():
+                _, hyp = elab.mvar_open_bound_fresh(hyp)
+            new_goals = []
+            #TODO: add requirement that hyp.lhs is a Bool
+            while hyp.is_sub():
+                new_goals.append(Goal(hyps, hyp.lhs))
+                hyp = hyp.rhs
+            return sub_goal(hyps, hyp, prop) + new_goals + tail
 
 
 class instance(Tactic):
@@ -166,21 +184,24 @@ class instance(Tactic):
                         .format(inst))
         self.inst = inst
 
-    def solve(self, goal, context):
-        prop = goal.prop
-        root, _ = e.root_app(prop)
-        if root.info.is_class:
-            if self.inst in context.class_instances:
-                inst_ty = context.class_instances[self.inst]
-                return mvar_unif(inst_ty).solve(goal, context)
-            else:
-                mess = "Instance {0!s} not found in context {1!s}"\
-                       .format(self.inst, context)
-                raise TacticFailure(mess, self, goal)
+    def solve(self, goals, context):
+        if len(goals) == 0:
+            return []
         else:
-            mess = "Expression {0!s} is not a class"\
-                   .format(root)
-            raise TacticFailure(mess, self, goal)
+            prop = goals[0].prop
+            root, _ = e.root_app(prop)
+            if root.info.is_class:
+                if self.inst in context.class_instances:
+                    inst_ty = context.class_instances[self.inst]
+                    return mvar_apply(inst_ty).solve(goals, context)
+                else:
+                    mess = "Instance {0!s} not found in context {1!s}"\
+                           .format(self.inst, context)
+                    raise TacticFailure(mess, self, goals)
+            else:
+                mess = "Expression {0!s} is not a class"\
+                       .format(root)
+                raise TacticFailure(mess, self, goals)
 
 
 class Instances(Tactic):
@@ -191,15 +212,22 @@ class Instances(Tactic):
     def __init__(self):
         Tactic.__init__(self, "instances")
 
-    def solve(self, goal, context):
-        insts = context.class_instances
-        for k in insts:
-            try:
-                return now(instance(k)).solve(goal, context)
-            except TacticFailure:
-                clear_mvar.solve(goal, context)
-        mess = "No class instances for goal {0!s}".format(goal)
-        raise TacticFailure(mess, self, goal)
+    def solve(self, goals, context):
+        if len(goals) == 0:
+            return []
+        else:
+            insts = context.class_instances
+            for k in insts:
+                try:
+                    mvar_stack.new()
+                    return now(sub_mvar >> instance(k)\
+                               >> par(unify) >> self)\
+                           .solve(goals, context)
+                except TacticFailure:
+                    mvar_stack.free()
+            goal_str = map(str, goals)
+            mess = "No class instances for goal {0!s}".format(goal_str)
+            raise TacticFailure(mess, self, goals)
 
 instances = Instances()
 
@@ -210,30 +238,7 @@ instances = Instances()
 ###############################################################################
 
 
-unif_step = sub_mvar >> trivial >> (solve_mvar | destruct)
+unif_step = sub_mvar >> par(trivial) >> (solve_mvar | destruct)
 
-
-def resolve(k):
-    return now(trytac(instance(k)) >> unify)
-
-# unif_step = sub_mvar >> trivial >> (solve_mvar | instances | destruct)
 
 unify = repeat(unif_step)
-
-
-def resolve_goals(g):
-    """Call resolve for each possible type-class and try to
-    solve the proof obligations
-    
-    Arguments:
-    - `g`: an instance of the goal class
-    """
-    insts = g.context.class_instances
-    # g.solve_with(unify)
-    for k in insts:
-        try:
-            g.solve_with(resolve(k))
-            break
-        except TacticFailure:
-            g.solve_with(clear_mvar)
-    g.solve_with(unify)

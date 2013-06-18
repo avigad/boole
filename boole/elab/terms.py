@@ -432,7 +432,9 @@ def defconst(name, type, infix=None, tactic=None, implicit=None):
     #first try to solve the meta-vars in the type of c
     _, obl = mvar_infer(c, ctxt=local_ctxt)
 
-    unif.resolve_goals(obl)
+    unif.mvar_stack.clear()
+    unif.mvar_stack.new()
+    obl.solve_with(unif.unify)
 
     #Now update the meta-variables of the type of c
     #fail if there are undefined meta-vars.
@@ -475,7 +477,9 @@ def defexpr(name, value, type=None, tactic=None):
     else:
         _, obl = mvar_infer(value, type=type, ctxt=local_ctxt)
 
-    unif.resolve_goals(obl)
+    unif.mvar_stack.clear()
+    unif.mvar_stack.new()
+    obl.solve_with(goals.par(unif.unify) >> goals.trytac(unif.instances))
 
     val = sub_mvar(value, undef=True)
 
@@ -570,7 +574,7 @@ def definstance(name, ty, value):
     root, _ = root_app(root_clause(ty))
     if root.info.is_class:
         class_name = root.name
-        class_tac = goals.unfold(class_name) >> goals.auto
+        class_tac = goals.par(goals.unfold(class_name)) >> goals.auto
         c = defexpr(name, value, type=ty, tactic=class_tac)
         local_ctxt.add_to_field(name, c.type, 'class_instances')
         local_ctxt.add_to_field(name, c.type, 'hyps')

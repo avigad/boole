@@ -109,10 +109,12 @@ class ParBeta(ExprVisitor):
         return head_beta(Box(expr.conv, inside, expr.type))
 
     def visit_tele(self, expr, *args, **kwargs):
-        open_tel = open_tele_with_fresh(expr)
-        tel_red = [(v, self.visit(e, *args, **kwargs)) for \
-         v, e in open_tel]
-        return sig(*tel_red)
+        consts, opened_ty = open_tele_fresh(expr)
+        ty_red = [self.visit(ty, *args, **kwargs) for \
+                  ty in opened_ty]
+        fr_vars = [c.name for c in consts]
+        ty_red = [abstract_expr(fr_vars, ty) for ty in ty_red]
+        return Tele(expr.vars, ty_red)
 
     @info.same_info
     def visit(self, expr, *args, **kwargs):
@@ -126,3 +128,18 @@ def par_beta(expr):
     - `expr`:
     """
     return ParBeta().visit(expr)
+
+
+def beta_norm(expr):
+    """Repeat beta reduction until
+    the term is unchanged. May loop!
+    
+    Arguments:
+    - `expr`:
+    """
+    unred = expr
+    red = par_beta(expr)
+    while not (red.equals(unred)):
+        unred = red
+        red = par_beta(unred)
+    return red
