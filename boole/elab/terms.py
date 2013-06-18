@@ -418,6 +418,10 @@ def deftype(name, implicit=None):
     return c
 
 
+elab_tac = goals.par(unif.unify) >> goals.trytac(unif.instances)
+type_tac = goals.auto >> goals.trytac(unif.instances)
+
+
 def defconst(name, type, infix=None, tactic=None, implicit=None):
     """Define a constant, add it to
     local_ctxt and return it.
@@ -434,7 +438,7 @@ def defconst(name, type, infix=None, tactic=None, implicit=None):
 
     unif.mvar_stack.clear()
     unif.mvar_stack.new()
-    obl.solve_with(unif.unify)
+    obl.solve_with(elab_tac)
 
     #Now update the meta-variables of the type of c
     #fail if there are undefined meta-vars.
@@ -446,7 +450,7 @@ def defconst(name, type, infix=None, tactic=None, implicit=None):
     #TCCs
     _, obl = typing.infer(c, ctxt=local_ctxt)
     if tactic is None:
-        obl.solve_with(goals.auto)
+        obl.solve_with(type_tac)
     else:
         obl.solve_with(tactic)
     local_ctxt.add_const(c)
@@ -479,7 +483,7 @@ def defexpr(name, value, type=None, tactic=None):
 
     unif.mvar_stack.clear()
     unif.mvar_stack.new()
-    obl.solve_with(goals.par(unif.unify) >> goals.trytac(unif.instances))
+    obl.solve_with(elab_tac)
 
     val = sub_mvar(value, undef=True)
 
@@ -492,7 +496,7 @@ def defexpr(name, value, type=None, tactic=None):
         ty, obl = typing.infer(val, type=ty, ctxt=local_ctxt)
 
     if tactic is None:
-        obl.solve_with(goals.auto)
+        obl.solve_with(type_tac)
     else:
         obl.solve_with(tactic)
 
