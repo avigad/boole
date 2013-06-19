@@ -21,7 +21,6 @@ from terms import *
 if __name__ == '__main__':
 
     z = Real('z')
-    w = Real('w')
 
     X = Type_('X')
 
@@ -29,11 +28,11 @@ if __name__ == '__main__':
 
     poly_z = defexpr('poly_z', poly(z))
 
-    # _, obl = mvar_infer(poly(z), ctxt=local_ctxt)
+    _, obl = mvar_infer(poly(z), ctxt=local_ctxt)
 
-    # nat = deftype('nat')
+    nat = deftype('nat')
     
-    # nat_sub_real = defsub('nat_sub_real', nat <= Real)
+    nat_sub_real = defsub('nat_sub_real', nat <= Real)
 
     Y = deftype('Y')
 
@@ -61,7 +60,7 @@ if __name__ == '__main__':
 
     definstance('mul_real', Mul(Real, mult), trivial())
 
-    test2 = defexpr('test2', mul(3.0, 2.0))
+    # test2 = defexpr('test2', mul(3.0, 2.0))
 
     A = deftype('A')
     B = deftype('B')
@@ -94,6 +93,14 @@ if __name__ == '__main__':
     print
     print conv.beta_norm(expr.sub_in([mul_def], ['mul'], test3_def))
     
+    test4 = defexpr('test4', mul(pair(3.0, pair(3.0, 3)), pair(2.0, pair(2.0, 2))))
+
+    test4_def = local_ctxt.defs['test4']
+
+    print test4_def
+    print
+    print conv.beta_norm(expr.sub_in([mul_def], ['mul'], test4_def))
+
     n = Int('n')
     
     Vec = defconst('Vec', pi(n, Type))
@@ -184,6 +191,6 @@ if __name__ == '__main__':
 
     p = pair(x, y)
 
-    proj_x_y_0 = defexpr('proj_x_y_0', trivial(), p[0] == x, tactic=goals.simpl)
+    proj_x_y_0 = defexpr('proj_x_y_0', trivial(), p[0] == x, tactic=goals.simpl(conv.par_beta))
 
     typing.check(conj(true, disj(true, false)))

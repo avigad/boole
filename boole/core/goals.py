@@ -183,13 +183,31 @@ def triv_fun(goal, context):
 trivial = tac_from_fun('trivial', triv_fun)
 
 
-def simp_fun(goal, context):
-    prop = goal.prop
-    simp_goal = Goal(goal.tele, conv.par_beta(prop))
-    return triv_fun(simp_goal, context)
+class simpl(Tactic):
+    """Simplify the current goal using the given
+    simplification function
+    """
+    
+    def __init__(self, conv):
+        """
+        
+        Arguments:
+        - `conv`:
+        """
+        Tactic.__init__(self, 'simpl')
+        self.conv = conv
+
+    
+    def solve(self, goals, context):
+        if len(goals) == 0:
+            return []
+        else:
+            goal, tail = (goals[0], goals[1:])
+            prop = goal.prop
+            simp_goal = Goal(goal.tele, self.conv(prop))
+            return [simp_goal] + tail
 
 
-simpl = tac_from_fun('simpl', simp_fun)
 
 
 class Destruct(Tactic):
@@ -490,7 +508,7 @@ class par(Tactic):
         return [g for gs in new_goals for g in gs]
 
 
-auto = par(simpl >> intros >> trivial)
+auto = par(simpl(conv.par_beta) >> intros >> trivial)
 
 
 ##############################################################################

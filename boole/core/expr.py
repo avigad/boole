@@ -1057,7 +1057,7 @@ class SubstExpr(ExprVisitor):
         """
         
         Arguments:
-        - `exprs`: the expressions to instanciate.
+        - `exprs`: the expressions to instantiate.
         """
         ExprVisitor.__init__(self)
         self.exprs = exprs
@@ -1138,7 +1138,7 @@ class SubstExpr(ExprVisitor):
 
 
 def subst_expr(exprs, expr):
-    """Instanciate DB indices in expr according
+    """Instantiate DB indices in expr according
     to expr_list
     
     Arguments:

@@ -133,7 +133,7 @@ class infobox(object):
         self._info = info
 
     def info(self):
-        """instanciates and returns the _info field when requested
+        """instantiates and returns the _info field when requested
         """
         return self._info()
 

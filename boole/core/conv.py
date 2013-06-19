@@ -15,7 +15,7 @@ from expr import *
 import info
 
 
-def head_beta(expr):
+def head_beta(expr, subst):
     """Perform the following reductions:
     App(_,Abs(x,T,t),u) --> t[u/x]
     Proj(i,(t0,...,tn)) --> ti    if i <= n
@@ -25,10 +25,11 @@ def head_beta(expr):
     
     Arguments:
     - `expr`: an arbitrary expression.
+    - `subst`: a substitution function
     """
     if expr.is_app() and expr.fun.is_bound() and \
            expr.fun.binder.is_abst():
-        return subst_expr([expr.arg], expr.fun.body)
+        return subst([expr.arg], expr.fun.body)
     elif expr.is_fst() and expr.expr.is_pair():
         return expr.expr.fst
     elif expr.is_snd() and expr.expr.is_pair():
@@ -47,9 +48,14 @@ class ParBeta(ExprVisitor):
     """
     
     def __init__(self):
-        """Do nothing
+        """Take as argument the substitution function,
+        the opening and abstraction functions.
         """
         ExprVisitor.__init__(self)
+        self.subst = subst_expr
+        self.open_expr = open_bound_fresh
+        self.open_tele = open_tele_fresh
+        self.abst = abstract_expr
 
     def visit_const(self, expr, *args, **kwargs):
         return expr
@@ -67,10 +73,10 @@ class ParBeta(ExprVisitor):
         return expr
 
     def visit_bound(self, expr, *args, **kwargs):
-        var, open_expr = open_bound_fresh(expr)
+        var, opened = self.open_expr(expr)
         dom = self.visit(expr.dom, *args, **kwargs)
-        body = self.visit(open_expr, *args, **kwargs)
-        body = abstract_expr([var], body)
+        body = self.visit(opened, *args, **kwargs)
+        body = self.abst([var], body)
         return Bound(expr.binder, dom, body)
 
     def visit_app(self, expr, *args, **kwargs):
@@ -78,7 +84,7 @@ class ParBeta(ExprVisitor):
         #plays no role in conversion
         fun = self.visit(expr.fun, *args, **kwargs)
         arg = self.visit(expr.arg, *args, **kwargs)
-        return head_beta(App(expr.conv, fun, arg))
+        return head_beta(App(expr.conv, fun, arg), self.subst)
 
     def visit_pair(self, expr, *args, **kwargs):
         fst = self.visit(expr.fst, *args, **kwargs)
@@ -88,11 +94,11 @@ class ParBeta(ExprVisitor):
 
     def visit_fst(self, expr, *args, **kwargs):
         red_expr = self.visit(expr.expr, *args, **kwargs)
-        return head_beta(Fst(red_expr))
+        return head_beta(Fst(red_expr), self.subst)
 
     def visit_snd(self, expr, *args, **kwargs):
         red_expr = self.visit(expr.expr, *args, **kwargs)
-        return head_beta(Snd(red_expr))
+        return head_beta(Snd(red_expr), self.subst)
 
     def visit_ev(self, expr, *args, **kwargs):
         #do nothing, as evidence terms have
@@ -106,14 +112,14 @@ class ParBeta(ExprVisitor):
 
     def visit_box(self, expr, *args, **kwargs):
         inside = self.visit(expr.expr, *args, **kwargs)
-        return head_beta(Box(expr.conv, inside, expr.type))
+        return head_beta(Box(expr.conv, inside, expr.type), self.subst)
 
     def visit_tele(self, expr, *args, **kwargs):
-        consts, opened_ty = open_tele_fresh(expr)
+        consts, opened_ty = self.open_tele(expr)
         ty_red = [self.visit(ty, *args, **kwargs) for \
                   ty in opened_ty]
         fr_vars = [c.name for c in consts]
-        ty_red = [abstract_expr(fr_vars, ty) for ty in ty_red]
+        ty_red = [self.abst(fr_vars, ty) for ty in ty_red]
         return Tele(expr.vars, ty_red)
 
     @info.same_info

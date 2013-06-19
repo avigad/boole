@@ -205,7 +205,7 @@ class instance(Tactic):
 
 
 class Instances(Tactic):
-    """Tries to apply every instance in the context,
+    """Recusively tries to apply every instance in the context,
     and fails if none solve the goal.
     """
     
@@ -220,8 +220,11 @@ class Instances(Tactic):
             for k in insts:
                 try:
                     mvar_stack.new()
-                    return now(sub_mvar >> instance(k)\
-                               >> par(unify) >> self)\
+                    return now(par(sub_mvar)\
+                               >> instance(k)\
+                               >> par(unify)\
+                               >> par(trytac(self))\
+                               >> par(unify))\
                            .solve(goals, context)
                 except TacticFailure:
                     mvar_stack.free()
@@ -238,7 +241,7 @@ instances = Instances()
 ###############################################################################
 
 
-unif_step = sub_mvar >> par(trivial) >> (solve_mvar | destruct)
+unif_step = sub_mvar >> simpl(elab.par_beta) >> par(trivial) >> (solve_mvar | destruct)
 
 
 unify = repeat(unif_step)

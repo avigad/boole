@@ -18,13 +18,14 @@ import boole.core.vargen as vargen
 import boole.core.context as context
 import boole.core.info as info
 import boole.core.goals as goals
+import boole.core.conv as conv
 
 meta_var_gen = vargen.VarGen()
 
 ##############################################################################
 #
 # The type of Pending substitution and abstraction operations.
-# These are performed as the meta-variable is instanciated to a value
+# These are performed as the meta-variable is instantiated to a value
 #
 ##############################################################################
 
@@ -313,6 +314,26 @@ def mvar_infer(expr, type=None, ctxt=None):
             mess = "Expected {0!s} to be of type {1!s}"\
                    .format(expr, type)
             raise t.ExprTypeError(mess, expr)
+
+
+class MvarParBeta(conv.ParBeta):
+    
+    def __init__(self):
+        """Take as argument the substitution function,
+        the opening and abstraction functions.
+        """
+        conv.ParBeta.__init__(self)
+        self.subst = subst_expr
+        self.open_expr = open_bound_fresh
+        self.open_tele = open_tele_fresh
+        self.abst = abstract_expr
+
+    def visit_mvar(self, expr, *args, **kwargs):
+        return expr
+
+
+def par_beta(expr):
+    return MvarParBeta().visit(expr)
 
 
 ###############################################################################

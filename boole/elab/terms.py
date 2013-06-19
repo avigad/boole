@@ -455,7 +455,8 @@ def defconst(name, type, infix=None, tactic=None, implicit=None):
         obl.solve_with(tactic)
     local_ctxt.add_const(c)
     if obl.is_solved():
-        print "{0!s} : {1!s} is assumed.\n".format(c, c.type)
+        pass
+        # print "{0!s} : {1!s} is assumed.\n".format(c, c.type)
     else:
         local_ctxt.add_to_field(obl.name, obl, 'goals')
         print "In the declaration:\n{0!s} : {1!s}".format(name, c.type)
