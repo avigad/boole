@@ -13,7 +13,7 @@
 
 import boole.core.expr as e
 from boole.core.goals import *
-import boole.core.info as info
+from boole.core.tactics import *
 import elab
 
 
@@ -40,7 +40,8 @@ class MvarStk(object):
         """Remove the assignment of all meta-variables
         in the last stack, then remove it.
         """
-        map(elab.clear_mvar, self.stacks[-1])
+        for exp in self.stacks[-1]:
+            exp.clear()
         self.stacks = self.stacks[:-1]
 
     def push(self, mv):

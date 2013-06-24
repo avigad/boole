@@ -44,6 +44,7 @@ class PendAbs(Pending):
         Arguments:
         - `names`:
         """
+        Pending.__init__(self)
         self.names = names
         self.depth = depth
         
@@ -66,6 +67,7 @@ class PendSub(Pending):
         Arguments:
         - `names`:
         """
+        Pending.__init__(self)
         self.exprs = exprs
         self.depth = depth
 
@@ -90,10 +92,9 @@ class Mvar(expr_base.Expr):
     """Unification variables for implicit arguments
     """
     
-    def __init__(self, name, type, **kwargs):
+    def __init__(self, name, type):
         """
-        Same definition as for Const, with a simple
-        tag expressing status as Mvar
+        Same definition as for Const, without info fields
         """
         expr_base.Expr.__init__(self)
         self.name = name
@@ -101,9 +102,7 @@ class Mvar(expr_base.Expr):
         self._value = None
         self.tele = nullctxt()
         self.pending = []
-        for k in kwargs:
-            self.info[k] = kwargs[k]
-        self.info['is_mvar'] = True
+
 
     def accept(self, visitor, *args, **kwargs):
         return visitor.visit_mvar(self, *args, **kwargs)
@@ -117,7 +116,7 @@ class Mvar(expr_base.Expr):
         #update the info field to correspond to that
         #of the value: this makes mvar substitution
         #behave correctly with respect to info
-        self.info.update(val.info)
+        self.info = val.info
         self._value = val
 
     def to_string(self):
@@ -133,6 +132,14 @@ class Mvar(expr_base.Expr):
         """Returns True if the expression has a value
         """
         return not (self._value is None)
+
+    def clear(self):
+        """Clear the value and the information of the
+        meta-variable.
+        """
+        self.info = info.DefaultInfo()
+        self._value = None
+
 
 
 ##############################################################################
@@ -161,7 +168,8 @@ class MvarSubst(e.SubstExpr):
         e.SubstExpr.__init__(self, exprs)
 
     def visit_mvar(self, expr, depth):
-        expr.pending.append(PendSub(self.exprs, depth))
+        #TODO: do we need this?
+        # expr.pending.append(PendSub(self.exprs, depth))
         return expr
 
 
@@ -521,38 +529,27 @@ def mvar_is_present(expr, mvar=None):
     else:
         return False
 
-def clear_mvar(expr):
-    """Reset the values of the meta-variable expr.
-    
-    Arguments:
-    - `expr`: an Mvar
-    """
-    if expr.has_value():
-        expr._value = None
-    else:
-        pass
-
-
 ###############################################################################
 #
 # utility functions for elaborating top-level expressions
 #
 ###############################################################################
 
-def app_expr(f, f_ty, conv, args):
+
+def app_expr(f, f_ty, cast, args):
     """Applies a function to a list of
     arguments, some of which are implicit.
     
     Arguments:
     - `f`: an expression denoting the function
     - `f_ty`: the function type
-    - `conv`: list of evidence for the type conversions
+    - `cast`: list of evidence terms for the type conversions
     of each argument
     - `args`: a list of arguments
     """
     tm = f
     rem_args = args
-    rem_conv = conv
+    rem_cast = cast
     rem_ty = f_ty
     while len(rem_args) != 0:
         if rem_ty.is_bound() and rem_ty.binder.is_pi()\
@@ -562,20 +559,20 @@ def app_expr(f, f_ty, conv, args):
             #If more information is needed, we need to go through the whole
             #term to collect local information (variables), to add them
             #the evidence term
-            mconv = trivial()
-            tm = t.App(mconv, tm, mvar)
+            mcast = trivial
+            tm = t.App(mcast, tm, mvar)
             rem_ty = subst_expr([mvar], rem_ty.body)
         elif rem_ty.is_bound() and rem_ty.binder.is_pi():
-            tm = t.App(rem_conv[0], tm, rem_args[0])
+            tm = t.App(rem_cast[0], tm, rem_args[0])
             rem_ty = subst_expr([rem_args[0]], rem_ty.body)
-            rem_conv = rem_conv[1:]
+            rem_cast = rem_cast[1:]
             rem_args = rem_args[1:]
         else:
             #In this case, something is wrong with the type
             #of f, and we simply blindly apply all the remaining
             #arguments.
-            tm = t.App(rem_conv[0], tm, rem_args[0])
-            rem_conv = rem_conv[1:]
+            tm = t.App(rem_cast[0], tm, rem_args[0])
+            rem_cast = rem_cast[1:]
             rem_args = rem_args[1:]
     return tm
 
@@ -687,8 +684,4 @@ def nullctxt():
     """
     return e.Tele([], [])
 
-
-def trivial():
-    """The trivial evidence term
-    """
-    return e.Ev(nullctxt())
+trivial = e.Ev(nullctxt())

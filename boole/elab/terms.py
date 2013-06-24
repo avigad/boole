@@ -18,10 +18,10 @@ from boole.core.context import *
 from boole.core.expr import Const, Sub, Pair, Fst, Snd, root_app, root_clause
 import boole.core.expr as e
 import boole.core.typing as typing
-import boole.core.goals as goals
 import elab
 from elab import app_expr, mvar_infer, open_expr, sub_mvar
-import unif
+import boole.core.tactics as tac
+import unif as u
 
 ###############################################################################
 #
@@ -144,7 +144,7 @@ def print_type():
 
 def print_ev(expr):
     if len(expr.tele) == 0:
-        return "trivial()"
+        return "triv()"
     else:
         return expr.to_string()
 
@@ -235,7 +235,7 @@ def tm_call(fun, *args):
     - `arg`: a list of expresstions
     """
     fun_typ, _ = typing.infer(fun, ctxt=local_ctxt)
-    conv = [trivial()] * len(args)
+    conv = [triv()] * len(args)
     cast_args = map(to_expr, args)
     return app_expr(fun, fun_typ, conv, cast_args)
     
@@ -389,8 +389,8 @@ def nullctxt():
 
 
 @with_info(st_term)
-def trivial():
-    return elab.trivial()
+def triv():
+    return elab.trivial
 
 ###############################################################################
 #
@@ -418,8 +418,8 @@ def deftype(name, implicit=None):
     return c
 
 
-elab_tac = goals.par(unif.unify) >> goals.trytac(unif.instances)
-type_tac = goals.auto >> goals.trytac(unif.instances)
+elab_tac = tac.par(u.unify) >> tac.trytac(u.instances)
+type_tac = tac.auto >> tac.trytac(u.instances)
 
 
 def defconst(name, type, infix=None, tactic=None, implicit=None):
@@ -436,8 +436,8 @@ def defconst(name, type, infix=None, tactic=None, implicit=None):
     #first try to solve the meta-vars in the type of c
     _, obl = mvar_infer(c, ctxt=local_ctxt)
 
-    unif.mvar_stack.clear()
-    unif.mvar_stack.new()
+    u.mvar_stack.clear()
+    u.mvar_stack.new()
     obl.solve_with(elab_tac)
 
     #Now update the meta-variables of the type of c
@@ -449,6 +449,7 @@ def defconst(name, type, infix=None, tactic=None, implicit=None):
     #Now type check the resulting term and try to solve the
     #TCCs
     _, obl = typing.infer(c, ctxt=local_ctxt)
+
     if tactic is None:
         obl.solve_with(type_tac)
     else:
@@ -462,6 +463,7 @@ def defconst(name, type, infix=None, tactic=None, implicit=None):
         print "In the declaration:\n{0!s} : {1!s}".format(name, c.type)
         print "remaining type-checking constraints!"
         print obl
+    c.info['checked'] = True
     return c
 
 
@@ -482,15 +484,15 @@ def defexpr(name, value, type=None, tactic=None):
     else:
         _, obl = mvar_infer(value, type=type, ctxt=local_ctxt)
 
-    unif.mvar_stack.clear()
-    unif.mvar_stack.new()
+    u.mvar_stack.clear()
+    u.mvar_stack.new()
     obl.solve_with(elab_tac)
 
     val = sub_mvar(value, undef=True)
 
     if not (type is None):
         ty = sub_mvar(type, undef=True)
-    
+
     if type is None:
         ty, obl = typing.infer(val, ctxt=local_ctxt)
     else:
@@ -519,6 +521,7 @@ def defexpr(name, value, type=None, tactic=None):
         " {0!s} = {1!s} : {2!s}".format(name, val, ty)
         print "remaining type-checking constraints!"
         print obl
+    c.info['checked'] = True
     return c
 
 
@@ -531,6 +534,20 @@ def defhyp(name, prop):
     - `prop`: the proposition
     """
     c = defconst(name, prop)
+    typing.infer(c.type, type=e.Bool(), ctxt=local_ctxt)
+    local_ctxt.add_to_field(name, c.type, 'hyps')
+    return c
+
+
+def defthm(name, prop, tactic=None):
+    """Declare a theorem and call a tactic to attempt to solve it.
+    add it as a hypothesis regardless.
+    
+    """
+    if tactic:
+        c = defexpr(name, triv(), prop, tactic=tactic)
+    else:
+        c = defexpr(name, triv(), prop)
     typing.infer(c.type, type=e.Bool(), ctxt=local_ctxt)
     local_ctxt.add_to_field(name, c.type, 'hyps')
     return c
@@ -579,7 +596,7 @@ def definstance(name, ty, value):
     root, _ = root_app(root_clause(ty))
     if root.info.is_class:
         class_name = root.name
-        class_tac = goals.par(goals.unfold(class_name)) >> goals.auto
+        class_tac = tac.par(tac.unfold(class_name)) >> tac.auto
         c = defexpr(name, value, type=ty, tactic=class_tac)
         local_ctxt.add_to_field(name, c.type, 'class_instances')
         local_ctxt.add_to_field(name, c.type, 'hyps')

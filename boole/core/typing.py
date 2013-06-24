@@ -14,6 +14,7 @@
 from expr import *
 import goals
 import context
+import tactics
 
 
 def is_sort(expr):
@@ -472,7 +473,8 @@ def infer(expr, type=None, ctxt=None):
     prf_obl_name = fresh_name.get_name('_ty_goals')
     prf_obl = goals.empty_goals(prf_obl_name, ty_ctxt)
     #slight hack here: we compare pointers to avoid calling the
-    # __eq__ method of type. There should only be one instance of
+    # __eq__ method of type which may be overloaded.
+    # There should only be one instance of
     # the None object, so pointer equality is valid.
     if type is None:
         ty = ExprInfer().visit(expr, prf_obl)
@@ -497,7 +499,7 @@ def check(expr, type=None, tactic=None, context=None):
     print expr, ':', ty
     print
     if tactic == None:
-        obl.solve_with(goals.par(goals.trivial))
+        obl.solve_with(tactics.par(tactics.trivial))
     else:
         obl.solve_with(tactic)
     if obl.is_solved():

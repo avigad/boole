@@ -13,7 +13,7 @@
 ##############################################################################
 
 import boole.core.expr as expr
-import boole.core.goals as goals
+import boole.core.tactics as tac
 import boole.core.conv as conv
 from terms import *
 
@@ -27,8 +27,6 @@ if __name__ == '__main__':
     poly = defconst('poly', pi(X, X >> (X >> X)))
 
     poly_z = defexpr('poly_z', poly(z))
-
-    _, obl = mvar_infer(poly(z), ctxt=local_ctxt)
 
     nat = deftype('nat')
     
@@ -54,13 +52,14 @@ if __name__ == '__main__':
 
     int_mul = defconst('int_mul', Int >> (Int >> Int))
 
-    definstance('mul_int', Mul(Int, int_mul), trivial())
+    definstance('mul_int', Mul(Int, int_mul), triv())
 
     test = defexpr('test', mul(3, 2))
 
-    definstance('mul_real', Mul(Real, mult), trivial())
+    definstance('mul_real', Mul(Real, mult), triv())
 
-    # test2 = defexpr('test2', mul(3.0, 2.0))
+    test2 = defexpr('test2', mul(3.0, 2.0))
+
 
     A = deftype('A')
     B = deftype('B')
@@ -77,7 +76,7 @@ if __name__ == '__main__':
     definstance('mul_prod', \
                 forall(A, forall(op_a, forall(B, forall(op_b, \
                 Mul(A, op_a) == (Mul(B, op_b) == Mul(A*B, op_pair)))))), \
-                trivial())
+                triv())
 
 
     test3 = defexpr('test3', mul(pair(3, 3.0), pair(2, 2.0)))
@@ -87,19 +86,26 @@ if __name__ == '__main__':
 
     mul_def = local_ctxt.defs['mul']
 
-    print test3_def
-    print
-    print expr.sub_in([mul_def], ['mul'], test3_def)
     print
     print conv.beta_norm(expr.sub_in([mul_def], ['mul'], test3_def))
+    print
     
     test4 = defexpr('test4', mul(pair(3.0, pair(3.0, 3)), pair(2.0, pair(2.0, 2))))
 
     test4_def = local_ctxt.defs['test4']
 
-    print test4_def
     print
     print conv.beta_norm(expr.sub_in([mul_def], ['mul'], test4_def))
+    print
+
+    test5 = defexpr('test5', mul(pair(pair(3.0, 3), pair(3, 3)), pair(pair(2.0, 2), pair(2, 2))))
+
+    test5_def = local_ctxt.defs['test5']
+
+    print
+    print conv.beta_norm(expr.sub_in([mul_def], ['mul'], test5_def))
+    print
+
 
     n = Int('n')
     
@@ -146,51 +152,15 @@ if __name__ == '__main__':
 
     abs_plus = defexpr('abs_plus', abst(t, t + w))
 
-    typing.check(abs_plus(x), context=local_ctxt)
-    
-    typing.check(pair(x, y))
-
-    typing.check(x + y, \
-                 context=local_ctxt)
-
-    typing.check(z[0] * z[1] == z[1] * z[0])
-
-    typing.check(abst(z, pair(x, x)))
-
-    typing.check(forall(z, (z[0] + z[1]) == (z[1] + z[0])))
-
     fa = forall(z, (z[0] + z[1]) == (z[1] + z[0]))
 
     plus_commut_stmt = defexpr('plus_commut_stmt', fa, type=Bool)
     
-    typing.check(local_ctxt.decls['Real'])
-    print
-
-    def definition_of(expr):
-        """Return the definition of a defined constant.
-        
-        Arguments:
-        - `expr`:
-        """
-        if expr.is_const():
-            if expr.info.defined:
-                print expr, ':=', local_ctxt.get_from_field(expr.name, 'defs')
-                print
-            else:
-                print expr, " is not defined!"
-                print
-        else:
-            print expr, " is not a constant!"
-            print
-
-
-
-    definition_of(plus_commut_stmt)
-
-    plus_commut = defexpr('plus_commut', trivial(), fa)
+    plus_commut = defexpr('plus_commut', triv(), fa)
 
     p = pair(x, y)
 
-    proj_x_y_0 = defexpr('proj_x_y_0', trivial(), p[0] == x, tactic=goals.simpl(conv.par_beta))
+    proj_x_y_0 = defthm('proj_x_y_0', p[0] == x,\
+                         tactic=tac.simpl(conv.par_beta) >> tac.trivial)
 
-    typing.check(conj(true, disj(true, false)))
+    prop = defexpr('prop', conj(true, disj(true, false)))

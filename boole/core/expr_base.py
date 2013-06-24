@@ -40,16 +40,14 @@ class ExprError(Exception):
         self.expr = expr
 
 
-
-class BaseExpr(object):
-    """The syntactic class of expressions and telescopes.
+class Expr(object):
+    """The base class for expressions and telescopes.
     """
-    
+
     def __init__(self):
         """Sets the default info
         """
         self.info = info.DefaultInfo()
-
 
     def __str__(self):
         """Call the printer implemented in info
@@ -95,7 +93,6 @@ class BaseExpr(object):
             mess = '`BaseExpr` object can not be right-shifted'
             raise TypeError(mess)
 
-
     def __eq__(self, arg):
         """Call eq implemented in info
         """
@@ -123,7 +120,6 @@ class BaseExpr(object):
             mess = '`BaseExpr` object does not support leq'
             raise TypeError(mess)
 
-
     def accept(self, visitor, *args, **kwargs):
         """
 
@@ -133,16 +129,6 @@ class BaseExpr(object):
         - `**kwargs`:
         """
         raise NotImplementedError()
-
-
-class Expr(BaseExpr):
-    """The class of types and expressions.
-    """
-
-    def __init__(self):
-        """
-        """
-        self.info = info.DefaultInfo()
 
     def is_type(self):
         """Tests wether the expression is an instance of
@@ -186,7 +172,6 @@ class Expr(BaseExpr):
         """
         return False
 
-
     def is_sub(self):
         """Tests wether the expression is an instance of
         Eq
@@ -220,5 +205,11 @@ class Expr(BaseExpr):
     def is_ev(self):
         """Tests wether the expression is an instance of
         EV
+        """
+        return False
+
+    def is_tele(self):
+        """Tests wether the expression is an instance of
+        Tele
         """
         return False

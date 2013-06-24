@@ -273,16 +273,16 @@ class Bound(Expr):
         """
         return visitor.visit_bound(self, *args, **kwargs)
 
-    def to_string(self):
-        # Printing a bound expression involves
-        # substituting the DB index by a constant
-        # with the appropriate name.
-        var = self.binder.var
-        open_self = open_expr(var, self.dom, self.body)
-        return "{0!s}({1!s},{2!s})".format(\
-            self.binder.name, self.binder.var, open_self)
+    # def to_string(self):
+    #     # Printing a bound expression involves
+    #     # substituting the DB index by a constant
+    #     # with the appropriate name.
+    #     var = self.binder.var
+    #     open_self = open_expr(var, self.dom, self.body)
+    #     return "{0!s}({1!s},{2!s})".format(\
+    #         self.binder.name, self.binder.var, open_self)
 
-    def to_string_raw(self):
+    def to_string(self):
         return "{0!s}({1!s},{2!s},{3!s})".format(\
             self.binder.name, self.binder.var, self.dom, self.body)
 
@@ -735,7 +735,7 @@ class Exists(Binder):
 #
 ###############################################################################
 
-class Tele(BaseExpr):
+class Tele(Expr):
     """A telescope is a (possible) list of names
     and expressions, each expression may depend on the
     previous ones.
@@ -749,6 +749,7 @@ class Tele(BaseExpr):
         - `exprs`: a list of types. Each type binds a variable of
         the previous type.
         """
+        Expr.__init__(self)
         self.info = info.DefaultInfo()
         self.vars = vars
         self.types = types
@@ -787,18 +788,6 @@ class Tele(BaseExpr):
             return reduce(lambda x, y: x and y, eq_info, True)
         else:
             return False
-
-    def __getattr__(self, name):
-        """Call the method implemented by info
-        if it is not given by the expression.
-
-        Arguments:
-        - `name`: the name of the attribute.
-        """
-        try:
-            return self.info[name](self)
-        except KeyError:
-            raise AttributeError()
 
     def __str__(self):
         """Call the printer implemented in info

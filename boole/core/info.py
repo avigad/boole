@@ -84,7 +84,6 @@ class ExprInfo(object):
             self.info[k] = info.info[k]
 
 
-
 ###############################################################################
 #
 # The default information class:
@@ -164,6 +163,13 @@ def same_info(f):
     """
     def call_f(obj, expr, *args, **kwargs):
         e = f(obj, expr, *args, **kwargs)
-        e.info = expr.info
+        #if expr is a de Bruijn index, then it
+        # contains no interesting information, and it
+        # is most likely substituted by the e, which
+        # should keep its own info.
+        if expr.is_db():
+            pass
+        else:
+            e.info = expr.info
         return e
     return call_f
