@@ -19,7 +19,7 @@ from boole.core.expr import Const, Sub, Pair, Fst, Snd, root_app, root_clause
 import boole.core.expr as e
 import boole.core.typing as typing
 import elab
-from elab import app_expr, mvar_infer, open_expr, sub_mvar
+from elab import app_expr, mvar_infer, open_expr, sub_mvar, root_pi
 import boole.core.tactics as tac
 import unif as u
 
@@ -47,26 +47,47 @@ def to_expr(expr):
         return expr
 
 
-def print_app(expr):
-    """Takes an application and prints it in the following manner:
-    if the application is of the form (..(f a1)... an), print
-    f(a1,...,an)
+def root_app_implicit(expr):
+    """If a term is of the form
+    (..(f a0).. an), return the pair
+    (f, [ai,..., ak]) where the ai...ak are the
+    non-implicit arguments of f.
     
     Arguments:
-    - `expr`: an application
+    - `expr`: an expression
     """
-    if expr.fun.is_app() and expr.fun.fun.info.infix:
-        lhs = expr.fun.arg
-        rhs = expr.arg
-        fun = expr.fun.fun
-        return  "({0!s} {1!s} {2!s})".format(lhs, fun, rhs)
+    r, args = root_app(expr)
+    
+    ty, _ = mvar_infer(r, ctxt=local_ctxt)
+
+    _, ty_args = root_pi(ty)
+
+    non_implicit = []
+    for i, a in enumerate(args):
+        if ty_args[i].info.implicit:
+            pass
+        else:
+            non_implicit.append(a)
+    return (r, non_implicit)
+
+
+def print_app(expr):
+    """Takes an application and prints it in the following manner:
+    if the application is of the form (..(f a0)... an), print
+    f(a0,...,an), or (a0 f a1) if f is infix.
+    
+    Arguments:
+    - `expr`: an expression
+    """
+    root, args = root_app_implicit(expr)
+    if root.info.infix and len(args) == 2:
+        return "({0!s} {1!s} {2!s})".format(args[0], root, args[1])
     else:
-        root, args = root_app(expr)
         args_str = map(str, args)
         args_str = ", ".join(args_str)
         return "{0!s}({1!s})".format(root, args_str)
 
-    
+
 def print_pair(expr):
     """
     
@@ -219,8 +240,8 @@ def pair(expr1, expr2):
     """
     e1 = to_expr(expr1)
     e2 = to_expr(expr2)
-    ty1 = typing.infer(e1, ctxt=local_ctxt)[0]
-    ty2 = typing.infer(e2, ctxt=local_ctxt)[0]
+    ty1, _ = typing.infer(e1, ctxt=local_ctxt)
+    ty2, _ = typing.infer(e2, ctxt=local_ctxt)
     return Pair(e1, e2, typ_mul(ty1, ty2))
 
 
@@ -242,12 +263,22 @@ def tm_call(fun, *args):
 
 @with_info(st_term)
 def add_tm(expr, arg):
-    return plus(expr, arg)
+    return add(expr, arg)
 
 
 @with_info(st_term)
 def mul_tm(expr, arg):
-    return mult(expr, arg)
+    return mul(expr, arg)
+
+
+@with_info(st_term)
+def r_add_tm(expr, arg):
+    return add(arg, expr)
+
+
+@with_info(st_term)
+def r_mul_tm(expr, arg):
+    return mul(arg, expr)
 
 
 #TODO: make this more clever
@@ -289,6 +320,8 @@ class StTerm(StExpr):
         self.info['__call__'] = tm_call
         self.info['__add__'] = add_tm
         self.info['__mul__'] = mul_tm
+        self.info['__radd__'] = r_add_tm
+        self.info['__rmul__'] = r_mul_tm
         self.info['__rshift__'] = type_arrow
         self.info['__getitem__'] = get_pair
         self.info['__eq__'] = eq_tm
@@ -443,9 +476,11 @@ def defconst(name, type, infix=None, tactic=None, implicit=None):
     #Now update the meta-variables of the type of c
     #fail if there are undefined meta-vars.
     c.type = sub_mvar(type, undef=True)
+
     if implicit:
         c.type.info['implicit'] = True
-    
+    c.info['checked'] = True
+
     #Now type check the resulting term and try to solve the
     #TCCs
     _, obl = typing.infer(c, ctxt=local_ctxt)
@@ -456,20 +491,18 @@ def defconst(name, type, infix=None, tactic=None, implicit=None):
         obl.solve_with(tactic)
     local_ctxt.add_const(c)
     if obl.is_solved():
-        pass
-        # print "{0!s} : {1!s} is assumed.\n".format(c, c.type)
+        print "{0!s} : {1!s} is assumed.\n".format(c, c.type)
     else:
         local_ctxt.add_to_field(obl.name, obl, 'goals')
         print "In the declaration:\n{0!s} : {1!s}".format(name, c.type)
         print "remaining type-checking constraints!"
         print obl
-    c.info['checked'] = True
     return c
 
 
 #TODO: clean this function!
 #TODO: abstract over local_ctxt
-def defexpr(name, value, type=None, tactic=None):
+def defexpr(name, value, type=None, infix=None, tactic=None):
     """Define an expression with a given type and value.
     Checks that the type of value is correct, and adds the defining
     equation to the context.
@@ -503,8 +536,9 @@ def defexpr(name, value, type=None, tactic=None):
     else:
         obl.solve_with(tactic)
 
-    c = const(name, ty)
+    c = const(name, ty, infix=infix)
     c.info['defined'] = True
+    c.info['checked'] = True
     local_ctxt.add_const(c)
 
     eq_c = (c == val)
@@ -521,7 +555,6 @@ def defexpr(name, value, type=None, tactic=None):
         " {0!s} = {1!s} : {2!s}".format(name, val, ty)
         print "remaining type-checking constraints!"
         print obl
-    c.info['checked'] = True
     return c
 
 
@@ -614,11 +647,14 @@ def definstance(name, ty, value):
 ###############################################################################
 
 Real = deftype('Real')
-plus = defconst('+', Real >> (Real >> Real), infix=True)
-mult = defconst('*', Real >> (Real >> Real), infix=True)
+add_real = defconst('add_real', Real >> (Real >> Real))
+mul_real = defconst('mul_real', Real >> (Real >> Real))
 
 Int = deftype('Int')
 int_sub_real = defsub('int_sub_real', Int <= Real)
+add_int = defconst('add_int', Int >> (Int >> Int))
+mul_int = defconst('mul_int', Int >> (Int >> Int))
+
 
 #create a single instance of Bool() and Type().
 Bool = e.Bool()
@@ -649,3 +685,47 @@ Type_.info['implicit'] = True
 Bool_ = e.Bool()
 Bool_.info.update(StTyp())
 Bool_.info['implicit'] = True
+
+###############################################################################
+#
+# Class instances for addition and multiplication
+#
+###############################################################################
+
+
+X = Type_('X')
+
+Y = deftype('Y')
+
+op = defconst('op', Y >> (Y >> Y))
+
+ibinop = X >> (X >> X)
+ibinop.info['implicit'] = True
+
+iop = defconst('op', ibinop)
+
+Mul = defclass('Mul', pi(Y, pi('op', Y >> (Y >> Y), Bool)), \
+               abst(Y, abst(op, true)))
+
+mul_app = Mul(X, iop)
+mul_app.info['implicit'] = True
+
+mul_ev = Const('mul_ev', mul_app)
+
+mul = defexpr('*', abst(X, abst(iop, abst(mul_ev, iop))), infix=True)
+
+Add = defclass('Add', pi(Y, pi('op', Y >> (Y >> Y), Bool)), \
+               abst(Y, abst(op, true)))
+
+add_app = Mul(X, iop)
+add_app.info['implicit'] = True
+
+add_ev = Const('add_ev', add_app)
+
+add = defexpr('+', abst(X, abst(iop, abst(add_ev, iop))), infix=True)
+
+definstance('Mul_real', Mul(Real, mul_real), triv())
+definstance('Mul_int', Mul(Int, mul_int), triv())
+
+definstance('Add_real', Add(Real, add_real), triv())
+definstance('Add_int', Mul(Int, add_int), triv())

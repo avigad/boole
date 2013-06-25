@@ -234,6 +234,21 @@ def open_tele_fresh(tele, checked=False):
     return open_tele(tele, fr_vars, checked=checked)
 
 
+def root_pi(expr):
+    """Returns the pair (r, [an,..,a0])
+    such that expr = Pi(a0, Pi(.. Pi(an, r)..)
+    
+    Arguments:
+    - `expr`: an expression
+    """
+    root = expr
+    args = []
+    while root.is_bound() and root.binder.is_pi():
+        args.append(root.dom)
+        _, root = open_bound_fresh(root)
+    return (root, args)
+
+
 class MvarInfer(t.ExprInfer):
     """Infer the type and generate constraints for a term containing
     meta-variables. A constraint is created when a meta-variable is of

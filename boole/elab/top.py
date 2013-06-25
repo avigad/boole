@@ -20,9 +20,17 @@ from terms import *
 
 if __name__ == '__main__':
 
+    x = Real('x')
+    y = Real('y')
     z = Real('z')
 
-    X = Type_('X')
+    i = Int('i')
+    j = Int('j')
+    k = Int('k')
+
+    x_y_z = defexpr('x_y_z', x * y * z)
+    
+    int_ops = defexpr('int_ops', 3 * i + j * 2)
 
     poly = defconst('poly', pi(X, X >> (X >> X)))
 
@@ -31,35 +39,6 @@ if __name__ == '__main__':
     nat = deftype('nat')
     
     nat_sub_real = defsub('nat_sub_real', nat <= Real)
-
-    Y = deftype('Y')
-
-    op = defconst('op', Y >> (Y >> Y))
-    
-    ibinop = X >> (X >> X)
-    ibinop.info['implicit'] = True
-
-    iop = defconst('op', ibinop)
-
-    Mul = defclass('Mul', pi(Y, pi('op', Y >> (Y >> Y), Bool)), abst(Y, abst(op, true)))
-
-    mul_app = Mul(X, iop)
-    mul_app.info['implicit'] = True
-
-    mul_ev = Const('mul_ev', mul_app)
-
-    mul = defexpr('mul', abst(X, abst(iop, abst(mul_ev, iop))))
-
-    int_mul = defconst('int_mul', Int >> (Int >> Int))
-
-    definstance('mul_int', Mul(Int, int_mul), triv())
-
-    test = defexpr('test', mul(3, 2))
-
-    definstance('mul_real', Mul(Real, mult), triv())
-
-    test2 = defexpr('test2', mul(3.0, 2.0))
-
 
     A = deftype('A')
     B = deftype('B')
@@ -79,31 +58,31 @@ if __name__ == '__main__':
                 triv())
 
 
-    test3 = defexpr('test3', mul(pair(3, 3.0), pair(2, 2.0)))
+    test3 = defexpr('test3', pair(3, 3.0) * pair(2, 2.0))
 
 
     test3_def = local_ctxt.defs['test3']
 
-    mul_def = local_ctxt.defs['mul']
+    mul_def = local_ctxt.defs['*']
 
     print
-    print conv.beta_norm(expr.sub_in([mul_def], ['mul'], test3_def))
+    print conv.beta_norm(expr.sub_in([mul_def], ['*'], test3_def))
     print
     
-    test4 = defexpr('test4', mul(pair(3.0, pair(3.0, 3)), pair(2.0, pair(2.0, 2))))
+    test4 = defexpr('test4', pair(3.0, pair(3.0, 3)) * pair(2.0, pair(2.0, 2)))
 
     test4_def = local_ctxt.defs['test4']
 
     print
-    print conv.beta_norm(expr.sub_in([mul_def], ['mul'], test4_def))
+    print conv.beta_norm(expr.sub_in([mul_def], ['*'], test4_def))
     print
 
-    test5 = defexpr('test5', mul(pair(pair(3.0, 3), pair(3, 3)), pair(pair(2.0, 2), pair(2, 2))))
+    test5 = defexpr('test5', pair(pair(3.0, 3), pair(3, 3)) * pair(pair(2.0, 2), pair(2, 2)))
 
     test5_def = local_ctxt.defs['test5']
 
     print
-    print conv.beta_norm(expr.sub_in([mul_def], ['mul'], test5_def))
+    print conv.beta_norm(expr.sub_in([mul_def], ['*'], test5_def))
     print
 
 
@@ -144,15 +123,15 @@ if __name__ == '__main__':
 
     rev_3 = defexpr('rev_3', rev(v3))
 
-    x = Int('x')
-    y = Int('y')
-    z = (Real * Real)('z')
+    p = (Real * Real)('p')
     w = Real('w')
     t = Real('t')
 
     abs_plus = defexpr('abs_plus', abst(t, t + w))
 
-    fa = forall(z, (z[0] + z[1]) == (z[1] + z[0]))
+    sub_test = defexpr('sub_test', abs_plus(i))
+
+    fa = forall(p, (p[0] + p[1]) == (p[1] + p[0]))
 
     plus_commut_stmt = defexpr('plus_commut_stmt', fa, type=Bool)
     

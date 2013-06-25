@@ -273,16 +273,16 @@ class Bound(Expr):
         """
         return visitor.visit_bound(self, *args, **kwargs)
 
-    # def to_string(self):
-    #     # Printing a bound expression involves
-    #     # substituting the DB index by a constant
-    #     # with the appropriate name.
-    #     var = self.binder.var
-    #     open_self = open_expr(var, self.dom, self.body)
-    #     return "{0!s}({1!s},{2!s})".format(\
-    #         self.binder.name, self.binder.var, open_self)
-
     def to_string(self):
+        # Printing a bound expression involves
+        # substituting the DB index by a constant
+        # with the appropriate name.
+        var = self.binder.var
+        open_self = open_expr(var, self.dom, self.body)
+        return "{0!s}({1!s},{2!s})".format(\
+            self.binder.name, self.binder.var, open_self)
+
+    def to_string_raw(self):
         return "{0!s}({1!s},{2!s},{3!s})".format(\
             self.binder.name, self.binder.var, self.dom, self.body)
 
@@ -1198,6 +1198,21 @@ def root_app(expr):
         root = root.fun
         #The arguments were collected in reverse order
     args.reverse()
+    return (root, args)
+
+
+def root_pi(expr):
+    """Returns the pair (r, [an,..,a0])
+    such that expr = Pi(a0, Pi(.. Pi(an, r)..)
+    
+    Arguments:
+    - `expr`: an expression
+    """
+    root = expr
+    args = []
+    while root.is_bound() and root.binder.is_pi():
+        args.append(root.dom)
+        _, root = open_bound_fresh(root)
     return (root, args)
 
 

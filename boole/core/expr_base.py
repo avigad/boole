@@ -84,6 +84,25 @@ class Expr(object):
             mess = '`BaseExpr` object does not support addition'
             raise TypeError(mess)
 
+    def __rmul__(self, arg):
+        """Call the multiplication implemented in info
+        """
+        try:
+            return self.info['__rmul__'](self, arg)
+        except KeyError:
+            print self, self.info
+            mess = '`BaseExpr` object does not support left multiplication'
+            raise TypeError(mess)
+
+    def __radd__(self, arg):
+        """Call the addition implemented in info
+        """
+        try:
+            return self.info['__radd__'](self, arg)
+        except KeyError:
+            mess = '`BaseExpr` object does not support left addition'
+            raise TypeError(mess)
+
     def __rshift__(self, arg):
         """Call right_shift implemented in info
         """
