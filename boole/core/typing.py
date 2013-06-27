@@ -486,24 +486,3 @@ def infer(expr, type=None, ctxt=None):
             mess = "Expected {0!s} to be of type {1!s}"\
                    .format(expr, type)
             raise ExprTypeError(mess, expr)
-
-
-def check(expr, type=None, tactic=None, context=None):
-    """Check the type of an expression and
-    print it `Coq style`
-    
-    Arguments:
-    - `expr`: an expression
-    """
-    ty, obl = infer(expr, type, context)
-    print expr, ':', ty
-    print
-    if tactic == None:
-        obl.solve_with(tactics.par(tactics.trivial))
-    else:
-        obl.solve_with(tactic)
-    if obl.is_solved():
-        print "With no remaning obligations!\n"
-    else:
-        print "With remaining obligations:\n"
-        print obl

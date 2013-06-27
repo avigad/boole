@@ -30,7 +30,7 @@ if __name__ == '__main__':
 
     x_y_z = defexpr('x_y_z', x * y * z)
     
-    int_ops = defexpr('int_ops', 3 * i + j * 2)
+    int_ops = defexpr('int_ops', 3 * i < j * 2)
 
     poly = defconst('poly', pi(X, X >> (X >> X)))
 

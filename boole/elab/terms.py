@@ -281,6 +281,11 @@ def r_mul_tm(expr, arg):
     return mul(arg, expr)
 
 
+@with_info(st_term)
+def lt_tm(expr, arg):
+    return lt(expr, arg)
+
+
 #TODO: make this more clever
 @with_info(st_term)
 def get_pair(expr, index):
@@ -326,6 +331,7 @@ class StTerm(StExpr):
         self.info['__getitem__'] = get_pair
         self.info['__eq__'] = eq_tm
         self.info['__str__'] = str_tm
+        self.info['__lt__'] = lt_tm
 
 st_term._info = StTerm
 
@@ -645,23 +651,25 @@ def definstance(name, ty, value):
 # Declarations for the simply typed theory.
 #
 ###############################################################################
-
-Real = deftype('Real')
-add_real = defconst('add_real', Real >> (Real >> Real))
-mul_real = defconst('mul_real', Real >> (Real >> Real))
-
-Int = deftype('Int')
-int_sub_real = defsub('int_sub_real', Int <= Real)
-add_int = defconst('add_int', Int >> (Int >> Int))
-mul_int = defconst('mul_int', Int >> (Int >> Int))
-
-
 #create a single instance of Bool() and Type().
 Bool = e.Bool()
 Bool.info.update(StTyp())
 
 Type = e.Type()
 Type.info.update(StTyp())
+
+
+Real = deftype('Real')
+add_real = defconst('add_real', Real >> (Real >> Real))
+mul_real = defconst('mul_real', Real >> (Real >> Real))
+lt_real = defconst('lt_real', Real >> (Real >> Bool))
+
+Int = deftype('Int')
+int_sub_real = defsub('int_sub_real', Int <= Real)
+add_int = defconst('add_int', Int >> (Int >> Int))
+mul_int = defconst('mul_int', Int >> (Int >> Int))
+lt_int = defconst('lt_int', Int >> (Int >> Bool))
+
 
 conj = defconst('&', Bool >> (Bool >> Bool), infix=True)
 disj = defconst('|', Bool >> (Bool >> Bool), infix=True)
@@ -699,10 +707,10 @@ Y = deftype('Y')
 
 op = defconst('op', Y >> (Y >> Y))
 
-ibinop = X >> (X >> X)
-ibinop.info['implicit'] = True
+iop_ty = X >> (X >> X)
+iop_ty.info['implicit'] = True
 
-iop = defconst('op', ibinop)
+iop = defconst('op', iop_ty)
 
 Mul = defclass('Mul', pi(Y, pi('op', Y >> (Y >> Y), Bool)), \
                abst(Y, abst(op, true)))
@@ -724,8 +732,28 @@ add_ev = Const('add_ev', add_app)
 
 add = defexpr('+', abst(X, abst(iop, abst(add_ev, iop))), infix=True)
 
+pred = defconst('pred', Y >> (Y >> Bool))
+
+ipred_ty = X >> (X >> Bool)
+ipred_ty.info['implicit'] = True
+
+ipred = defconst('pred', ipred_ty)
+
+Lt = defclass('Lt', pi(Y, pi('pred', Y >> (Y >> Bool), Bool)), \
+              abst(Y, abst(pred, true)))
+
+lt_app = Lt(X, ipred)
+lt_app.info['implicit'] = True
+
+lt_ev = Const('lt_ev', lt_app)
+
+lt = defexpr('<', abst(X, abst(ipred, abst(lt_ev, ipred))), infix=True)
+
 definstance('Mul_real', Mul(Real, mul_real), triv())
 definstance('Mul_int', Mul(Int, mul_int), triv())
 
 definstance('Add_real', Add(Real, add_real), triv())
 definstance('Add_int', Mul(Int, add_int), triv())
+
+definstance('Lt_real', Lt(Real, lt_real), triv())
+definstance('Lt_int', Lt(Int, lt_int), triv())

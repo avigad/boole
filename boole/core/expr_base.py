@@ -130,13 +130,22 @@ class Expr(object):
             mess = '`BaseExpr` object does not support lookup'
             raise TypeError(mess)
 
-    def __le__(self, index):
+    def __le__(self, arg):
         """Call le implemented in info
         """
         try:
-            return self.info['__le__'](self, index)
+            return self.info['__le__'](self, arg)
         except KeyError:
-            mess = '`BaseExpr` object does not support leq'
+            mess = '`BaseExpr` object does not support le'
+            raise TypeError(mess)
+
+    def __lt__(self, arg):
+        """Call le implemented in info
+        """
+        try:
+            return self.info['__lt__'](self, arg)
+        except KeyError:
+            mess = '`BaseExpr` object does not support lt'
             raise TypeError(mess)
 
     def accept(self, visitor, *args, **kwargs):

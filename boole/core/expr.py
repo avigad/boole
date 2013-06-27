@@ -924,7 +924,6 @@ class ExprVisitor(object):
 ###############################################################################
 
 
-# TODO: should this just perform a side effect on the expression?
 class AbstractExpr(ExprVisitor):
     """Abstract an expression over a list
     of names, in the locally nameless approach. Return
@@ -1182,6 +1181,12 @@ def open_bound_fresh(expr, checked=None):
     """
     var = fresh_name.get_name(expr.binder.var)
     return (var, open_expr(var, expr.dom, expr.body, checked=checked))
+
+###############################################################################
+#
+# Various utility functions.
+#
+###############################################################################
 
 
 def root_app(expr):
