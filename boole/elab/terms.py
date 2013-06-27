@@ -725,7 +725,7 @@ mul = defexpr('*', abst(X, abst(iop, abst(mul_ev, iop))), infix=True)
 Add = defclass('Add', pi(Y, pi('op', Y >> (Y >> Y), Bool)), \
                abst(Y, abst(op, true)))
 
-add_app = Mul(X, iop)
+add_app = Add(X, iop)
 add_app.info['implicit'] = True
 
 add_ev = Const('add_ev', add_app)
@@ -753,7 +753,7 @@ definstance('Mul_real', Mul(Real, mul_real), triv())
 definstance('Mul_int', Mul(Int, mul_int), triv())
 
 definstance('Add_real', Add(Real, add_real), triv())
-definstance('Add_int', Mul(Int, add_int), triv())
+definstance('Add_int', Add(Int, add_int), triv())
 
 definstance('Lt_real', Lt(Real, lt_real), triv())
 definstance('Lt_int', Lt(Int, lt_int), triv())
