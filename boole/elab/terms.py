@@ -753,7 +753,7 @@ definstance('Mul_real', Mul(Real, mul_real), triv())
 definstance('Mul_int', Mul(Int, mul_int), triv())
 
 definstance('Add_real', Add(Real, add_real), triv())
-definstance('Add_int', Mul(Int, add_int), triv())
+definstance('Add_int', Add(Int, add_int), triv())
 
 definstance('Lt_real', Lt(Real, lt_real), triv())
 definstance('Lt_int', Lt(Int, lt_int), triv())
