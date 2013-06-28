@@ -139,10 +139,10 @@ solve_mvar = SolveMvar()
 #TODO: unsound with xi in empty domain
 class mvar_apply(Tactic):
     """Takes a hypothesis of the form
-    forall(x1,...,xn, p1 ==> ... pn ==> p)
+    forall(x1,...,xn, p1 >= ... pn >= p)
     and applies it to the goal r, generating
     the goal
-    p[sub] ==> r
+    p[sub] >= r
     with [sub] sending each xi to a fresh meta-variable.
     """
     
@@ -162,9 +162,9 @@ class mvar_apply(Tactic):
                 _, hyp = elab.mvar_open_bound_fresh(hyp)
             new_goals = []
             #TODO: add requirement that hyp.lhs is a Bool
-            while hyp.is_sub():
-                new_goals.append(Goal(hyps, hyp.lhs))
-                hyp = hyp.rhs
+            while e.is_impl(hyp):
+                new_goals.append(Goal(hyps, e.arg_i(hyp, 0)))
+                hyp = e.arg_i(hyp, 1)
             return sub_goal(hyps, hyp, prop) + new_goals + tail
 
 

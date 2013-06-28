@@ -140,12 +140,39 @@ class Expr(object):
             raise TypeError(mess)
 
     def __lt__(self, arg):
-        """Call le implemented in info
+        """Call lt implemented in info
         """
         try:
             return self.info['__lt__'](self, arg)
         except KeyError:
             mess = '`BaseExpr` object does not support lt'
+            raise TypeError(mess)
+
+    def __ge__(self, arg):
+        """Call ge implemented in info
+        """
+        try:
+            return self.info['__ge__'](self, arg)
+        except KeyError:
+            mess = '`BaseExpr` object does not support ge'
+            raise TypeError(mess)
+
+    def __and__(self, arg):
+        """Call and implemented in info
+        """
+        try:
+            return self.info['__and__'](self, arg)
+        except KeyError:
+            mess = '`BaseExpr` object does not support conjunction'
+            raise TypeError(mess)
+
+    def __or__(self, arg):
+        """Call or implemented in info
+        """
+        try:
+            return self.info['__or__'](self, arg)
+        except KeyError:
+            mess = '`BaseExpr` object does not support or'
             raise TypeError(mess)
 
     def accept(self, visitor, *args, **kwargs):

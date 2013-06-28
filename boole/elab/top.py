@@ -15,6 +15,7 @@
 import boole.core.expr as expr
 import boole.core.tactics as tac
 import boole.core.conv as conv
+import unif
 from terms import *
 
 
@@ -54,7 +55,7 @@ if __name__ == '__main__':
 
     definstance('mul_prod', \
                 forall(A, forall(op_a, forall(B, forall(op_b, \
-                Mul(A, op_a) == (Mul(B, op_b) == Mul(A*B, op_pair)))))), \
+                Mul(A, op_a) >= (Mul(B, op_b) >= Mul(A*B, op_pair)))))), \
                 triv())
 
 
@@ -123,7 +124,6 @@ if __name__ == '__main__':
 
     rev_3 = defexpr('rev_3', rev(v3))
 
-    p = (Real * Real)('p')
     w = Real('w')
     t = Real('t')
 
@@ -131,15 +131,16 @@ if __name__ == '__main__':
 
     sub_test = defexpr('sub_test', abs_plus(i))
 
+    p = pair(x, y)
+
+    proj_x_y_0 = defthm('proj_x_y_0', p[0] == x)
+
+    prop = defexpr('prop', true & (true | false))
+    
+    p = (Real * Real)('p')
+
     fa = forall(p, (p[0] + p[1]) == (p[1] + p[0]))
 
     plus_commut_stmt = defexpr('plus_commut_stmt', fa, type=Bool)
     
     plus_commut = defexpr('plus_commut', triv(), fa)
-
-    p = pair(x, y)
-
-    proj_x_y_0 = defthm('proj_x_y_0', p[0] == x,\
-                         tactic=tac.simpl(conv.par_beta) >> tac.trivial)
-
-    prop = defexpr('prop', conj(true, disj(true, false)))

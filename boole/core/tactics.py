@@ -128,12 +128,20 @@ def triv_fun(goal, context):
     hyps = goal.tele
     if prop.is_const() and prop.name == "true":
         return []
-    elif prop.is_sub():
+    elif prop.is_sub() or expr.is_eq(prop):
+        if prop.is_sub():
+            lhs = prop.lhs
+            rhs = prop.rhs
+        else:
+            lhs = expr.arg_i(prop, 1)
+            rhs = expr.arg_i(prop, 2)
         #try for pointer equality first.
-        if prop.lhs is prop.rhs:
+        if lhs is rhs:
             return []
-        elif prop.lhs.equals(goal.prop.rhs):
+        elif lhs.equals(rhs):
             return []
+        elif lhs.is_const() and lhs.name == 'true':
+            return triv_fun(Goal(hyps, prop.rhs), context)
 
     for h in hyps.types:
         if h.equals(prop):
@@ -446,15 +454,10 @@ def intro_fun(goal, context):
         dom = prop.dom
         v, prop = expr.open_bound_fresh(prop)
         hyps = hyps.append(v, dom)
-    #TODO: this is a hack: there should be an info tag on terms
-    #known to be of type Bool
-    while prop.is_sub():
-        if prop.lhs.is_const() and prop.lhs.type.is_bool():
-            v = fresh_name.get_name('_')
-            hyps = hyps.append(v, prop.lhs)
-            prop = prop.rhs
-        else:
-            break
+    while expr.is_impl(prop):
+        v = fresh_name.get_name('_')
+        hyps = hyps.append(v, expr.arg_i(prop, 0))
+        prop = expr.arg_i(prop, 1)
     return [Goal(hyps, prop)]
 
 intros = tac_from_fun('intros', intro_fun)

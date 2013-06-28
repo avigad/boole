@@ -304,10 +304,24 @@ def get_pair(expr, index):
                         .format(expr))
 
 
-#TODO: change this to a real equality?
 @with_info(st_term)
 def eq_tm(expr1, expr2):
-    return Sub(expr1, expr2)
+    return eq(expr1, expr2)
+
+
+@with_info(st_term)
+def ge_tm(expr1, expr2):
+    return impl(expr1, expr2)
+
+
+@with_info(st_term)
+def and_tm(expr1, expr2):
+    return conj(expr1, expr2)
+
+
+@with_info(st_term)
+def or_tm(expr1, expr2):
+    return disj(expr1, expr2)
 
 
 @with_info(st_typ)
@@ -332,6 +346,9 @@ class StTerm(StExpr):
         self.info['__eq__'] = eq_tm
         self.info['__str__'] = str_tm
         self.info['__lt__'] = lt_tm
+        self.info['__ge__'] = ge_tm
+        self.info['__and__'] = and_tm
+        self.info['__or__'] = or_tm
 
 st_term._info = StTerm
 
@@ -506,6 +523,10 @@ def defconst(name, type, infix=None, tactic=None, implicit=None):
     return c
 
 
+def equals(e1, e2):
+    return conj(Sub(e1, e2), Sub(e2, e1))
+
+
 #TODO: clean this function!
 #TODO: abstract over local_ctxt
 def defexpr(name, value, type=None, infix=None, tactic=None):
@@ -547,7 +568,7 @@ def defexpr(name, value, type=None, infix=None, tactic=None):
     c.info['checked'] = True
     local_ctxt.add_const(c)
 
-    eq_c = (c == val)
+    eq_c = equals(c, val)
     def_name = "{0!s}_def".format(name)
     c_def = const(def_name, eq_c)
     local_ctxt.add_const(c_def)
@@ -658,6 +679,16 @@ Bool.info.update(StTyp())
 Type = e.Type()
 Type.info.update(StTyp())
 
+#Implicit type declarations
+Type_ = e.Type()
+Type_.info.update(StTyp())
+Type_.info['implicit'] = True
+
+
+Bool_ = e.Bool()
+Bool_.info.update(StTyp())
+Bool_.info['implicit'] = True
+
 
 Real = deftype('Real')
 add_real = defconst('add_real', Real >> (Real >> Real))
@@ -674,8 +705,11 @@ lt_int = defconst('lt_int', Int >> (Int >> Bool))
 conj = defconst('&', Bool >> (Bool >> Bool), infix=True)
 disj = defconst('|', Bool >> (Bool >> Bool), infix=True)
 neg = defconst('neg', Bool >> Bool)
-#TODO: make Sub(p, q) print as p ==> q for terms of type bool
-# impl = defconst('==>', Bool * Bool >> Bool, infix=True)
+
+p = Bool('p')
+q = Bool('q')
+impl = defexpr('>=', abst(p, abst(q, Sub(p, q))), \
+               Bool >> (Bool >> Bool), infix=True)
 
 #This is equivalent to the constant given as type to terms
 # of the form Ev(tele), as constants are only compared
@@ -684,24 +718,20 @@ true = defconst('true', Bool)
 
 false = defconst('false', Bool)
 
-#Implicit type declarations
-Type_ = e.Type()
-Type_.info.update(StTyp())
-Type_.info['implicit'] = True
-
-
-Bool_ = e.Bool()
-Bool_.info.update(StTyp())
-Bool_.info['implicit'] = True
-
 ###############################################################################
 #
-# Class instances for addition and multiplication
+# Equality and class instances for addition and multiplication
 #
 ###############################################################################
 
 
 X = Type_('X')
+
+x = Const('x', X)
+y = Const('y', X)
+
+eq = defexpr('==', abst(X, abst(x, abst(y, conj(Sub(x, y), Sub(y, x))))), \
+             pi(X, X >> (X >> Bool)), infix=True)
 
 Y = deftype('Y')
 

@@ -1221,9 +1221,45 @@ def root_pi(expr):
     return (root, args)
 
 
+def arg_i(expr, i):
+    """Takes an expresion of the form f(a0,..., an)
+    and returns ai, fails if the argument is not of the
+    correct form.
+    
+    Arguments:
+    - `expr`: an expression
+    - `i`: an integer
+    """
+    _, args = root_app(expr)
+    return args[i]
+
+def is_eq(expr):
+    """Returns True if the expression
+    is of the form eq(e1, e2), False otherwise.
+    
+    Arguments:
+    - `expr`:
+    """
+    root, args = root_app(expr)
+    #There is an implicit type argument
+    return root.is_const() and (root.name == '==') and (len(args) == 3)
+
+
+def is_impl(expr):
+    """Returns True if the expression
+    is of the form impl(e1, e2), False otherwise.
+    
+    Arguments:
+    - `expr`:
+    """
+    root, args = root_app(expr)
+    return root.is_const() and root.name == '>=' and \
+           len(args) == 2
+
+
 def root_clause(expr):
     """Returns r such that expr is of the form
-    forall(x1,...,forall(xn, p1 == (p2 == ... (pm == r))))
+    forall(x1,...,forall(xn, p1 >= (p2 >= ... (pm >= r))))
     replacing xi with fresh variables
     
     Arguments:
@@ -1232,6 +1268,6 @@ def root_clause(expr):
     root = expr
     while root.is_bound() and root.binder.is_forall():
         _, root = open_bound_fresh(root)
-    while root.is_sub():
-        root = root.rhs
+    while is_impl(root):
+        root = arg_i(root, 1)
     return root
