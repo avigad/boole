@@ -1,6 +1,6 @@
 #############################################################################
 #
-# constr.py
+# goals.py
 #
 # description: constraints and goals in Boole
 #

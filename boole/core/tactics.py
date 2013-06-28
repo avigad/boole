@@ -1,8 +1,8 @@
 #############################################################################
 #
-# constr.py
+# tactics.py
 #
-# description: constraints and goals in Boole
+# description: Basic tactics for solving goals
 #
 #
 # Authors:
