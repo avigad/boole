@@ -15,11 +15,25 @@
 import boole.core.expr as expr
 import boole.core.tactics as tac
 import boole.core.conv as conv
-import unif
 from terms import *
 
 
 if __name__ == '__main__':
+
+
+    el = defconst('el', X)
+
+    One = defclass('One', pi(X, pi(el, Bool)), abst(X, abst(el, true)))
+
+    definstance('One_int', One(Int, 1), triv())
+
+    one_inst = defconst('one_inst', One(X, el))
+    
+    one = defexpr('one', abst(X, abst(el, abst(one_inst, el))), \
+                  pi(X, pi(el, pi(one_inst, X, impl=True), impl=True), impl=True))
+
+
+    test = defexpr('test', 3 + one())
 
     x = Real('x')
     y = Real('y')
@@ -33,7 +47,7 @@ if __name__ == '__main__':
     
     int_ops = defexpr('int_ops', 3 * i < j * 2)
 
-    poly = defconst('poly', pi(X, X >> (X >> X)))
+    poly = defconst('poly', pi(X, X >> (X >> X), impl=True))
 
     poly_z = defexpr('poly_z', poly(z))
 
@@ -91,22 +105,19 @@ if __name__ == '__main__':
     
     Vec = defconst('Vec', pi(n, Type))
 
-    Int_ = deftype('Int', implicit=True)
-    m = Int_('m')
-
     succ = defconst('succ', Int >> Int)
 
     nil = defconst('nil', Vec(0))
 
-    cons = defconst('cons', pi(m, Real >> (Vec(m) >> Vec(succ(m)))))
+    cons = defconst('cons', pi(n, Real >> (Vec(n) >> Vec(succ(n))), impl=True))
 
-    sum_vec = defconst('sum_vec', pi(m, Vec(m) >> (Vec(m) >> Vec(m))))
+    sum_vec = defconst('sum_vec', pi(n, Vec(n) >> (Vec(n) >> Vec(n)), impl=True))
 
     add_nil = defhyp('add_nil', sum_vec(nil, nil) == nil)
 
-    v1 = defconst('v1', Vec(m))
+    v1 = defconst('v1', Vec(n))
 
-    v2 = defconst('v2', Vec(m))
+    v2 = defconst('v2', Vec(n))
 
     a = defconst('a', Real)
 
@@ -115,10 +126,10 @@ if __name__ == '__main__':
     add_cons_eq = sum_vec(cons(a, v1), cons(b, v2)) == cons(a+b, sum_vec(v1, v2))
 
     add_cons = defhyp('add_cons', \
-                      forall(m, forall(a, forall(b, forall(v1, forall(v2, add_cons_eq))))))
+                      forall(n, forall(a, forall(b, forall(v1, forall(v2, add_cons_eq))))))
 
 
-    rev = defconst('rev', pi(m, Vec(m) >> Vec(m)))
+    rev = defconst('rev', pi(n, Vec(n) >> Vec(n), impl=True))
 
     v3 = defconst('v3', Vec(3))
 

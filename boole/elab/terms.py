@@ -60,14 +60,14 @@ def root_app_implicit(expr):
     
     ty, _ = mvar_infer(r, ctxt=local_ctxt)
 
-    _, ty_args = root_pi(ty)
-
     non_implicit = []
-    for i, a in enumerate(args):
-        if ty_args[i].info.implicit:
-            pass
-        else:
-            non_implicit.append(a)
+    i = 0
+    while ty.is_bound() and ty.binder.is_pi() and i < len(args):
+        if not ty.info.implicit:
+            non_implicit.append(args[i])
+        i += 1
+        ty = ty.body
+
     return (r, non_implicit)
 
 
@@ -389,7 +389,7 @@ st_typ._info = StTyp
 
 
 @with_info(st_typ)
-def mktype(name, implicit=None):
+def mktype(name):
     """
     
     Arguments:
@@ -405,8 +405,8 @@ def mktype(name, implicit=None):
 
 
 @with_info(st_term)
-def pi(*args):
-    return elab.pi(*args)
+def pi(*args, **kwargs):
+    return elab.pi(*args, **kwargs)
 
 
 @with_info(st_term)
@@ -458,17 +458,14 @@ def triv():
 local_ctxt = Context("local_ctxt")
 
 
-def deftype(name, implicit=None):
+def deftype(name):
     """Define a type constant, and add it
     to local_ctxt.
     
     Arguments:
     - `name`:
     """
-    if implicit is None:
-        c = mktype(name)
-    else:
-        c = mktype(name, implicit=True)
+    c = mktype(name)
     local_ctxt.add_const(c)
     print "{0!s} : {1!s} is assumed.\n".format(c, c.type)
     return c
@@ -478,7 +475,7 @@ elab_tac = tac.par(u.unify) >> tac.trytac(u.instances)
 type_tac = tac.auto >> tac.trytac(u.instances)
 
 
-def defconst(name, type, infix=None, tactic=None, implicit=None):
+def defconst(name, type, infix=None, tactic=None):
     """Define a constant, add it to
     local_ctxt and return it.
     
@@ -496,12 +493,13 @@ def defconst(name, type, infix=None, tactic=None, implicit=None):
     u.mvar_stack.new()
     obl.solve_with(elab_tac)
 
+    # obl.solve_with(tac.par(u.sub_mvar))
+    # print obl
+
     #Now update the meta-variables of the type of c
     #fail if there are undefined meta-vars.
     c.type = sub_mvar(type, undef=True)
 
-    if implicit:
-        c.type.info['implicit'] = True
     c.info['checked'] = True
 
     #Now type check the resulting term and try to solve the
@@ -679,17 +677,6 @@ Bool.info.update(StTyp())
 Type = e.Type()
 Type.info.update(StTyp())
 
-#Implicit type declarations
-Type_ = e.Type()
-Type_.info.update(StTyp())
-Type_.info['implicit'] = True
-
-
-Bool_ = e.Bool()
-Bool_.info.update(StTyp())
-Bool_.info['implicit'] = True
-
-
 Real = deftype('Real')
 add_real = defconst('add_real', Real >> (Real >> Real))
 mul_real = defconst('mul_real', Real >> (Real >> Real))
@@ -725,59 +712,47 @@ false = defconst('false', Bool)
 ###############################################################################
 
 
-X = Type_('X')
+X = deftype('X')
 
 x = Const('x', X)
 y = Const('y', X)
 
 eq = defexpr('==', abst(X, abst(x, abst(y, conj(Sub(x, y), Sub(y, x))))), \
-             pi(X, X >> (X >> Bool)), infix=True)
+             pi(X, X >> (X >> Bool), impl=True), infix=True)
 
-Y = deftype('Y')
+op = defconst('op', X >> (X >> X))
 
-op = defconst('op', Y >> (Y >> Y))
+Mul = defclass('Mul', pi(X, pi(op, Bool)), \
+               abst(X, abst(op, true)))
 
-iop_ty = X >> (X >> X)
-iop_ty.info['implicit'] = True
+mul_ev = Const('mul_ev', Mul(X, op))
 
-iop = defconst('op', iop_ty)
+mul = defexpr('*', abst(X, abst(op, abst(mul_ev, op))), \
+              pi(X, pi(op, pi(mul_ev, X >> (X >> X), \
+                              impl=True), impl=True), impl=True), \
+              infix=True)
 
-Mul = defclass('Mul', pi(Y, pi('op', Y >> (Y >> Y), Bool)), \
-               abst(Y, abst(op, true)))
+Add = defclass('Add', pi(X, pi(op, Bool)), \
+               abst(X, abst(op, true)))
 
-mul_app = Mul(X, iop)
-mul_app.info['implicit'] = True
+add_ev = Const('add_ev', Add(X, op))
 
-mul_ev = Const('mul_ev', mul_app)
+add = defexpr('+', abst(X, abst(op, abst(add_ev, op))), \
+              pi(X, pi(op, pi(add_ev, X >> (X >> X), \
+                              impl=True), impl=True), impl=True), \
+              infix=True)
 
-mul = defexpr('*', abst(X, abst(iop, abst(mul_ev, iop))), infix=True)
+pred = defconst('pred', X >> (X >> Bool))
 
-Add = defclass('Add', pi(Y, pi('op', Y >> (Y >> Y), Bool)), \
-               abst(Y, abst(op, true)))
+Lt = defclass('Lt', pi(X, pi(pred, Bool)), \
+              abst(X, abst(pred, true)))
 
-add_app = Add(X, iop)
-add_app.info['implicit'] = True
+lt_ev = Const('lt_ev', Lt(X, pred))
 
-add_ev = Const('add_ev', add_app)
-
-add = defexpr('+', abst(X, abst(iop, abst(add_ev, iop))), infix=True)
-
-pred = defconst('pred', Y >> (Y >> Bool))
-
-ipred_ty = X >> (X >> Bool)
-ipred_ty.info['implicit'] = True
-
-ipred = defconst('pred', ipred_ty)
-
-Lt = defclass('Lt', pi(Y, pi('pred', Y >> (Y >> Bool), Bool)), \
-              abst(Y, abst(pred, true)))
-
-lt_app = Lt(X, ipred)
-lt_app.info['implicit'] = True
-
-lt_ev = Const('lt_ev', lt_app)
-
-lt = defexpr('<', abst(X, abst(ipred, abst(lt_ev, ipred))), infix=True)
+lt = defexpr('<', abst(X, abst(pred, abst(lt_ev, pred))), \
+             pi(X, pi(pred, pi(lt_ev, X >> (X >> Bool),\
+                               impl=True), impl=True), impl=True),\
+             infix=True)
 
 definstance('Mul_real', Mul(Real, mul_real), triv())
 definstance('Mul_int', Mul(Int, mul_int), triv())

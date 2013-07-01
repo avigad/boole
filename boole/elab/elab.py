@@ -103,7 +103,6 @@ class Mvar(expr_base.Expr):
         self.tele = nullctxt()
         self.pending = []
 
-
     def accept(self, visitor, *args, **kwargs):
         return visitor.visit_mvar(self, *args, **kwargs)
 
@@ -139,8 +138,6 @@ class Mvar(expr_base.Expr):
         """
         self.info = info.DefaultInfo()
         self._value = None
-
-
 
 ##############################################################################
 #
@@ -451,8 +448,9 @@ class SubMvar(e.ExprVisitor):
             if self.undef is None:
                 return expr
             else:
+                typ = self.visit(expr.type)
                 mess = "Cannot find a value for {0!s}:{1!s}"\
-                       .format(expr, expr.type)
+                       .format(expr, typ)
                 raise e.ExprError(mess, expr)
 
     @info.same_info
@@ -566,9 +564,12 @@ def app_expr(f, f_ty, cast, args):
     rem_args = args
     rem_cast = cast
     rem_ty = f_ty
-    while len(rem_args) != 0:
-        if rem_ty.is_bound() and rem_ty.binder.is_pi()\
-           and rem_ty.dom.info.implicit:
+
+    #TODO: This is a bit of a hack. We need "maximally inserted arguments"
+    #as in Coq to do this cleanly
+    if len(args) == 0:
+        while rem_ty.is_bound() and rem_ty.binder.is_pi()\
+              and rem_ty.info.implicit:
             mvar = mk_meta(rem_ty.binder.var, rem_ty.dom)
             #For now we generate the trivial evidence.
             #If more information is needed, we need to go through the whole
@@ -577,22 +578,34 @@ def app_expr(f, f_ty, cast, args):
             mcast = trivial
             tm = t.App(mcast, tm, mvar)
             rem_ty = subst_expr([mvar], rem_ty.body)
-        elif rem_ty.is_bound() and rem_ty.binder.is_pi():
-            tm = t.App(rem_cast[0], tm, rem_args[0])
-            rem_ty = subst_expr([rem_args[0]], rem_ty.body)
-            rem_cast = rem_cast[1:]
-            rem_args = rem_args[1:]
-        else:
-            #In this case, something is wrong with the type
-            #of f, and we simply blindly apply all the remaining
-            #arguments.
-            tm = t.App(rem_cast[0], tm, rem_args[0])
-            rem_cast = rem_cast[1:]
-            rem_args = rem_args[1:]
+    else:
+        while len(rem_args) != 0:
+            if rem_ty.is_bound() and rem_ty.binder.is_pi()\
+               and rem_ty.info.implicit:
+                mvar = mk_meta(rem_ty.binder.var, rem_ty.dom)
+                #For now we generate the trivial evidence.
+                #If more information is needed, we need to go through the whole
+                #term to collect local information (variables), to add them
+                #the evidence term
+                mcast = trivial
+                tm = t.App(mcast, tm, mvar)
+                rem_ty = subst_expr([mvar], rem_ty.body)
+            elif rem_ty.is_bound() and rem_ty.binder.is_pi():
+                tm = t.App(rem_cast[0], tm, rem_args[0])
+                rem_ty = subst_expr([rem_args[0]], rem_ty.body)
+                rem_cast = rem_cast[1:]
+                rem_args = rem_args[1:]
+            else:
+                #In this case, something is wrong with the type
+                #of f, and we simply blindly apply all the remaining
+                #arguments.
+                tm = t.App(rem_cast[0], tm, rem_args[0])
+                rem_cast = rem_cast[1:]
+                rem_args = rem_args[1:]
     return tm
 
 
-def pi(*args):
+def pi(var, codom, impl=None):
     """Create the term
     Pi x:A.B from its constituents
     
@@ -600,22 +613,15 @@ def pi(*args):
     - `var`: a constant expr
     - `codom`: an expression possibly containing var
     """
-    if len(args) == 2:
-        var = args[0]
-        codom = args[1]
-        if var.is_const():
-            codom_abs = abstract_expr([var.name], codom)
-            return e.Bound(e.Pi(var.name), var.type, codom_abs)
-        else:
-            mess = "Expected {0!s} to be a constant".format(var)
-            raise e.ExprError(mess, var)
-    elif len(args) == 3:
-        name = args[0]
-        dom = args[1]
-        codom = args[2]
-        return e.Bound(e.Pi(name), dom, codom)
+    if var.is_const():
+        codom_abs = abstract_expr([var.name], codom)
+        ret = e.Bound(e.Pi(var.name), var.type, codom_abs)
+        if impl:
+            ret.info['implicit'] = True
+        return ret
     else:
-        raise Exception("Wrong number of arguments!")
+        mess = "Expected {0!s} to be a constant".format(var)
+        raise e.ExprError(mess, var)
 
 
 def abst(var, body):
