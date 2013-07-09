@@ -1,1 +1,1 @@
-__all__ = ['expr', 'language', 'model']
+__all__ = ['expr', 'goals', 'context', 'info', 'typing', 'tactics', 'vargen']

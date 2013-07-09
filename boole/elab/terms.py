@@ -31,11 +31,11 @@ import unif as u
 
 
 def ii(n):
-    return Const(str(n), Int)
+    return Const(str(n), Int, is_const=True)
 
 
 def rr(n):
-    return Const(str(n), Real)
+    return Const(str(n), Real, is_const=True)
 
 
 def to_expr(expr):
