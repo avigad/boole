@@ -1,5 +1,5 @@
-from inequalities_classes import *
-from inequalities_heuristic import *
+from classes import *
+from heuristic import *
 
 ###############################################################################
 #

@@ -44,7 +44,7 @@ ADD, MUL, HYP, FUN = range(4)
 # An ordering on expressions is defined recursively, using Python's
 #   built-in lexicographic orderings on pairs and lists
 #
-# To do: canonize should check for duplicates and combine them
+# TODO: canonize should check for duplicates and combine them
 #
 ###############################################################################
 
@@ -539,7 +539,7 @@ class Func_term(Term):
 #     a1 = 1 (so the term is normalized)
 #   a multiplicative term ((t1, n1), ..., (tk, nk)) where
 #     each ti is a canonical term (variable or additive)
-#     t1 < t2 < ... < tk
+#     n1 < n2 < ... < nk
 #
 # Add_pair(r, t) is said to be canonical if t is a canonical term.
 #

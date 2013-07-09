@@ -1,9 +1,9 @@
 from __future__ import division #This makes Python interpret / as float division.
-from inequalities_classes import *
-from inequalities_heuristic import *
-from inequalities_addition_module import *
-from inequalities_multiplication_module import *
-from inequalities_function_module import *
+from classes import *
+from heuristic import *
+from addition_module import *
+from multiplication_module import *
+from function_module import *
 import timeit
 start = timeit.default_timer()
 
@@ -87,6 +87,7 @@ def run_heuristic_on_hypotheses(hyps,func_data = [],split_cases = True):
     H.changed = True
     
     if run_heuristic_on_heuristic_data(H,split_cases):
+        #TODO: change this to a reasonable return value
         return  
         
     print "Nothing more learned."
@@ -297,7 +298,8 @@ def splitoff(prop,inp):
     return inp[:index],inp[index:]
 
 #takes string with no whitespace
-#returns list of strings where each string is a token of type digit,alpha,comp,punct,operators    
+#returns list of strings where each string is a token of type digit,alpha,comp,punct,operators
+#TODO: handle whitespace, multi-character names
 def lex(inp):
     if len(inp)==0: return []
     if len(inp)==1: return [inp]
@@ -309,6 +311,7 @@ def lex(inp):
     elif inp[0] in operators: type = operators
     elif inp[0] in comp: type = comp
     elif inp[0] in punct: type = punct
+    #TODO: why is this line repeated?
     elif inp[0] in operators: type = operators
     if type == "": raise Exception("Bad input!")
     
@@ -396,7 +399,8 @@ def fixvars(input):
     return output
         
 
-#takes string as input. Returns array of ZeroComparisons        
+#takes string as input. Returns array of ZeroComparisons
+#TODO: should be 2 functions
 def make_zero_comp(input):
     string_comp_data = splitup(fixvars(input))
     zero_comps = []
@@ -431,21 +435,29 @@ def run_heuristic_on_input():
     
 def run_heuristic_on_list():
     ineqs = [
-        #"a*x^2+b*x+c<=0", "a*x^2+b*x+c>=0", "b>=0", "b<=0", "c^2>0", "a<=0", "a>=0"
-        #"1<x", "1<y", "1<z", "1>=x*(1+z*y)"
+        # "a*x^2+b*x+c<=0", "a*x^2+b*x+c>=0", "b>=0", "b<=0", "c^2>0", "a<=0", "a>=0"
+        # "1<x", "1<y", "1<z", "1>=x*(1+z*y)"
         # "0<a<1", "0<b<1", "a+b-a*b<=0"
-        #"x+y>=2", "z+w>=2", "u*x^2<u*x", "u*y^2<u*y", "u*w^2>u*w", "u*z^2>u*z"
-        #"n<=(1/2)*k*x", "0<c", "0<p<1", "(1+p/(3*(c+3)))*n>=k*x"
+        #This example takes a few seconds, and fails
+        # "x+y>=2", "z+w>=2", "u*x^2<u*x", "u*y^2<u*y", "u*w^2>u*w", "u*z^2>u*z"
+        #This example takes a few seconds, large multiplactive constants, fails
+        # "n<=(1/2)*k*x", "0<c", "0<p<1", "(1+p/(3*(c+3)))*n>=k*x"
         #warning: the next example blows up!
         # "x<1<y", "x*y>1", "u+x>=y+1", "x^2*y>=2-u*x*y"
-        #"0<x<3y", "u<v<0", "1<v^2<x", "u*(3*y)^2+1 >= x^2*v+x"
-        #"x*(y+z)<=0", "y+z>0", "x>=0", "x*w>0"
-        #"x+y+z<=0", "x+y>=-z"
-        #"x>=0", "x^3<=0"
-        #"x^(1/2)+y^(1/2) < 30", "x^(7/2)-1<y", "y^(1/5)>4"
+        #This example takes a few seconds, fails
+        # "0<x<3y", "u<v<0", "1<v^2<x", "u*(3*y)^2+1 >= x^2*v+x"
+        # "x*(y+z)<=0", "y+z>0", "x>=0", "x*w>0"
+        #This example requires splitting
+        # "x+y+z<=0", "x+y>=-z"
+        #This set of constraints has a model: x = 0, found by the procedure
+        # "x>=0", "x^3<=0"
+        #warning: the next example blows up!
+        # "x^(1/2)+y^(1/2) < 30", "x^(7/2)-1<y", "y^(1/5)>4"
         # "x+1/y<2", "y<0", "y/x>1", "-2<=x<=2", "-2<=y<=2", "x^2*y^(-1)>1-x"
-        #"((x+y)^2)^(1/2)>(x^2)^(1/2)+(y^2)^(1/2)"
-        "(a+b)*(1/2)<(a*b)^(1/2)"
+        #This example requires splitting
+        # "((x+y)^2)^(1/2)>(x^2)^(1/2)+(y^2)^(1/2)"
+        #warning: the next example blows up!
+        # "(a+b)*(1/2)<(a*b)^(1/2)"
       ]
     args = []
     try:
@@ -467,4 +479,4 @@ run_heuristic_on_list()
 #test_heuristic_on_functions2()
 
 stop = timeit.default_timer()
-print (stop - start)
+print round(stop - start, 3)

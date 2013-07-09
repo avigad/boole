@@ -1,5 +1,5 @@
-from inequalities_classes import *
-from inequalities_heuristic import *
+from classes import *
+from heuristic import *
 from math import floor,ceil
 
 ###############################################################################
@@ -367,12 +367,12 @@ def learn_mul_comparisons(H):
     #Assumes coeff > 0
     #Assumes that setting e1=e0 preserves the truth of the inequality.
     #Takes e0th root of each side and learns the comparison
-    def take_roots_and_learn(i,j,e0,e1,comp,coeff):
+    def take_roots_and_learn(i, j, e0, e1, comp, coeff):
         if e0<0:
             comp = comp_reverse(comp)
-        e0,e1,coeff = 1,1,coeff**Fraction(1,e0)
+        e0,e1,coeff = 1, 1, coeff**Fraction(1, Fraction(e0))
         coeff = round_coeff(coeff,comp)
-        comp,coeff = make_term_comparison_unabs(i,j,1,1,comp, coeff)
+        comp,coeff = make_term_comparison_unabs(i, j, 1, 1, comp, coeff)
         H.learn_term_comparison(i,j,comp,coeff,MUL)
     
     ##############################

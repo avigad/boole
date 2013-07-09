@@ -1,4 +1,4 @@
-from inequalities_classes import *
+from classes import *
 
 ###########################################
 #
@@ -112,6 +112,7 @@ class Heuristic_data:
     
     # takes a list of terms, stores a list of all subterms and 
     # creats names for them
+    #TODO: don't have the init function do all the work.
     def __init__(self, hypotheses, function_information = [], verbose=True):
         self.verbose = verbose
         
@@ -203,6 +204,7 @@ class Heuristic_data:
         return None
     
     #Returns a new instance of an identical Heuristic_data        
+    #TODO: use the copy.copy or copy.deepcopy function
     def duplicate(self):
         H = Heuristic_data([],self.verbose)
         H.terms = list(self.terms)
