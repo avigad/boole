@@ -6,18 +6,6 @@ from multiplication_module import *
 from function_module import *
 import timeit
 start = timeit.default_timer()
-
-
-#Takes an (uncanonized) Zero_comparison.
-#Returns a canonized Zero_comparison with positive coefficient.
-def canonize_zero_comparison(h):
-    canon = canonize(h.term)
-    if canon.coeff > 0:
-        return Zero_comparison(canon.term, h.comp)
-    elif canon.coeff < 0:
-        return Zero_comparison(canon.term, comp_reverse(h.comp))
-    else:
-        raise Error("0 in hypothesis")
     
 def run_heuristic_on_heuristic_data(H,split_cases):
     while H.changed:

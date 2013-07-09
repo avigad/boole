@@ -528,6 +528,51 @@ class Func_term(Term):
         
 ###############################################################################
 #
+# COMPARISON CLASSES (FOR BOOLE)
+#
+###############################################################################
+
+class Comparison():
+    def __init__(self):
+        pass
+    
+    # Returns a canonized Zero_comparison
+    def canonize(self):
+        term = self.left - self.right
+        zero_comp = Zero_comparison(term,self.dir)
+        return canonize_zero_comparison(zero_comp)
+        
+    
+class CompGT(Comparison):   
+    # Left and right are terms
+    def __init__(self,left,right):
+        self.dir = GT
+        self.left = left
+        self.right = right     
+        
+class CompGE(Comparison):   
+    # Left and right are terms
+    def __init__(self,left,right):
+        self.dir = GE
+        self.left = left
+        self.right = right  
+        
+class CompLT(Comparison):   
+    # Left and right are terms
+    def __init__(self,left,right):
+        self.dir = LT
+        self.left = left
+        self.right = right  
+        
+class CompLE(Comparison):   
+    # Left and right are terms
+    def __init__(self,left,right):
+        self.dir = LE
+        self.left = left
+        self.right = right  
+
+###############################################################################
+#
 # CANONIZING TERMS
 #
 # A canonical term is one of the following
@@ -604,6 +649,17 @@ def test_canonize():
     print "Canonize t3:", canonize(t3)
     print "Canonize x:", canonize(x)
     print "canonize(t1) == canonize(t2):", canonize(t1) == canonize(t3)
+    
+#Takes an (uncanonized) Zero_comparison.
+#Returns a canonized Zero_comparison with positive coefficient.
+def canonize_zero_comparison(h):
+    canon = canonize(h.term)
+    if canon.coeff > 0:
+        return Zero_comparison(canon.term, h.comp)
+    elif canon.coeff < 0:
+        return Zero_comparison(canon.term, comp_reverse(h.comp))
+    else:
+        raise Error("0 in hypothesis")
     
     
     
