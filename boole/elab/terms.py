@@ -15,7 +15,7 @@
 
 from boole.core.info import *
 from boole.core.context import *
-from boole.core.expr import Const, Sub, Pair, Fst, Snd, root_app, root_clause
+from boole.core.expr import Const, Sub, Pair, Fst, Snd, Box, root_app, root_clause
 import boole.core.expr as e
 import boole.core.typing as typing
 import elab
@@ -447,6 +447,18 @@ def nullctxt():
 @with_info(st_term)
 def triv():
     return elab.trivial
+
+
+@with_info(st_term)
+def cast(expr, ty):
+    """cast an expression to ty
+    
+    Arguments:
+    - `expr`: an expression
+    - `ty`: a type equal to the type of expr
+    """
+    return Box(triv(), expr, ty)
+
 
 ###############################################################################
 #

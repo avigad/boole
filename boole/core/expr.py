@@ -1006,9 +1006,9 @@ class AbstractExpr(ExprVisitor):
 
     def visit_box(self, expr, *args, **kwargs):
         conv = self.visit(expr.conv, *args, **kwargs)
-        expr = self.visit(expr.expr, *args, **kwargs)
+        expr_cast = self.visit(expr.expr, *args, **kwargs)
         type = self.visit(expr.type, *args, **kwargs)
-        return Box(conv, expr, type)
+        return Box(conv, expr_cast, type)
 
     def visit_tele(self, expr, depth):
         types = []
@@ -1108,9 +1108,9 @@ class SubstExpr(ExprVisitor):
 
     def visit_box(self, expr, *args, **kwargs):
         conv = self.visit(expr.conv, *args, **kwargs)
-        expr = self.visit(expr.expr, *args, **kwargs)
+        expr_cast = self.visit(expr.expr, *args, **kwargs)
         type = self.visit(expr.type, *args, **kwargs)
-        return Box(conv, expr, type)
+        return Box(conv, expr_cast, type)
 
     def visit_tele(self, expr, depth):
         types = []

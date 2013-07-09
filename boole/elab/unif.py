@@ -161,7 +161,6 @@ class mvar_apply(Tactic):
             while hyp.is_bound() and hyp.binder.is_forall():
                 _, hyp = elab.mvar_open_bound_fresh(hyp)
             new_goals = []
-            #TODO: add requirement that hyp.lhs is a Bool
             while e.is_impl(hyp):
                 new_goals.append(Goal(hyps, e.arg_i(hyp, 0)))
                 hyp = e.arg_i(hyp, 1)

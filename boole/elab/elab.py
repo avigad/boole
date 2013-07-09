@@ -170,7 +170,7 @@ class MvarSubst(e.SubstExpr):
         return expr
 
 
-#A bit of code duplication here from expr.py
+#rewrite code here from expr.py
 def abstract_expr(vars, expr):
     abstractor = MvarAbst(vars)
     return abstractor.visit(expr, 0)
@@ -583,10 +583,6 @@ def app_expr(f, f_ty, cast, args):
             if rem_ty.is_bound() and rem_ty.binder.is_pi()\
                and rem_ty.info.implicit:
                 mvar = mk_meta(rem_ty.binder.var, rem_ty.dom)
-                #For now we generate the trivial evidence.
-                #If more information is needed, we need to go through the whole
-                #term to collect local information (variables), to add them
-                #the evidence term
                 mcast = trivial
                 tm = t.App(mcast, tm, mvar)
                 rem_ty = subst_expr([mvar], rem_ty.body)

@@ -155,3 +155,34 @@ if __name__ == '__main__':
     plus_commut_stmt = defexpr('plus_commut_stmt', fa, type=Bool)
     
     plus_commut = defexpr('plus_commut', triv(), fa)
+
+
+
+    G = deftype('G')
+
+    G_mul = defconst('G_mul', G >> (G >> G))
+
+    G_one = defconst('G_one', G)
+
+    Grp = defexpr('Grp', sig(G, sig(G_mul, sig(G_one, true))))
+
+    grp = defconst('grp', Grp)
+
+    grp_carr = defexpr('grp_carr', abst(grp, cast(grp, \
+                                                  sig(G, sig(G_mul, sig(G_one, true))))[0]), \
+                       pi(grp, Type), \
+                       tactic=tac.unfold('Grp')>>tac.trivial)
+
+    op_cast = cast(cast(grp, sig(G, sig(G_mul, sig(G_one, true))))[1][0], \
+                   grp_carr(grp) >> (grp_carr(grp) >> grp_carr(grp)))
+
+    grp_op = defexpr('grp_op', abst(grp, op_cast), \
+                       tactic=tac.repeat(tac.unfold('Grp', 'grp_carr')>>tac.auto))
+
+    definstance('Mul_grp', forall(grp, Mul(grp_carr(grp), grp_op(grp))), triv())
+
+
+    g = defconst('g', grp_carr(grp))
+    h = defconst('h', grp_carr(grp))
+
+    defhyp('toto', g * h == h * g)

@@ -115,7 +115,7 @@ class Context(object):
         Return None if there is none.
         """
         try:
-            return self._context['unsolved_goals'].popitem()[1]
+            return self._context['goals'].popitem()[1]
         except KeyError:
             return None
 

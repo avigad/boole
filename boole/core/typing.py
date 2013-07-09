@@ -209,10 +209,10 @@ class ExprInfer(ExprVisitor):
         return Bool()
 
     def visit_box(self, expr, *args, **kwargs):
-        expr_ty = self.visit(expr.expr)
+        expr_ty = self.visit(expr.expr, *args, **kwargs)
         sub_ty = Sub(expr_ty, expr.type)
         self.check().visit(expr.conv, sub_ty, *args, **kwargs)
-        ty_sort = self.visit(expr.type)
+        ty_sort = self.visit(expr.type, *args, **kwargs)
         if is_sort(ty_sort):
             return expr.type
         else:
