@@ -7,24 +7,6 @@ from heuristic import *
 #
 ###############################################################################
 
-# The additive procedure works with inequalities like t > 0, where
-# t is an Add_term
-class Zero_comparison:
-
-    def __init__(self, term, comp):
-        self.term = term
-        self.comp = comp
-
-    def __str__(self):
-        return str(self.term) + ' ' + comp_str[self.comp] + ' 0'
-
-    def __repr__(self):
-        return self.__str__()
-    
-    def __eq__(self,other):
-        if not isinstance(other,Zero_comparison):
-            return False
-        return self.comp == other.comp and self.term == other.term
         
 #
 # The next routine takes additive terms t1 and t2, and another term
