@@ -286,6 +286,11 @@ def lt_tm(expr, arg):
     return lt(expr, arg)
 
 
+@with_info(st_term)
+def gt_tm(expr, arg):
+    return lt(arg, expr)
+
+
 #TODO: make this more clever
 @with_info(st_term)
 def get_pair(expr, index):
@@ -310,7 +315,7 @@ def eq_tm(expr1, expr2):
 
 
 @with_info(st_term)
-def ge_tm(expr1, expr2):
+def impl_tm(expr1, expr2):
     return impl(expr1, expr2)
 
 
@@ -342,11 +347,13 @@ class StTerm(StExpr):
         self.info['__radd__'] = r_add_tm
         self.info['__rmul__'] = r_mul_tm
         self.info['__rshift__'] = type_arrow
+        #TODO: find a better notation for implication
+        self.info['__ge__'] = impl_tm
         self.info['__getitem__'] = get_pair
         self.info['__eq__'] = eq_tm
         self.info['__str__'] = str_tm
         self.info['__lt__'] = lt_tm
-        self.info['__ge__'] = ge_tm
+        self.info['__gt__'] = gt_tm
         self.info['__and__'] = and_tm
         self.info['__or__'] = or_tm
 
@@ -479,7 +486,7 @@ def deftype(name):
     """
     c = mktype(name)
     local_ctxt.add_const(c)
-    print "{0!s} : {1!s} is assumed.\n".format(c, c.type)
+    # print "{0!s} : {1!s} is assumed.\n".format(c, c.type)
     return c
 
 
@@ -505,7 +512,6 @@ def defconst(name, type, infix=None, tactic=None):
     u.mvar_stack.new()
     obl.solve_with(elab_tac)
 
-    # obl.solve_with(tac.par(u.sub_mvar))
     # print obl
 
     #Now update the meta-variables of the type of c
@@ -524,7 +530,8 @@ def defconst(name, type, infix=None, tactic=None):
         obl.solve_with(tactic)
     local_ctxt.add_const(c)
     if obl.is_solved():
-        print "{0!s} : {1!s} is assumed.\n".format(c, c.type)
+        # print "{0!s} : {1!s} is assumed.\n".format(c, c.type)
+        pass
     else:
         local_ctxt.add_to_field(obl.name, obl, 'goals')
         print "In the declaration:\n{0!s} : {1!s}".format(name, c.type)
@@ -558,6 +565,8 @@ def defexpr(name, value, type=None, infix=None, tactic=None):
     u.mvar_stack.new()
     obl.solve_with(elab_tac)
 
+    # print obl
+
     val = sub_mvar(value, undef=True)
 
     if not (type is None):
@@ -585,7 +594,8 @@ def defexpr(name, value, type=None, infix=None, tactic=None):
     local_ctxt.add_to_field(name, val, 'defs')
 
     if obl.is_solved():
-        print "{0!s} : {1!s} := {2!s} is defined.\n".format(c, ty, val)
+        # print "{0!s} : {1!s} := {2!s} is defined.\n".format(c, ty, val)
+        pass
     else:
         local_ctxt.add_to_field(obl.name, obl, 'goals')
         print "In the definition\n"\
@@ -614,11 +624,12 @@ def defthm(name, prop, tactic=None):
     add it as a hypothesis regardless.
     
     """
+    p_cst = defexpr(name+'_stmt', prop, e.Bool())
+    p_def = local_ctxt.defs[p_cst.name]
     if tactic:
-        c = defexpr(name, triv(), prop, tactic=tactic)
+        c = defexpr(name, triv(), p_def, tactic=tactic)
     else:
-        c = defexpr(name, triv(), prop)
-    typing.infer(c.type, type=e.Bool(), ctxt=local_ctxt)
+        c = defexpr(name, triv(), p_def)
     local_ctxt.add_to_field(name, c.type, 'hyps')
     return c
 
@@ -765,6 +776,7 @@ lt = defexpr('<', abst(X, abst(pred, abst(lt_ev, pred))), \
              pi(X, pi(pred, pi(lt_ev, X >> (X >> Bool),\
                                impl=True), impl=True), impl=True),\
              infix=True)
+
 
 definstance('Mul_real', Mul(Real, mul_real), triv())
 definstance('Mul_int', Mul(Int, mul_int), triv())

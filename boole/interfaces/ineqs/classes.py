@@ -38,7 +38,7 @@ ADD, MUL, HYP, FUN = range(4)
 #
 # Mul_pair((t1, n1)) represents t1 ^ n1
 #
-# Mul_Term([(t1, n1), ..., (tk, nk)]) represents t1 ^ n1 * .... * tk ^ nk
+# Mul_term([(t1, n1), ..., (tk, nk)]) represents t1 ^ n1 * .... * tk ^ nk
 #   stored internally as a list of Mul_pairs
 #
 # Func_term(f,[t1,...,tn]) represents f(t1,t2,...,tn)
@@ -90,7 +90,7 @@ class Const(Term):
         self.name = name
 
     def __str__(self):
-        return self.name
+        return "Const({0!s})".format(self.name)
 
     def __cmp__(self, other):
         if isinstance(other, Const):
@@ -102,8 +102,11 @@ class Const(Term):
         if isinstance(other, (int, float, Fraction)):
             if other == 0:
                 return Const("0")
-            if other == 1:
+            elif other == 1:
                 return self
+            else:
+                num = Fraction(self.name)
+                return Const(str(num*other))
         return other * self
 
     def __add__(self, other):
@@ -549,6 +552,10 @@ class Comparison():
         term = self.left - self.right
         zero_comp = Zero_comparison(term, self.dir)
         return canonize_zero_comparison(zero_comp)
+
+    def __str__(self):
+        return "{0!s}{1!s}{2!s}"\
+               .format(self.left, comp_str[self.dir], self.right)
 
     def neg(self):
         """Return the negated comparison

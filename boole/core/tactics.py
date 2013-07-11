@@ -455,7 +455,7 @@ def intro_fun(goal, context):
         v, prop = expr.open_bound_fresh(prop)
         hyps = hyps.append(v, dom)
     while expr.is_impl(prop):
-        v = fresh_name.get_name('_')
+        v = fresh_name.get_name('H')
         hyps = hyps.append(v, expr.arg_i(prop, 0))
         prop = expr.arg_i(prop, 1)
     return [Goal(hyps, prop)]

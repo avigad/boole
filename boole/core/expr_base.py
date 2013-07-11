@@ -157,6 +157,15 @@ class Expr(object):
             mess = '`BaseExpr` object does not support ge'
             raise TypeError(mess)
 
+    def __gt__(self, arg):
+        """Call ge implemented in info
+        """
+        try:
+            return self.info['__gt__'](self, arg)
+        except KeyError:
+            mess = '`BaseExpr` object does not support gt'
+            raise TypeError(mess)
+
     def __and__(self, arg):
         """Call and implemented in info
         """

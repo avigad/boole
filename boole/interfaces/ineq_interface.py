@@ -6,9 +6,11 @@
 #
 ###############################################################################
 
-from boole.elab.terms import root_app_implicit, Real, Bool
+from boole.elab.terms import *
 import boole.core.typing as ty
+import boole.core.tactics as tac
 import boole.interfaces.ineqs.classes as ineq
+import boole.interfaces.ineqs.test_code as solver
 
 ###############################################################################
 #
@@ -87,11 +89,11 @@ def is_first_order(expr):
 
 
 def add_tms(tm1, tm2):
-    return ineq.Add_term([tm1, tm2])
+    return ineq.Add_term([(1, tm1), (1, tm2)])
 
 
 def mul_tms(tm1, tm2):
-    return ineq.Mul_term([tm1, tm2])
+    return ineq.Mul_term([(tm1, 1), (tm2, 1)])
 
 
 def lt_tms(tm1, tm2):
@@ -135,10 +137,11 @@ def cast_const(cst):
     else:
         try:
             float(name)
-            return lambda: ineq.Const(name)
+            # return lambda: ineq.Const(name)
+            return lambda: float(name)
         except ValueError:
             if cst.type is Real:
-                return ineq.Var(name)
+                return lambda: ineq.Var(name)
             else:
                 raise UndefinedConstant("Undefined constant {0!s}"\
                                         .format(name))
@@ -152,7 +155,7 @@ def is_bool_or_real(expr):
     - `expr`:
     """
     t, _ = ty.infer(expr)
-    return (t is Real) or (t is Bool)
+    return (t.equals(Real)) or (t.equals(Bool))
 
 
 def translate(expr):
@@ -174,7 +177,7 @@ def translate(expr):
 
 def translate_goal(hyps, prop):
     """Translate a set of hypotheses and a goal into
-    a list of constraints
+    a list of normal constraints
     
     Arguments:
     - `hyps`: a set of Boole terms of type bool
@@ -190,3 +193,65 @@ def translate_goal(hyps, prop):
         ineq_hyps.append(translate(prop).neg())
     except TranslationException:
         pass
+    return [h.canonize() for h in ineq_hyps]
+
+
+class Real_ineq(tac.Tactic):
+    """A tactic to solve real inequalities
+    """
+    
+    def __init__(self):
+        tac.Tactic.__init__(self, "real_ineq")
+
+    def solve(self, goals, context):
+        if len(goals) == 0:
+            return goals
+        else:
+            g = goals[0]
+            hyps = []
+            for h in context.hyps.itervalues():
+                hyps.append(h)
+            for h in g.tele.types:
+                hyps.append(h)
+            pb = translate_goal(hyps, g.prop)
+            if solver.run_heuristic_on_hypotheses(pb):
+                return goals[1:]
+            else:
+                return goals
+
+
+real_ineq = Real_ineq()
+
+
+if __name__ == '__main__':
+
+    
+    x = Real('x')
+    y = Real('y')
+    z = Real('z')
+
+    mul_add = defexpr('mul_add', (x + y) < (x * y))
+
+    tm_def = local_ctxt.defs['mul_add']
+
+    
+    print translate(tm_def)
+
+
+    # test_prop = defconst('test_prop', \
+    #                      (x > 0.0) >=\
+    #                      ((x < 1.0) >=\
+    #                       ((y > 0.0) >=\
+    #                        ((y < 1.0) >=\
+    #                         ((x + y) > (x * y))))))
+        
+    defthm('test',  \
+           (x > 0.0) >=\
+           ((x < 1.0) >=\
+            ((y > 0.0) >=\
+             ((y < 1.0) >=\
+              ((x + y) > (x * y))))))
+
+    goal = local_ctxt.next_goal()
+
+    goal.interact(real_ineq)

@@ -62,21 +62,21 @@ def run_heuristic_on_hypotheses(hyps,func_data = [],split_cases = True):
     #print 'hypotheses:',hyps[6].term.addpairs[1].term.mulpairs[0].term#isinstance(hyps[6].term,Add_term)
     #return
     hypotheses = [canonize_zero_comparison(h) for h in hyps]
-    print "Canonized hypotheses:"
-    for h in hypotheses:
-        print h
-    print
+    # print "Canonized hypotheses:"
+    # for h in hypotheses:
+    #     print h
+    # print
 
     try:
-        H = Heuristic_data(hypotheses,func_data)
+        H = Heuristic_data(hypotheses,func_data, verbose=False)
     except Contradiction:
         print "Contradiction found!"
-        return
+        return True
     H.changed = True
     
     if run_heuristic_on_heuristic_data(H,split_cases):
         #TODO: change this to a reasonable return value
-        return  
+        return True
         
     print "Nothing more learned."
     return False
@@ -329,13 +329,15 @@ class StringCompData:
     def __repr__(self):
         return self.__str__()
 
+
 #inputs string
 #returns list of one or two StringCompDatas
 def splitup(s):
     #s should have one or two inequality signs of the same direction.
     t = "".join(s.split())
-    if find(t,">")>-1 and find(t,"<")>-1: raise Exception
-    ineqs = count(t,">")+count(t,"<")
+    if find(t, ">") > -1 and find(t, "<") > -1:
+        raise Exception
+    ineqs = count(t, ">") + count(t, "<")
     if ineqs<1 or ineqs>2: raise Exception
     
     if ineqs == 2: #This is a chain of inequalities. Split and parse each one separately.
@@ -425,7 +427,7 @@ def run_heuristic_on_list():
     ineqs = [
         # "a*x^2+b*x+c<=0", "a*x^2+b*x+c>=0", "b>=0", "b<=0", "c^2>0", "a<=0", "a>=0"
         # "1<x", "1<y", "1<z", "1>=x*(1+z*y)"
-        # "0<a<1", "0<b<1", "a+b-a*b<=0"
+        "a>0", "a<1", "b>0", "b<1", "a+b<a*b"
         #This example takes a few seconds, and fails
         # "x+y>=2", "z+w>=2", "u*x^2<u*x", "u*y^2<u*y", "u*w^2>u*w", "u*z^2>u*z"
         #This example takes a few seconds, large multiplactive constants, fails
@@ -435,14 +437,14 @@ def run_heuristic_on_list():
         #This example takes a few seconds, fails
         # "0<x<3y", "u<v<0", "1<v^2<x", "u*(3*y)^2+1 >= x^2*v+x"
         # "x*(y+z)<=0", "y+z>0", "x>=0", "x*w>0"
-        #This example requires splitting
+        #This example performs splitting, fails
         # "x+y+z<=0", "x+y>=-z"
         #This set of constraints has a model: x = 0, found by the procedure
         # "x>=0", "x^3<=0"
         #warning: the next example blows up!
         # "x^(1/2)+y^(1/2) < 30", "x^(7/2)-1<y", "y^(1/5)>4"
         # "x+1/y<2", "y<0", "y/x>1", "-2<=x<=2", "-2<=y<=2", "x^2*y^(-1)>1-x"
-        #This example requires splitting
+        #This example performs splitting, fails
         # "((x+y)^2)^(1/2)>(x^2)^(1/2)+(y^2)^(1/2)"
         #warning: the next example blows up!
         # "(a+b)*(1/2)<(a*b)^(1/2)"
@@ -458,7 +460,7 @@ def run_heuristic_on_list():
     run_heuristic_on_hypotheses(args)
 
 #run_heuristic_on_input()
-#run_heuristic_on_list()
+# run_heuristic_on_list()
 #test_heuristic()
 #test_heuristic_2()
 #test_heuristic_3()
@@ -467,5 +469,5 @@ def run_heuristic_on_list():
 #test_heuristic_on_functions2()
 
 
-stop = timeit.default_timer()
-print round(stop - start, 3)
+# stop = timeit.default_timer()
+# print round(stop - start, 3)
