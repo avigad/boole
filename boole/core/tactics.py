@@ -365,9 +365,9 @@ class repeat(Tactic):
                 new_goals = self.tac.solve(new_goals, context)
                 timeout -= 1
             return new_goals
-        except TacticFailure as f:
+        except TacticFailure:
             if self.fail:
-                raise f
+                raise
             else:
                 return new_goals
 

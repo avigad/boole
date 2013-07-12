@@ -94,8 +94,8 @@ class ExprInfer(ExprVisitor):
             if is_sort(sort):
                 return expr.type
             else:
-                mess = 'The type of {0!s} is {1!s}"\
-                " which should be Type, Kind or Bool'\
+                mess = "The type of {0!s} is {1!s}\n"\
+                " which should be Type, Kind or Bool"\
                        .format(expr.type, sort)
                 raise ExprTypeError(mess, expr)
 

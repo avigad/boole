@@ -1233,6 +1233,7 @@ def arg_i(expr, i):
     _, args = root_app(expr)
     return args[i]
 
+
 def is_eq(expr):
     """Returns True if the expression
     is of the form eq(e1, e2), False otherwise.

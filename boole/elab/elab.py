@@ -306,7 +306,7 @@ def mk_meta(name, type):
     return Mvar(fresh_name, type)
 
 
-def mvar_infer(expr, type=None, ctxt=None):
+def mvar_infer(expr, ctxt=None):
     """Infer the type of an expression and return the pair
     (type, proof obligations) or raise an exception of type
     ExprTypeError.
@@ -321,19 +321,8 @@ def mvar_infer(expr, type=None, ctxt=None):
         ty_ctxt = ctxt
     prf_obl_name = meta_var_gen.get_name('_unif_goals')
     prf_obl = goals.empty_goals(prf_obl_name, ty_ctxt)
-    #slight hack here: we compare pointers to avoid calling the
-    # __eq__ method of type. There should only be one instance of
-    # the None object, so pointer equality is valid.
-    if type is None:
-        ty = MvarInfer().visit(expr, prf_obl)
-        return (ty, prf_obl)
-    else:
-        if MvarCheck().visit(expr, type, prf_obl):
-            return (type, prf_obl)
-        else:
-            mess = "Expected {0!s} to be of type {1!s}"\
-                   .format(expr, type)
-            raise t.ExprTypeError(mess, expr)
+    ty = MvarInfer().visit(expr, prf_obl)
+    return (ty, prf_obl)
 
 
 class MvarParBeta(conv.ParBeta):
@@ -548,6 +537,104 @@ def mvar_is_present(expr, mvar=None):
 #
 ###############################################################################
 
+class Enrich(e.ExprVisitor):
+    """Enrich the evidence terms with a new
+    hypothesis
+    """
+    
+    def __init__(self, name, prop):
+        e.ExprVisitor.__init__(self)
+        self.name = name
+        self.prop = prop
+        self.abst = abstract_expr
+        self.open_fresh = open_bound_fresh
+        
+    def visit_const(self, expr, *args, **kwargs):
+        return expr
+
+    def visit_db(self, expr, *args, **kwargs):
+        return expr
+
+    def visit_type(self, expr, *args, **kwargs):
+        return expr
+
+    def visit_kind(self, expr, *args, **kwargs):
+        return expr
+
+    def visit_bool(self, expr, *args, **kwargs):
+        return expr
+
+    def visit_bound(self, expr, *args, **kwargs):
+        var, open_expr = self.open_fresh(expr)
+        new_open_expr = self.visit(open_expr)
+        dom = self.visit(expr.dom)
+        return e.Bound(expr.binder, dom, self.abst([var], new_open_expr))
+
+    def visit_app(self, expr, *args, **kwargs):
+        ev = self.visit(expr.conv)
+        fun = self.visit(expr.fun)
+        arg = self.visit(expr.arg)
+        return e.App(ev, fun, arg)
+
+    def visit_pair(self, expr, *args, **kwargs):
+        fst = self.visit(expr.fst)
+        snd = self.visit(expr.snd)
+        ty = self.visit(expr.type)
+        return e.Pair(fst, snd, type)
+
+    def visit_fst(self, expr, *args, **kwargs):
+        return e.Fst(self.visit(expr.expr))
+
+    def visit_snd(self, expr, *args, **kwargs):
+        return e.Snd(self.visit(expr.expr))
+
+    #We assume that elements of a telescope do not
+    #need to be enriched
+    def visit_ev(self, expr, *args, **kwargs):
+        vars = [self.name] + expr.tele.vars
+        types = [self.prop] + expr.tele.types
+        return e.Ev(e.Tele(vars, types))
+
+    def visit_sub(self, expr, *args, **kwargs):
+        lhs = self.visit(expr.lhs)
+        rhs = self.visit(expr.rhs)
+        return e.Sub(lhs, rhs)
+
+    def visit_box(self, expr, *args, **kwargs):
+        ev = self.visit(expr.conv)
+        exp = self.visit(expr.expr)
+        type = self.visit(expr.type)
+        return e.Box(ev, exp, type)
+
+    def visit_mvar(self, expr):
+        vars = [self.name] + expr.tele.vars
+        types = [self.prop] + expr.tele.types
+        expr.tele = e.Tele(vars, types)
+        return expr
+
+    @info.same_info
+    def visit(self, expr, *args, **kwargs):
+        """Call the appropriate method of self
+        on expr depending on its form.
+        
+        Arguments:
+        - `expr`: an expression
+        """
+        return expr.accept(self, *args, **kwargs)
+
+
+def enrich(name, prop, expr):
+    """Enrich the telescopes of the
+    evidence terms of expr with the hypothesis
+    prop with name name.
+    
+    Arguments:
+    - `name`:
+    - `prop`:
+    - `expr`:
+    """
+    return Enrich(name, prop).visit(expr)
+
 
 def app_expr(f, f_ty, cast, args):
     """Applies a function to a list of
@@ -629,6 +716,11 @@ def abst(var, body):
     - `body`: an expression possibly containing var
     """
     if var.is_const():
+        ty, _ = mvar_infer(var.type)
+        if ty.equals(e.Bool()):
+            body = enrich(var.name, var.type, body)
+        else:
+            pass
         body_abs = abstract_expr([var.name], body)
         return e.Bound(e.Abst(var.name), var.type, body_abs)
     else:

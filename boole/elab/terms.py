@@ -121,7 +121,7 @@ def print_box(expr):
     Arguments:
     - `expr`:
     """
-    return "Box({0!s})".format(expr)
+    return "cast({0!s}, {1!s})".format(expr.expr, expr.type)
 
 
 def print_pi(expr):
@@ -209,6 +209,8 @@ def str_tm(expr):
         return print_bound(expr)
     elif expr.is_ev():
         return print_ev(expr)
+    elif expr.is_box():
+        return print_box(expr)
     else:
         return expr.to_string()
 
@@ -556,20 +558,21 @@ def defexpr(name, value, type=None, infix=None, tactic=None):
     - `type`: an expression
     - `value`: an expression
     """
-    if type is None:
-        _, obl = mvar_infer(value, ctxt=local_ctxt)
-    else:
-        _, obl = mvar_infer(value, type=type, ctxt=local_ctxt)
+    _, obl = mvar_infer(value, ctxt=local_ctxt)
 
     u.mvar_stack.clear()
     u.mvar_stack.new()
     obl.solve_with(elab_tac)
 
-    # print obl
-
     val = sub_mvar(value, undef=True)
 
     if not (type is None):
+        _, obl = mvar_infer(type, ctxt=local_ctxt)
+
+        u.mvar_stack.clear()
+        u.mvar_stack.new()
+        obl.solve_with(elab_tac)
+
         ty = sub_mvar(type, undef=True)
 
     if type is None:
@@ -624,12 +627,10 @@ def defthm(name, prop, tactic=None):
     add it as a hypothesis regardless.
     
     """
-    p_cst = defexpr(name+'_stmt', prop, e.Bool())
-    p_def = local_ctxt.defs[p_cst.name]
     if tactic:
-        c = defexpr(name, triv(), p_def, tactic=tactic)
+        c = defexpr(name, triv(), prop, tactic=tactic)
     else:
-        c = defexpr(name, triv(), p_def)
+        c = defexpr(name, triv(), prop)
     local_ctxt.add_to_field(name, c.type, 'hyps')
     return c
 
