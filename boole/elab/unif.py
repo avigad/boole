@@ -177,12 +177,12 @@ class instance(Tactic):
         """
         
         Arguments:
-        - `cls`: the name of a type class
         - `inst`: the name of an instance declaration
         """
         Tactic.__init__(self, 'instance {0!s}'\
                         .format(inst))
         self.inst = inst
+        self.root = e.root_app(e.root_clause(inst))[0]
 
     def solve(self, goals, context):
         if len(goals) == 0:
@@ -190,14 +190,8 @@ class instance(Tactic):
         else:
             prop = goals[0].prop
             root, _ = e.root_app(prop)
-            if root.info.is_class:
-                if self.inst in context.class_instances:
-                    inst_ty = context.class_instances[self.inst]
-                    return mvar_apply(inst_ty).solve(goals, context)
-                else:
-                    mess = "Instance {0!s} not found in context {1!s}"\
-                           .format(self.inst, context)
-                    raise TacticFailure(mess, self, goals)
+            if root.info.is_class and self.root.equals(root):
+                return mvar_apply(self.inst).solve(goals, context)
             else:
                 mess = "Expression {0!s} is not a class"\
                        .format(root)
@@ -218,12 +212,14 @@ class Instances(Tactic):
         if len(goals) == 0:
             return []
         else:
-            insts = context.class_instances
-            for k in insts:
+            hyps = goals[0].tele.types
+            hyp_insts = [i for i in hyps if e.root_app(i)[0].info.is_class]
+            ctxt_insts = [i for i in context.class_instances.itervalues()]
+            for inst in hyp_insts + ctxt_insts:
                 try:
                     mvar_stack.new()
                     return now(par(sub_mvar)\
-                               >> instance(k)\
+                               >> instance(inst)\
                                >> par(unify)\
                                >> par(trytac(self))\
                                >> par(unify))\

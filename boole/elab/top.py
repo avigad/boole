@@ -15,6 +15,7 @@
 import boole.core.expr as expr
 import boole.core.tactics as tac
 import boole.core.conv as conv
+import unif
 from terms import *
 
 
@@ -31,6 +32,26 @@ if __name__ == '__main__':
     
     one = defexpr('one', abst(X, abst(el, abst(one_inst, el))), \
                   pi(X, pi(el, pi(one_inst, X, impl=True), impl=True), impl=True))
+
+
+    op_mul = defconst('op_mul', Mul(X, op))
+
+    el_one = defconst('el_one', One(X, el))
+
+
+    Unit_left = defclass('Unit_left', \
+                         pi(X, pi(op, pi(el, Mul(X, op) >> (One(X, el) >> Bool)))),
+                         abst(X, abst(op, abst(el, abst(op_mul, abst(el_one, \
+                                                                     forall(x, one() * x == x)))))))
+
+
+    Unit_right = defclass('Unit_right', \
+                         pi(X, pi(op, pi(el, Mul(X, op) >> (One(X, el) >> Bool)))),
+                         abst(X, abst(op, abst(el, abst(op_mul, abst(el_one, \
+                                                                     forall(x, x * one() == x)))))))
+
+
+    
 
 
     test = defexpr('test', 3 + one())
@@ -172,6 +193,7 @@ if __name__ == '__main__':
                                                   sig(G, sig(G_mul, sig(G_one, true))))[0]), \
                        pi(grp, Type), \
                        tactic=tac.unfold('Grp')>>tac.trivial)
+
 
     op_cast = cast(cast(grp, sig(G, sig(G_mul, sig(G_one, true))))[1][0], \
                    grp_carr(grp) >> (grp_carr(grp) >> grp_carr(grp)))

@@ -21,6 +21,7 @@ import boole.core.typing as typing
 import elab
 from elab import app_expr, mvar_infer, open_expr, sub_mvar, root_pi
 import boole.core.tactics as tac
+import boole.core.goals as goals
 import unif as u
 
 ###############################################################################
@@ -514,8 +515,6 @@ def defconst(name, type, infix=None, tactic=None):
     u.mvar_stack.new()
     obl.solve_with(elab_tac)
 
-    # print obl
-
     #Now update the meta-variables of the type of c
     #fail if there are undefined meta-vars.
     c.type = sub_mvar(type, undef=True)
@@ -738,8 +737,8 @@ false = defconst('false', Bool)
 
 X = deftype('X')
 
-x = Const('x', X)
-y = Const('y', X)
+x = X('x')
+y = X('y')
 
 eq = defexpr('==', abst(X, abst(x, abst(y, conj(Sub(x, y), Sub(y, x))))), \
              pi(X, X >> (X >> Bool), impl=True), infix=True)

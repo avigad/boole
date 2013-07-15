@@ -95,6 +95,11 @@ class Mvar(expr_base.Expr):
     def __init__(self, name, type):
         """
         Same definition as for Const, without info fields
+        and the additional information for:
+        - potential value,
+        - the conext in which it was created (to be used when finding
+        a value)
+        - the pending abstractions to be applied to the final value when found.
         """
         expr_base.Expr.__init__(self)
         self.name = name
@@ -123,8 +128,7 @@ class Mvar(expr_base.Expr):
 
     def equals(self, expr):
         #There should only be one instance of
-        #each meta-variable, so pointer equality is
-        #sufficient
+        #each meta-variable, so we use pointer equality
         return self is expr
 
     def has_value(self):
@@ -153,9 +157,13 @@ class MvarAbst(e.AbstractExpr):
         e.AbstractExpr.__init__(self, names)
 
     def visit_mvar(self, expr, depth):
+        expr.tele = self.visit(expr.tele, depth)
+        #Add the abstraction to the list of pending abstractions
+        #to be performed when substituting a value
+        # print "Abstracting over", self.names[0]
+        # expr.pending.append(PendAbs(self.names, depth))
         #return the actual object here, as we want the value to
         #be propagated at each instance of the meta-variable
-        expr.pending.append(PendAbs(self.names, depth))
         return expr
 
 
@@ -165,7 +173,14 @@ class MvarSubst(e.SubstExpr):
         e.SubstExpr.__init__(self, exprs)
 
     def visit_mvar(self, expr, depth):
-        #TODO: do we need this?
+        expr.tele = self.visit(expr.tele, depth)
+        #TODO: this is a hack: we need to know when
+        # we are opening a term, and when we are performing
+        # substitution for another reason, say reduction or
+        # unfolding.
+        if all([exp.is_const() for exp in self.exprs]):
+            names = map(lambda exp: exp.name, self.exprs)
+            expr.pending.append(PendAbs(names, depth))
         # expr.pending.append(PendSub(self.exprs, depth))
         return expr
 
@@ -420,7 +435,6 @@ class SubMvar(e.ExprVisitor):
         types = [self.visit(t) for t in expr.types]
         return e.Tele(expr.vars, types)
 
-    #TODO: make sure this is correct
     def visit_mvar(self, expr):
         if expr.has_value():
             sub_val = self.visit(expr._value)
@@ -537,6 +551,7 @@ def mvar_is_present(expr, mvar=None):
 #
 ###############################################################################
 
+
 class Enrich(e.ExprVisitor):
     """Enrich the evidence terms with a new
     hypothesis
@@ -580,7 +595,7 @@ class Enrich(e.ExprVisitor):
         fst = self.visit(expr.fst)
         snd = self.visit(expr.snd)
         ty = self.visit(expr.type)
-        return e.Pair(fst, snd, type)
+        return e.Pair(fst, snd, ty)
 
     def visit_fst(self, expr, *args, **kwargs):
         return e.Fst(self.visit(expr.expr))
@@ -611,6 +626,9 @@ class Enrich(e.ExprVisitor):
         types = [self.prop] + expr.tele.types
         expr.tele = e.Tele(vars, types)
         return expr
+
+    def visit_tele(self, expr):
+        raise NotImplementedError()
 
     @info.same_info
     def visit(self, expr, *args, **kwargs):

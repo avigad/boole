@@ -125,7 +125,7 @@ class ExprInfer(ExprVisitor):
         var, open_expr = self.open_fresh(expr)
         #since the term may contain meta-variables, we close the open
         #expression to 'mark' the meta-variables with the closing operation
-        self.abst([var], open_expr)
+        # self.abst([var], open_expr)
         #compute the type of the resulting expression
         expr_ty = self.visit(open_expr, *args, **kwargs)
         #Infer the type for each different binder
