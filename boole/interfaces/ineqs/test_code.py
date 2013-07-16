@@ -22,32 +22,47 @@ def run_heuristic_on_heuristic_data(H,split_cases):
             quit()
             
     if split_cases:
-        print 'We\'ve run out of new information. Let\'s try splitting cases.'
+        if H.verbose:
+            print 'We\'ve run out of new information. Let\'s try splitting cases.'
         unsigned_vars = [t for t in range(H.num_terms) if H.weak_sign(t)==0]
         if unsigned_vars:
-            print 'We don\'t know sign information for:'
-            for t in unsigned_vars:
-                print ' ',IVar(t),'=',H.terms[t]
+            if H.verbose:
+                print 'We don\'t know sign information for:'
+                for t in unsigned_vars:
+                    print ' ',IVar(t),'=',H.terms[t]
                 
         else:
-            print 'Signs of all variables are known; nothing to split on.'
+            if H.verbose:
+                print 'Signs of all variables are known; nothing to split on.'
                 
         for v in unsigned_vars:
-            print 'Assuming',IVar(v),'>= 0. That is,',H.terms[v],'>= 0.'
+            if H.verbose:
+                print 'Assuming',IVar(v),'>= 0. That is,',H.terms[v],'>= 0.'
             Hposv = H.duplicate()
-            Hposv.learn_zero_comparison(t,GE,HYP)
-            if run_heuristic_on_heuristic_data(Hposv,False): #v>=0 is a contradiction. learn v<0
-                print 'From the case split, we learned',H.terms[v],'< 0'
-                H.learn_zero_comparison(t,LT,HYP)
+            contr = False
+            try:
+                Hposv.learn_zero_comparison(v,GE,HYP)
+            except Contradiction:
+                contr = True
+            if contr or run_heuristic_on_heuristic_data(Hposv,False): #v>=0 is a contradiction. learn v<0
+                if H.verbose:
+                    print 'From the case split, we learned',H.terms[v],'< 0'
+                H.learn_zero_comparison(v,LT,HYP)
                 return run_heuristic_on_heuristic_data(H,True)
             
             #otherwise, no contradiction from v>=0. try v<=0
-            print 'Assuming',H.terms[v],'<= 0'
+            if H.verbose:
+                print 'Assuming',H.terms[v],'<= 0'
             Hnegv = H.duplicate()
-            Hnegv.learn_zero_comparison(t,LE,HYP)
-            if run_heuristic_on_heuristic_data(Hnegv,False): #v<=0 is a contradiction. learn v>0
-                print 'From the case split, we learned',H.terms[v],'> 0'
-                H.learn_zero_comparison(t,GT,HYP)
+            contr = False
+            try:
+                Hnegv.learn_zero_comparison(v,LE,HYP)
+            except Contradiction:
+                contr = True
+            if contr or run_heuristic_on_heuristic_data(Hnegv,False): #v<=0 is a contradiction. learn v>0
+                if H.verbose:
+                    print 'From the case split, we learned',H.terms[v],'> 0'
+                H.learn_zero_comparison(v,GT,HYP)
                 return run_heuristic_on_heuristic_data(H,True)
             
             #otherwise, v could be pos or neg. try splitting on the next case.
@@ -78,7 +93,8 @@ def run_heuristic_on_hypotheses(hyps,func_data = [],split_cases = True):
         #TODO: change this to a reasonable return value
         return True
         
-    print "Nothing more learned."
+    print "Nothing more learned. No contradiction has been found."
+    #H.generate_model()
     return False
 
 ###############################################################################
@@ -425,27 +441,45 @@ def run_heuristic_on_input():
     
 def run_heuristic_on_list():
     ineqs = [
-        # "a*x^2+b*x+c<=0", "a*x^2+b*x+c>=0", "b>=0", "b<=0", "c^2>0", "a<=0", "a>=0"
+        #This example is similar to one from S. McLaughlin and J. Harrison (2005),
+        # which their algorithm solves in 23.5 seconds
         # "1<x", "1<y", "1<z", "1>=x*(1+z*y)"
-        "a>0", "a<1", "b>0", "b<1", "a+b<a*b"
-        #This example takes a few seconds, and fails
-        # "x+y>=2", "z+w>=2", "u*x^2<u*x", "u*y^2<u*y", "u*w^2>u*w", "u*z^2>u*z"
-        #This example takes a few seconds, large multiplactive constants, fails
+        
+        #This is not provable by Isabelle, from a post to the Isabelle mailing list.
+        #"a>0", "a<1", "b>0", "b<1", "a+b<a*b"
+        
+        #This example takes a while and fails. No large constants.
+         "x+y>=2", "z+w>=2", "u*x^2<u*x", "u*y^2<u*y", "u*w^2>u*w", "u*z^2>u*z"
+        
+        #This example takes a few seconds, large multiplicative constants, fails
         # "n<=(1/2)*k*x", "0<c", "0<p<1", "(1+p/(3*(c+3)))*n>=k*x"
+        
         #warning: the next example blows up!
         # "x<1<y", "x*y>1", "u+x>=y+1", "x^2*y>=2-u*x*y"
-        #This example takes a few seconds, fails
-        # "0<x<3y", "u<v<0", "1<v^2<x", "u*(3*y)^2+1 >= x^2*v+x"
+        
+        #This example does not have a model.
+        #If the last inequality is changed to <, it does.
+        # "0<x<3*y", "u<v<0", "1<v^2<x", "u*(3*y)^2+1 >= x^2*v+x" 
+        
+        #This is a simple example with extraneous info,
+        #where the contradiction is found very quickly.
         # "x*(y+z)<=0", "y+z>0", "x>=0", "x*w>0"
+        
         #This example performs splitting, fails
         # "x+y+z<=0", "x+y>=-z"
+        
         #This set of constraints has a model: x = 0, found by the procedure
         # "x>=0", "x^3<=0"
+        
         #warning: the next example blows up!
         # "x^(1/2)+y^(1/2) < 30", "x^(7/2)-1<y", "y^(1/5)>4"
+        
+        #The contradiction here is found relatively quickly.
         # "x+1/y<2", "y<0", "y/x>1", "-2<=x<=2", "-2<=y<=2", "x^2*y^(-1)>1-x"
-        #This example performs splitting, fails
+        
+        #This example case splits and fails.
         # "((x+y)^2)^(1/2)>(x^2)^(1/2)+(y^2)^(1/2)"
+        
         #warning: the next example blows up!
         # "(a+b)*(1/2)<(a*b)^(1/2)"
       ]
@@ -460,7 +494,7 @@ def run_heuristic_on_list():
     run_heuristic_on_hypotheses(args)
 
 #run_heuristic_on_input()
-# run_heuristic_on_list()
+run_heuristic_on_list()
 #test_heuristic()
 #test_heuristic_2()
 #test_heuristic_3()

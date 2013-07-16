@@ -100,11 +100,13 @@ def learn_func_comparisons(H):
             conclusion.learn_term_comparison(c,H)
             
         
-        
-    print 'Learning functional facts...'
+    if H.verbose:   
+        print 'Learning functional facts...'
     restrictions = H.function_information
     for r in restrictions:
-        print 
-        print 'From the restriction',r,'we can learn:'
+        if H.verbose:
+            print 
+            print 'From the restriction',r,'we can learn:'
         learn_from_function_restriction(r)
-    print
+    if H.verbose:
+        print

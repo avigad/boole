@@ -1,5 +1,5 @@
 from classes import *
- 
+from copy import copy,deepcopy 
 
 
 ###############################################################################
@@ -132,20 +132,8 @@ class Heuristic_data:
     #Returns a new instance of an identical Heuristic_data        
     #TODO: use the copy.copy or copy.deepcopy function
     def duplicate(self):
-        H = Heuristic_data([],self.verbose)
-        H.terms = list(self.terms)
-        H.num_terms = self.num_terms
-        H.function_information = list(self.function_information)
-        
-        for c in self.zero_comparisons.keys():
-            H.zero_comparisons[c] = self.zero_comparisons[c]
-            
-        for c in self.term_comparisons.keys():
-            H.term_comparisons[c] = self.term_comparisons[c]
-            
-        for c in self.name_defs.keys():
-            H.name_defs[c] = self.name_defs[c]
-        return H
+        return deepcopy(self)
+    
 
     #If there is data on whether a_i is > 0 or < 0, returns the sign. Otherwise, returns 0
     def sign(self, i):
@@ -219,7 +207,8 @@ class Heuristic_data:
     def learn_zero_equality(self,i,provenance):
         if self.name_defs[i] in self.zero_equations or IVar(i) in self.zero_equations:
             return
-        print "Learning equality:",IVar(i),"= 0"
+        if self.verbose:
+            print "Learning equality:",IVar(i),"= 0"
         #self.name_defs[i] = zero
         #turn all comparisons with a_i to zero_comparisons
         for j in range(0,i):
@@ -268,7 +257,7 @@ class Heuristic_data:
             old_comp = self.zero_comparisons[i].comp
             if ((old_comp == GE and comp == LE) or 
                 (old_comp == LE and comp == GE)):
-                self.learn_zero_equality(i)
+                self.learn_zero_equality(i,provenance)
                 #raise Error('Learn equality - not handled yet')
             elif ((old_comp in [GE, GT] and comp in [LE, LT]) or
                   (old_comp in [LT, LE] and comp in [GE, GT])):
@@ -431,22 +420,76 @@ class Heuristic_data:
             if self.sign(j) == 1:
                 if (min_lcoeff < max_gcoeff or
                     (min_lcoeff == max_gcoeff and
-                     (min_lcomp.comp == LT or max_gcomp.gcomp == GT))):
+                     (min_lcomp.comp == LT or max_gcomp.comp == GT))):
                     self.raise_contradiction(provenance)
             elif self.sign(j) == -1:
                 if (max_lcoeff > min_gcoeff or
                     (max_lcoeff == min_gcoeff and
-                     (min_lcomp.comp == LT or max_gcomp.gcomp == GT))):
+                     (min_lcomp.comp == LT or max_gcomp.comp == GT))):
                     self.raise_contradiction(provenance)
                     
             else:
                 if ((min_lcoeff < max_gcoeff or
                     (min_lcoeff == max_gcoeff and
-                     (min_lcomp.comp == LT or max_gcomp.gcomp == GT)))
+                     (min_lcomp.comp == LT or max_gcomp.comp == GT)))
                     and
                     (max_lcoeff > min_gcoeff or
                     (max_lcoeff == min_gcoeff and
-                     (min_lcomp.comp == LT or max_gcomp.gcomp == GT)))):
+                     (min_lcomp.comp == LT or max_gcomp.comp == GT)))):
                     self.raise_contradiction(provenance)
+    
                     
+    def generate_model(self):
+        inf = float("inf")
+        var_indices = [i for i in range(self.num_terms) if isinstance(self.name_defs[i],Var)]
+        intervals = {i:[-inf,inf] for i in var_indices}
+        assignments = {}
+        
+        def propogate_assignment(index,value):
+            for k in var_indices:
+                if k!=index:
+                    comps = []
+                    if (k,index) in self.term_comparisons.keys():
+                        comps = self.term_comparisons[k,index]
+                    elif (index,k) in self.term_comparisons.keys():
+                        comps = [Comparison_data((c.comp if c.coeff < 0 else comp_reverse(c.comp)),
+                                                 1/Fraction(c.coeff),c.provenance)
+                                  for c in self.term_comparisons[index,k]]
+                    for c in comps:
+                        v = c.coeff * value
+                        if c.comp in [LE,LT]:
+                            intervals[k][1] = min(intervals[k][1],v)
+                        elif c.comp in [GE,GT]:
+                            intervals[k][0] = max(intervals[k][0],v)
+        
+        
+        propogate_assignment(0,1)
+        for k in var_indices:
+            if k in self.zero_comparisons.keys():
+                zcomp = self.zero_comparisons[k].comp
+                if zcomp in [LE,LT]:
+                    intervals[k][1] = min(intervals[k][1],0)
+                elif zcomp in [GE,GT]:
+                    intervals[k][0] = max(intervals[k][0],0)
+                
+            #print intervals[k][0],'<',self.name_defs[k],'<',intervals[k][1]
+        
+        for k in var_indices:
+            k_int = intervals[k]
+            if IVar(k) in self.zero_equations:
+                assignments[k]=0
+            elif k_int[0]==-inf and k_int[1]==inf: #We currently know no bounds on a_k
+                assignments[k]=1
+            elif k_int[0]==-inf:
+                assignments[k]=k_int[1]-1
+            elif k_int[1]==inf:
+                assignments[k]=k_int[0]+1
+            elif k_int[0]==k_int[1]:
+                assignments[k]=k_int[0]
+            else:
+                assignments[k] = Fraction((k_int[0]+k_int[1]),2)
+            propogate_assignment(k,assignments[k])
+            
+        for k in var_indices:
+            print self.name_defs[k], '=', assignments[k]
 

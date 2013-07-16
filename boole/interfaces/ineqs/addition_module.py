@@ -245,7 +245,8 @@ def learn_add_comparisons(H):
             # eliminate j
             i_add_eqs, i_add_comps = add_elim(i_add_eqs, i_add_comps, IVar(j))
         add_eqs, add_comps = add_elim(add_eqs, add_comps, IVar(i))
-    print
+    if H.verbose:
+        print
 
 def test_add_subst():
 
