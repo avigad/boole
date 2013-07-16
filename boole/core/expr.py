@@ -823,7 +823,7 @@ def open_tele(tele, vars, checked=False):
     opened_ty = tele.types
     consts = []
     for i in range(0, tele.len):
-        opened_ty[i] = subst_expr(consts, opened_ty[i])
+        opened_ty[i] = subst_expr(consts, opened_ty[i], is_open=True)
         x = Const(vars[i], opened_ty[i], checked=checked)
         consts.append(x)
     return (consts, opened_ty)
@@ -1041,7 +1041,7 @@ class SubstExpr(ExprVisitor):
     terms.
     """
     
-    def __init__(self, exprs):
+    def __init__(self, exprs, is_open=None):
         """
         
         Arguments:
@@ -1050,6 +1050,7 @@ class SubstExpr(ExprVisitor):
         ExprVisitor.__init__(self)
         self.exprs = exprs
         self.len = len(self.exprs)
+        self.is_open = is_open
         
     def visit_const(self, expr, *args, **kwargs):
         return expr
@@ -1125,7 +1126,7 @@ class SubstExpr(ExprVisitor):
         return expr.accept(self, *args, **kwargs)
 
 
-def subst_expr(exprs, expr):
+def subst_expr(exprs, expr, is_open=None):
     """Instantiate DB indices in expr according
     to expr_list
     
@@ -1133,7 +1134,10 @@ def subst_expr(exprs, expr):
     - `expr_list`: a list of expressions
     - `expr`: an expression
     """
-    subster = SubstExpr(exprs)
+    if is_open != None:
+        subster = SubstExpr(exprs, is_open=is_open)
+    else:
+        subster = SubstExpr(exprs)
     return subster.visit(expr, 0)
 
 
@@ -1167,7 +1171,7 @@ def open_expr(var, typ, expr, checked=None):
         const = Const(var, typ, checked=True)
     else:
         const = Const(var, typ, checked=checked)
-    return subst_expr([const], expr)
+    return subst_expr([const], expr, is_open=True)
 
 
 def open_bound_fresh(expr, checked=None):

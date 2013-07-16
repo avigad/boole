@@ -169,17 +169,15 @@ class MvarAbst(e.AbstractExpr):
 
 class MvarSubst(e.SubstExpr):
 
-    def __init__(self, exprs):
-        e.SubstExpr.__init__(self, exprs)
+    def __init__(self, exprs, is_open=None):
+        e.SubstExpr.__init__(self, exprs, is_open=is_open)
 
     def visit_mvar(self, expr, depth):
         expr.tele = self.visit(expr.tele, depth)
-        #TODO: this is a hack: we need to know when
-        # we are opening a term, and when we are performing
-        # substitution for another reason, say reduction or
-        # unfolding.
-        if all([exp.is_const() for exp in self.exprs]):
-            names = map(lambda exp: exp.name, self.exprs)
+        #We record the opens performed on an Mvar, and apply
+        #them as it is substituted by it's value
+        if self.is_open:
+            names = [exp.name for exp in self.exprs]
             expr.pending.append(PendAbs(names, depth))
         # expr.pending.append(PendSub(self.exprs, depth))
         return expr
@@ -191,8 +189,11 @@ def abstract_expr(vars, expr):
     return abstractor.visit(expr, 0)
 
 
-def subst_expr(exprs, expr):
-    subster = MvarSubst(exprs)
+def subst_expr(exprs, expr, is_open=None):
+    if is_open != None:
+        subster = MvarSubst(exprs, is_open=is_open)
+    else:
+        subster = MvarSubst(exprs)
     return subster.visit(expr, 0)
 
 
@@ -201,7 +202,7 @@ def open_expr(var, typ, expr, checked=None):
         const = e.Const(var, typ, checked=True)
     else:
         const = e.Const(var, typ, checked=checked)
-    return subst_expr([const], expr)
+    return subst_expr([const], expr, is_open=True)
 
 
 def open_bound_fresh(expr, checked=None):
@@ -230,7 +231,7 @@ def open_tele(tele, vars, checked=False):
     opened_ty = tele.types
     consts = []
     for i in range(0, tele.len):
-        opened_ty[i] = subst_expr(consts, opened_ty[i])
+        opened_ty[i] = subst_expr(consts, opened_ty[i], is_open=True)
         x = e.Const(vars[i], opened_ty[i], checked=checked)
         consts.append(x)
     return (consts, opened_ty)
