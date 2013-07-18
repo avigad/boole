@@ -14,6 +14,7 @@
 import boole.core.expr as e
 from boole.core.goals import *
 from boole.core.tactics import *
+import boole.core.tactics as tac
 import elab
 
 
@@ -77,6 +78,13 @@ def sub_fun(goal, context):
     return [Goal(tele, prop)]
 
 sub_mvar = tac_from_fun('sub_mvar', sub_fun)
+
+
+class unfold(tac.unfold):
+
+    def __init__(self, *names):
+        tac.unfold.__init__(self, *names)
+        self.sub_in = elab.sub_in
 
 
 class DestructMvar(Destruct):

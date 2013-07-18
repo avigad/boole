@@ -257,6 +257,49 @@ class Destruct(Tactic):
 destruct = Destruct()
 
 
+#TODO: substitute variable with pair of destructed values!
+class unpack(Tactic):
+    """Take a hypothesis name, and if it exists and is a sigma type,
+    destroy the sigma type and add all the fields to the context.
+    """
+    
+    def __init__(self, hyp_name):
+        """
+        
+        Arguments:
+        - `hyp_name`:
+        """
+        Tactic.__init__(self, 'unpack({0!s})'.format(hyp_name))
+        self.hyp_name = hyp_name
+        self.open_bound = expr.open_bound_fresh
+        self.sub_in = expr.sub_in
+        
+    def solve(self, goals, context):
+        if len(goals) == 0:
+            return []
+        else:
+            goal, tail = (goals[0], goals[1:])
+            tele = goal.tele
+            prop = goal.prop
+            try:
+                i = tele.vars.index(self.hyp_name)
+            except ValueError:
+                mess = "name {0!s} not found in hypotheses".\
+                       format(self.hyp_name)
+                raise TacticFailure(mess, self, goals)
+
+            h = tele.types[i]
+            sig_val = expr.unpack_sig(h, self.open_bound)
+            new_tele = tele
+            new_val = sig_val
+            while new_val.is_pair():
+                new_tele = new_tele.append(new_val.fst.name, new_val.fst.type)
+                new_val = new_val.snd
+            new_tele.pop(i)
+            new_prop = self.sub_in([sig_val], [self.hyp_name], prop)
+            return [Goal(new_tele.concat(tele), new_prop)] + tail
+
+
 class apply_atom(Tactic):
     """Generate an equality between the current goal
     and the hypothesis and apply the unification tactic.
@@ -444,7 +487,8 @@ class unfold(Tactic):
                     " {1!s}".format(k, context)
                     raise TacticFailure(mess, self, goal)
             prop_sub = self.sub_in(exprs, self.names, prop)
-            return [Goal(tele, prop_sub)] + tail
+            tele_sub = self.sub_in(exprs, self.names, tele)
+            return [Goal(tele_sub, prop_sub)] + tail
 
 
 def intro_fun(goal, context):

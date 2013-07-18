@@ -197,6 +197,10 @@ def subst_expr(exprs, expr, is_open=None):
     return subster.visit(expr, 0)
 
 
+def sub_in(exprs, vars, expr):
+    return subst_expr(exprs, abstract_expr(vars, expr))
+
+
 def open_expr(var, typ, expr, checked=None):
     if checked == None:
         const = e.Const(var, typ, checked=True)
@@ -811,5 +815,6 @@ def nullctxt():
     """The empty telescope
     """
     return e.Tele([], [])
+
 
 trivial = e.Ev(nullctxt())

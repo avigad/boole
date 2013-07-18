@@ -118,8 +118,8 @@ class ExprInfer(ExprVisitor):
         if is_sort(dom_ty):
             pass
         else:
-            mess = "The term {0!s} has type {1!s} which must be a sort\
-            or have as type a sort".format(expr.dom, dom_ty)
+            mess = "The term {0!s} has type {1!s} which must be a sort"\
+                   " or have as type a sort".format(expr.dom, dom_ty)
             raise ExprTypeError(mess, expr)
         #substitute a fresh constant in the body of the binder
         var, open_expr = self.open_fresh(expr)

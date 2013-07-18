@@ -811,6 +811,27 @@ class Tele(Expr):
         """
         return Tele(self.vars + [var], self.types + [ty])
 
+    def concat(self, tele):
+        """Same as above, but for concatenation
+        
+        Arguments:
+        - `tele`:
+        """
+        return Tele(self.vars + tele.vars, self.types + tele.types)
+
+    def pop(self, i=None):
+        """Pop the i-th (last by default)
+        argument of a telescope
+        return the pair (name, type)
+        
+        Arguments:
+        - `i`: an integer
+        """
+        if i is None:
+            return (self.vars.pop(), self.types.pop())
+        else:
+            return (self.vars.pop(i), self.types.pop(i))
+
 
 def open_tele(tele, vars, checked=False):
     """Takes a telescope and returns a list of pairs
@@ -950,7 +971,8 @@ class AbstractExpr(ExprVisitor):
             index = depth + self.names.index(expr.name)
             return DB(index)
         else:
-            return expr
+            ty = self.visit(expr.type, depth)
+            return Const(expr.name, ty)
 
     def visit_db(self, expr, *args, **kwargs):
         return DB(expr.index)
@@ -1053,7 +1075,8 @@ class SubstExpr(ExprVisitor):
         self.is_open = is_open
         
     def visit_const(self, expr, *args, **kwargs):
-        return expr
+        ty = self.visit(expr.type, *args, **kwargs)
+        return Const(expr.name, ty)
 
     def visit_db(self, expr, depth):
         if expr.index < depth:
@@ -1063,7 +1086,7 @@ class SubstExpr(ExprVisitor):
         else:
             return DB(expr.index)
             # raise ExprError("Unbound DB variable", expr)
-           
+        
     def visit_type(self, expr, *args, **kwargs):
         return Type()
 
@@ -1276,3 +1299,49 @@ def root_clause(expr):
     while is_impl(root):
         root = arg_i(root, 1)
     return root
+
+
+def sig_to_tele(expr, open_bound):
+    """Takes a sigma type S = Sig(x1:A1,Sig(x2:A2,...,An+1)..)
+    and returns the telescope:
+    [x1:A1,...,xn:An,h:An+1]
+    
+    Arguments:
+    - `expr`: an expression
+    - `open_bound`: a function which opens binders
+    """
+    sig_ty = expr
+    tele = Tele([], [])
+    while sig_ty.is_bound() and sig_ty.binder.is_sig():
+        v, new_ty = open_bound(sig_ty)
+        tele = tele.append(v, sig_ty.dom)
+        sig_ty = new_ty
+    hyp = fresh_name.get_name('hyp')
+    return tele.append(hyp, sig_ty)
+
+
+def unpack_sig(expr, open_bound):
+    """Takes a sigma type S = Sig(x1:A1,Sig(x2:A2,...,An)..)
+    and returns the dependent tuple
+    (x1, (x2,(...,h)..) with xi : Ai and h : An
+    
+    Arguments:
+    - `expr`: an expression
+    """
+    sig_ty = expr
+    tup = []
+    while sig_ty.is_bound() and sig_ty.binder.is_sig():
+        v, new_ty = open_bound(sig_ty)
+        c = Const(v, sig_ty.dom)
+        tup.append((c, sig_ty))
+        sig_ty = new_ty
+    hyp = fresh_name.get_name('hyp')
+    c = Const(hyp, sig_ty)
+    if len(tup) == 0:
+        return c
+    else:
+        ret = c
+        while len(tup) != 0:
+            fst, ty = tup.pop()
+            ret = Pair(fst, ret, ty)
+        return ret

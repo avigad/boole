@@ -479,6 +479,7 @@ def cast(expr, ty):
 
 local_ctxt = Context("local_ctxt")
 
+verbose = False
 
 def deftype(name):
     """Define a type constant, and add it
@@ -489,7 +490,8 @@ def deftype(name):
     """
     c = mktype(name)
     local_ctxt.add_const(c)
-    # print "{0!s} : {1!s} is assumed.\n".format(c, c.type)
+    if verbose:
+        print "{0!s} : {1!s} is assumed.\n".format(c, c.type)
     return c
 
 
@@ -519,8 +521,6 @@ def defconst(name, type, infix=None, tactic=None):
     #fail if there are undefined meta-vars.
     c.type = sub_mvar(type, undef=True)
 
-    c.info['checked'] = True
-
     #Now type check the resulting term and try to solve the
     #TCCs
     _, obl = typing.infer(c, ctxt=local_ctxt)
@@ -529,10 +529,12 @@ def defconst(name, type, infix=None, tactic=None):
         obl.solve_with(type_tac)
     else:
         obl.solve_with(tactic)
+
+    c.info['checked'] = True
     local_ctxt.add_const(c)
     if obl.is_solved():
-        # print "{0!s} : {1!s} is assumed.\n".format(c, c.type)
-        pass
+        if verbose:
+            print "{0!s} : {1!s} is assumed.\n".format(c, c.type)
     else:
         local_ctxt.add_to_field(obl.name, obl, 'goals')
         print "In the declaration:\n{0!s} : {1!s}".format(name, c.type)
@@ -596,8 +598,8 @@ def defexpr(name, value, type=None, infix=None, tactic=None):
     local_ctxt.add_to_field(name, val, 'defs')
 
     if obl.is_solved():
-        # print "{0!s} : {1!s} := {2!s} is defined.\n".format(c, ty, val)
-        pass
+        if verbose:
+            print "{0!s} : {1!s} := {2!s} is defined.\n".format(c, ty, val)
     else:
         local_ctxt.add_to_field(obl.name, obl, 'goals')
         print "In the definition\n"\
@@ -786,3 +788,6 @@ definstance('Add_int', Add(Int, add_int), triv())
 
 definstance('Lt_real', Lt(Real, lt_real), triv())
 definstance('Lt_int', Lt(Int, lt_int), triv())
+
+verbose = True
+
