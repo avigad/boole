@@ -971,8 +971,7 @@ class AbstractExpr(ExprVisitor):
             index = depth + self.names.index(expr.name)
             return DB(index)
         else:
-            ty = self.visit(expr.type, depth)
-            return Const(expr.name, ty)
+            return expr
 
     def visit_db(self, expr, *args, **kwargs):
         return DB(expr.index)
@@ -1075,8 +1074,11 @@ class SubstExpr(ExprVisitor):
         self.is_open = is_open
         
     def visit_const(self, expr, *args, **kwargs):
-        ty = self.visit(expr.type, *args, **kwargs)
-        return Const(expr.name, ty)
+        if self.is_open:
+            return expr
+        else:
+            ty = self.visit(expr.type, *args, **kwargs)
+            return Const(expr.name, ty)
 
     def visit_db(self, expr, depth):
         if expr.index < depth:
