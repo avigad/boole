@@ -10,10 +10,6 @@ class Error(Exception):
 class Contradiction(Error):
     pass
 
-
-#Debug code
-def pause():
-    raw_input("Enter to continue:")
     
 # kinds of inequalities
 GT, GE, LE, LT = range(4)
@@ -72,16 +68,16 @@ class Term:
         return self * (-1)
     
     def __sub__(self, other):
-        return self + other * (-1)
+        return self +other * (-1)
     
     def __rsub__(self, other):
-        return (-1) * self + other
+        return (-1) * self +other
     
     def __rmul__(self, other):
         return self * other
 
     def __radd__(self, other):
-        return self + other
+        return self +other
 
 
 class Const(Term):
@@ -106,7 +102,7 @@ class Const(Term):
                 return self
             else:
                 num = Fraction(self.name)
-                return Const(str(num*other))
+                return Const(str(num * other))
         return other * self
 
     def __add__(self, other):
@@ -307,7 +303,7 @@ class Add_term(Term):
                              for s in self.addpairs])
         return self * factor ** (-1)
 
-    def __mul__(self,  factor):
+    def __mul__(self, factor):
         if isinstance(factor, (int, float, Fraction)):
             return Add_term([s * factor for s in self.addpairs])
         if isinstance(factor, Mul_term):
@@ -317,11 +313,11 @@ class Add_term(Term):
         
         return self * Mul_term([Mul_pair(factor, 1)])
 
-    def __add__(self,  other):
+    def __add__(self, other):
         if isinstance(other, (int, float, Fraction)):
             if other == 0:
                 return self
-            return self + Add_term([Add_pair(other, one)])
+            return self +Add_term([Add_pair(other, one)])
             
         if isinstance(other, Add_term):
             addpairs = []
@@ -335,13 +331,13 @@ class Add_term(Term):
                         break
                 else:
                     addpairs.append(a)
-            #if not addpairs:
-                #print self, other
-                #raise Error("Add_term zero")
-                #return zero
+            # if not addpairs:
+                # print self, other
+                # raise Error("Add_term zero")
+                # return zero
             return(Add_term(addpairs))
             
-        return self + Add_term([Add_pair(1, other)])
+        return self +Add_term([Add_pair(1, other)])
 
     def __pow__(self, other):
         if not isinstance(other, (int, float, Fraction)):
@@ -521,7 +517,7 @@ class Func_term(Term):
         return 1
         
     def __str__(self):
-        s = ('' if self.const == 1 else str(self.const) +  '*') + self.name + '('
+        s = ('' if self.const == 1 else str(self.const) + '*') + self.name + '('
         for a in self.args:
             s += str(a) + ',  '
         s = s[:-2] + ')'
@@ -540,7 +536,7 @@ class Func_term(Term):
 #
 ###############################################################################
 
-
+# Comparison and its subclasses are used in the Boole interface.
 class Comparison():
     def __init__(self):
         self.dir = None
@@ -611,8 +607,8 @@ class CompLE(Comparison):
         return CompGT(self.left, self.right)
 
 
-#Comparison between one term a_i and 0
-#a_i comp 0
+# Comparison between one term a_i and 0
+# a_i comp 0
 class Zero_comparison_data:
 
     def __init__(self, comp, provenance=None):
@@ -623,8 +619,8 @@ class Zero_comparison_data:
         return str(term) + ' ' + comp_str[self.comp] + ' 0'
 
 
-#comparison between two terms, a_i and a_j
-#a_i comp coeff * a_j
+# comparison between two terms, a_i and a_j
+# a_i comp coeff * a_j
 class Comparison_data:
 
     def __init__(self, comp, coeff=1, provenance=None):
@@ -636,7 +632,7 @@ class Comparison_data:
         if self.coeff == 1:
             return str(term1) + ' ' + comp_str[self.comp] + ' ' + str(term2)
         else:
-            return (str(term1) + ' ' + comp_str[self.comp] + ' ' +\
+            return (str(term1) + ' ' + comp_str[self.comp] + ' ' + \
                     str(self.coeff) + '*' + str(term2))
 
     def __str__(self):
@@ -645,7 +641,7 @@ class Comparison_data:
     def __repr__(self):
         return self.__str__()
     
-    #used to figure out strength of inequalities
+    # used to figure out strength of inequalities
         
     def ge(self, other):
         if (self.comp in [LT, LE] and other.comp in [GT, GE]) \
@@ -787,8 +783,8 @@ def test_canonize():
     print "canonize(t1) == canonize(t2):", canonize(t1) == canonize(t3)
 
 
-#Takes an (uncanonized) Zero_comparison.
-#Returns a canonized Zero_comparison with positive coefficient.
+# Takes an (uncanonized) Zero_comparison.
+# Returns a canonized Zero_comparison with positive coefficient.
 def canonize_zero_comparison(h):
     canon = canonize(h.term)
     if canon.coeff > 0:
@@ -827,7 +823,7 @@ class IVar(Term, Var):
             return -1
     
     def __eq__(self, other):
-        #print "IVAR EQ CALLED"
+        # print "IVAR EQ CALLED"
         if isinstance(other, IVar):
             return self.index == other.index
         return False
@@ -837,7 +833,7 @@ class IVar(Term, Var):
             return self.index != other.index
         return True
     
-    #Looks in Heuristic_data H to see if self < other is known.
+    # Looks in Heuristic_data H to see if self < other is known.
     def lt_rel(self, other, H):
         i, j = self.index, other.index
         if i > j:
@@ -857,7 +853,7 @@ class IVar(Term, Var):
                 return True
             if signi == 1 and signj == -1:
                 return False
-            #both signs are the same.
+            # both signs are the same.
             if (i, j) in H.term_comparisons.keys():
                 comps = H.term_comparisons[i, j]
                 for c in comps:
@@ -868,10 +864,10 @@ class IVar(Term, Var):
                         return True
             return False
         
-        #sign info on right is unknown
+        # sign info on right is unknown
         if (i, j) in H.term_comparisons.keys():
             comps = H.term_comparisons[i, j]
-            if (any((c.comp == LT and c.coeff<=1) or (c.comp == LE and c.coeff<1)\
+            if (any((c.comp == LT and c.coeff <= 1) or (c.comp == LE and c.coeff < 1)\
                     for c in comps) and \
                 any(((c.comp == LT and (c.coeff < 0 or c.coeff >= 1))\
                      or (c.comp == LE and (c.coeff < 0 or c.coeff > 1)))\
@@ -898,18 +894,18 @@ class IVar(Term, Var):
                 return False
             if signi == 1 and signj == -1:
                 return True
-            #both signs are the same.
+            # both signs are the same.
             if (i, j) in H.term_comparisons.keys():
                 comps = H.term_comparisons[i, j]
                 for c in comps:
                     if ((wsignj == 1 and ((c.comp == GT and c.coeff >= 1)\
                                           or (c.comp == GE and c.coeff > 1))) or
                         (wsignj == -1 and ((c.comp == GT and c.coeff <= 1)\
-                                           or (c.comp == GE and c.coeff < 1 )))):
+                                           or (c.comp == GE and c.coeff < 1)))):
                         return True
             return False
         
-        #sign info on right is unknown
+        # sign info on right is unknown
         if (i, j) in H.term_comparisons.keys():
             comps = H.term_comparisons[i, j]
             if (any((c.comp == GT and c.coeff >= 1)\
@@ -931,14 +927,14 @@ class IVar(Term, Var):
                 return True
             return False
         
-        #signi, signj = H.sign(i), H.sign(j)
+        # signi, signj = H.sign(i), H.sign(j)
         wsigni, wsignj = H.weak_sign(i), H.weak_sign(j)
         if wsignj != 0:
             if wsigni == -1 and wsignj == 1:
                 return True
             if wsigni == 1 and wsignj == -1:
                 return False
-            #both signs are the same.
+            # both signs are the same.
             if (i, j) in H.term_comparisons.keys():
                 comps = H.term_comparisons[i, j]
                 for c in comps:
@@ -947,7 +943,7 @@ class IVar(Term, Var):
                         return True
             return False
         
-        #sign info on right is unknown
+        # sign info on right is unknown
         if (i, j) in H.term_comparisons.keys():
             comps = H.term_comparisons[i, j]
             if (any((c.comp in [LT, LE] and c.coeff <= 1) for c in comps) and
@@ -967,14 +963,14 @@ class IVar(Term, Var):
                 return True
             return False
         
-        #signi, signj = H.sign(i), H.sign(j)
+        # signi, signj = H.sign(i), H.sign(j)
         wsigni, wsignj = H.weak_sign(i), H.weak_sign(j)
         if wsignj != 0:
             if wsigni == -1 and wsignj == 1:
                 return False
             if wsigni == 1 and wsignj == -1:
                 return True
-            #both signs are the same.
+            # both signs are the same.
             if (i, j) in H.term_comparisons.keys():
                 comps = H.term_comparisons[i, j]
                 for c in comps:
@@ -983,7 +979,7 @@ class IVar(Term, Var):
                         return True
             return False
         
-        #sign info on right is unknown
+        # sign info on right is unknown
         if (i, j) in H.term_comparisons.keys():
             comps = H.term_comparisons[i, j]
             if (any((c.comp in [GT, GE] and c.coeff >= 1)  for c in comps) and
@@ -995,7 +991,7 @@ class IVar(Term, Var):
         i, j = self.index, other.index
         if i == j:
             return True
-        if self - other in H.zero_equations or other - self in H.zero_equations:
+        if self -other in H.zero_equations or other - self in H.zero_equations:
             return True
         return False
     
@@ -1045,7 +1041,7 @@ def make_term_names(terms):
                 for m in t.args:
                     args.append(process_subterm(m))
                 new_def = Func_term(t.name, args, t.const)
-            l = len(subterm_list)    # index of new term
+            l = len(subterm_list)  # index of new term
             subterm_list.append(t)
             name_defs[l] = new_def
             return IVar(l)
