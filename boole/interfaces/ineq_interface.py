@@ -121,6 +121,7 @@ def eq_tms(tm1, tm2):
 
 #Dictionary that maps Bool constant names to the function which constructs
 # a term in the ineq datatype
+#TODO: handle conjunction and equality.
 fun_defs = {"+": add_tms, "*": mul_tms, "<": lt_tms,
             "&": conj_tms, "==": eq_tms}
 
@@ -237,13 +238,6 @@ if __name__ == '__main__':
     
     print translate(tm_def)
 
-
-    # test_prop = defconst('test_prop', \
-    #                      (x > 0.0) >=\
-    #                      ((x < 1.0) >=\
-    #                       ((y > 0.0) >=\
-    #                        ((y < 1.0) >=\
-    #                         ((x + y) > (x * y))))))
         
     defthm('test',  \
            (x > 0.0) >=\
