@@ -22,18 +22,18 @@ from terms import *
 
 if __name__ == '__main__':
 
-    terms.verbose = False
+    terms.verbose = True
 
     el = defconst('el', X)
 
-    One = defclass('One', pi(X, pi(el, Bool)), abst(X, abst(el, true)))
+    One = defclass('One', pi([X, el], Bool), abst([X, el], true))
 
     definstance('One_int', One(Int, 1), triv())
 
     one_inst = defconst('one_inst', One(X, el))
     
-    one = defexpr('one', abst(X, abst(el, abst(one_inst, el))), \
-                  pi(X, pi(el, pi(one_inst, X, impl=True), impl=True), impl=True))
+    one = defexpr('one', abst([X, el, one_inst], el), \
+                  pi([X, el, one_inst], X, impl=True))
 
 
     test = defexpr('test', 3 + one())
@@ -67,12 +67,12 @@ if __name__ == '__main__':
     p2 = defconst('p2', A*B)
 
     op_pair = \
-            abst(p1, abst(p2, pair(op_a(p1[0], p2[0]), op_b(p1[1], p2[1]))))
+            abst([p1, p2], pair(op_a(p1[0], p2[0]), op_b(p1[1], p2[1])))
 
 
     definstance('mul_prod', \
-                forall(A, forall(op_a, forall(B, forall(op_b, \
-                Mul(A, op_a) >= (Mul(B, op_b) >= Mul(A*B, op_pair)))))), \
+                forall([A, op_a, B, op_b], \
+                Mul(A, op_a) >= (Mul(B, op_b) >= Mul(A*B, op_pair))), \
                 triv())
 
 

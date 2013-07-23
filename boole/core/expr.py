@@ -839,7 +839,7 @@ def open_tele(tele, vars, checked=False):
     on the constant.
     
     Arguments:
-    - `tele`:
+    - `tele`: a telescope
     """
     opened_ty = tele.types
     consts = []
@@ -868,6 +868,7 @@ def open_tele_fresh(tele, checked=False):
     """
     fr_vars = [fresh_name.get_name(v) for v in tele.vars]
     return open_tele(tele, fr_vars, checked=checked)
+
 
 ###############################################################################
 #

@@ -22,17 +22,18 @@ from terms import *
 
 if __name__ == '__main__':
 
+    terms.verbose = True
 
     el = defconst('el', X)
 
-    One = defclass('One', pi(X, pi(el, Bool)), abst(X, abst(el, true)))
+    One = defclass('One', pi([X, el], Bool), abst([X, el], true))
 
     definstance('One_int', One(Int, 1), triv())
 
     one_inst = defconst('one_inst', One(X, el))
     
-    one = defexpr('one', abst(X, abst(el, abst(one_inst, el))), \
-                  pi(X, pi(el, pi(one_inst, X, impl=True), impl=True), impl=True))
+    one = defexpr('one', abst([X, el, one_inst], el), \
+                  pi([X, el, one_inst], X, impl=True))
 
 
     op_mul = defconst('op_mul', Mul(X, op))
@@ -41,15 +42,15 @@ if __name__ == '__main__':
 
 
     Unit_left = defclass('Unit_left', \
-                         pi(X, pi(op, pi(el, Mul(X, op) >> (One(X, el) >> Bool)))),
-                         abst(X, abst(op, abst(el, abst(op_mul, abst(el_one, \
-                                                                     forall(x, one() * x == x)))))))
+                         pi([X, op, el], Mul(X, op) >> (One(X, el) >> Bool)),
+                         abst([X, op, el, op_mul, el_one], \
+                              forall(x, one() * x == x)))
 
 
     Unit_right = defclass('Unit_right', \
-                         pi(X, pi(op, pi(el, Mul(X, op) >> (One(X, el) >> Bool)))),
-                         abst(X, abst(op, abst(el, abst(op_mul, abst(el_one, \
-                                                                     forall(x, x * one() == x)))))))
+                         pi([X, op, el], Mul(X, op) >> (One(X, el) >> Bool)),
+                         abst([X, op, el, op_mul, el_one], \
+                              forall(x, x * one() == x)))
 
     G = deftype('G')
 
@@ -94,7 +95,9 @@ if __name__ == '__main__':
     definstance('Unit_right_grp', \
                 forall(grp, Unit_right(grp_carr(grp),\
                                        grp_op(grp),\
-                                       grp_one(grp), triv(), triv())),\
+                                       grp_one(grp),
+                                       triv(),
+                                       triv())),\
                 triv())
 
     goal = local_ctxt.next_goal()

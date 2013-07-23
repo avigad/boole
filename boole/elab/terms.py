@@ -409,34 +409,89 @@ def mktype(name):
 
 ###############################################################################
 #
-# Alias the constructors so that they live in the appropriate worlds.
+# Alias the constructors so that they carry the appropriate info.
 #
 ###############################################################################
 
 
 @with_info(st_term)
-def pi(*args, **kwargs):
-    return elab.pi(*args, **kwargs)
+def pi_base(var, codom, **kwargs):
+    return elab.pi(var, codom, **kwargs)
+
+
+def pi(var, codom, **kwargs):
+    if isinstance(var, list):
+        var.reverse()
+        tm = codom
+        for v in var:
+            tm = pi_base(v, tm, **kwargs)
+        return tm
+    else:
+        return pi_base(var, codom, **kwargs)
 
 
 @with_info(st_term)
-def abst(var, body):
+def abst_base(var, body):
     return elab.abst(var, body)
 
 
+def abst(var, body):
+    if isinstance(var, list):
+        var.reverse()
+        tm = body
+        for v in var:
+            tm = abst_base(v, tm)
+        return tm
+    else:
+        return abst_base(var, body)
+
+
 @with_info(st_term)
-def forall(var, prop):
+def forall_base(var, prop):
     return elab.forall(var, prop)
 
 
+def forall(var, prop):
+    if isinstance(var, list):
+        var.reverse()
+        tm = prop
+        for v in var:
+            tm = forall_base(v, tm)
+        return tm
+    else:
+        return forall_base(var, prop)
+
+
 @with_info(st_term)
-def exists(var, prop):
+def exists_base(var, prop):
     return elab.exists(var, prop)
 
 
+def exists(var, prop):
+    if isinstance(var, list):
+        var.reverse()
+        tm = prop
+        for v in var:
+            tm = exists_base(v, tm)
+        return tm
+    else:
+        return exists_base(var, prop)
+
+
 @with_info(st_term)
-def sig(var, codom):
+def sig_base(var, codom):
     return elab.sig(var, codom)
+
+
+def sig(var, codom):
+    if isinstance(var, list):
+        var.reverse()
+        tm = codom
+        for v in var:
+            tm = sig_base(v, tm)
+        return tm
+    else:
+        return sig_base(var, codom)
 
 
 @with_info(st_term)
@@ -742,41 +797,38 @@ X = deftype('X')
 x = X('x')
 y = X('y')
 
-eq = defexpr('==', abst(X, abst(x, abst(y, conj(Sub(x, y), Sub(y, x))))), \
+eq = defexpr('==', abst([X, x, y], conj(Sub(x, y), Sub(y, x))), \
              pi(X, X >> (X >> Bool), impl=True), infix=True)
 
 op = defconst('op', X >> (X >> X))
 
-Mul = defclass('Mul', pi(X, pi(op, Bool)), \
-               abst(X, abst(op, true)))
+Mul = defclass('Mul', pi([X, op], Bool), \
+               abst([X, op], true))
 
 mul_ev = Const('mul_ev', Mul(X, op))
 
-mul = defexpr('*', abst(X, abst(op, abst(mul_ev, op))), \
-              pi(X, pi(op, pi(mul_ev, X >> (X >> X), \
-                              impl=True), impl=True), impl=True), \
+mul = defexpr('*', abst([X, op, mul_ev], op), \
+              pi([X, op, mul_ev], X >> (X >> X), impl=True), \
               infix=True)
 
-Add = defclass('Add', pi(X, pi(op, Bool)), \
-               abst(X, abst(op, true)))
+Add = defclass('Add', pi([X, op], Bool), \
+               abst([X, op], true))
 
 add_ev = Const('add_ev', Add(X, op))
 
-add = defexpr('+', abst(X, abst(op, abst(add_ev, op))), \
-              pi(X, pi(op, pi(add_ev, X >> (X >> X), \
-                              impl=True), impl=True), impl=True), \
+add = defexpr('+', abst([X, op, add_ev], op), \
+              pi([X, op, add_ev], X >> (X >> X), impl=True), \
               infix=True)
 
 pred = defconst('pred', X >> (X >> Bool))
 
-Lt = defclass('Lt', pi(X, pi(pred, Bool)), \
-              abst(X, abst(pred, true)))
+Lt = defclass('Lt', pi([X, pred], Bool), \
+              abst([X, pred], true))
 
 lt_ev = Const('lt_ev', Lt(X, pred))
 
-lt = defexpr('<', abst(X, abst(pred, abst(lt_ev, pred))), \
-             pi(X, pi(pred, pi(lt_ev, X >> (X >> Bool),\
-                               impl=True), impl=True), impl=True),\
+lt = defexpr('<', abst([X, pred, lt_ev], pred), \
+             pi([X, pred, lt_ev], X >> (X >> Bool), impl=True), \
              infix=True)
 
 
@@ -790,4 +842,3 @@ definstance('Lt_real', Lt(Real, lt_real), triv())
 definstance('Lt_int', Lt(Int, lt_int), triv())
 
 verbose = True
-
