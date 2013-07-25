@@ -22,11 +22,11 @@ from terms import *
 
 if __name__ == '__main__':
 
-    terms.verbose = True
+    terms.verbose = False
 
     el = defconst('el', X)
 
-    One = defclass('One', pi([X, el], Bool), abst([X, el], true))
+    One = defclass('One', [X, el], true)
 
     definstance('One_int', One(Int, 1), triv())
 
@@ -41,17 +41,14 @@ if __name__ == '__main__':
     el_one = defconst('el_one', One(X, el))
 
 
-    Unit_left = defclass('Unit_left', \
-                         pi([X, op, el], Mul(X, op) >> (One(X, el) >> Bool)),
-                         abst([X, op, el, op_mul, el_one], \
-                              forall(x, one() * x == x)))
+    Unit_left = defclass('Unit_left', [X, op, el, op_mul, el_one], \
+                         forall(x, one() * x == x))
 
 
-    Unit_right = defclass('Unit_right', \
-                         pi([X, op, el], Mul(X, op) >> (One(X, el) >> Bool)),
-                         abst([X, op, el, op_mul, el_one], \
-                              forall(x, x * one() == x)))
-
+    Unit_right = defclass('Unit_right', [X, op, el, op_mul, el_one], \
+                         forall(x, x * one() == x))
+ 
+ 
     G = deftype('G')
 
     G_mul = defconst('G_mul', G >> (G >> G))
@@ -104,28 +101,21 @@ if __name__ == '__main__':
 
     goal.interact(tac.par(tac.trytac(unif.instances)))
 
-    goal.interact(tac.unfold('*', 'one')>>tac.simpl(conv.par_beta))
-
     goal.interact(tac.unfold('Grp'))
 
     goal.interact(tac.unpack('grp_28'))
 
-    #This is invisible!
+    #grp_carr is invisible!
     #it appears in an implicit argument.
-    goal.interact(unif.unfold('grp_carr')>>tac.simpl(conv.par_beta))
-
-    goal.interact(unif.unfold('grp_op')>>tac.simpl(conv.par_beta))
-
-    goal.interact(unif.unfold('grp_one')>>tac.simpl(conv.par_beta))
-
-    goal.interact(tac.simpl(conv.par_beta))
+    goal.interact(tac.unfold('*', 'one', 'grp_carr', 'grp_op', 'grp_one')\
+                  >>tac.simpl(conv.beta_norm))
 
     goal.interact(unif.mvar_apply(goal[0]['G_unit_r_73']))
 
     goal.interact(unif.unify>>tac.par(tac.trivial))
 
 
-    g = defconst('g', grp_carr(grp))
-    h = defconst('h', grp_carr(grp))
+    # g = defconst('g', grp_carr(grp))
+    # h = defconst('h', grp_carr(grp))
 
-    defhyp('toto', g * h == one() * h * g)
+    # defhyp('toto', g * h == one() * h * g)

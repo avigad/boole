@@ -1338,7 +1338,7 @@ def unpack_sig(expr, open_bound):
         c = Const(v, sig_ty.dom)
         tup.append((c, sig_ty))
         sig_ty = new_ty
-    hyp = fresh_name.get_name('hyp')
+    hyp = fresh_name.get_name('h')
     c = Const(hyp, sig_ty)
     if len(tup) == 0:
         return c

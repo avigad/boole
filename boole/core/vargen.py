@@ -33,17 +33,26 @@ class VarGen(object):
         self.default = '_Boole'
         self._name_index = {}
 
-    def get_name(self, name=None):
-        """Return an unused name
+    def get_name(self, name=None, free_in=None):
+        """Return an unused name:
+        - if `name` is defined, returns a name with that
+        prefix.
+        - if `free_in` is defined to be a list of expressions,
+        return a name which is free wrt the list of free variables in
+        that list: e.g. if name = 'x' and free_in=[x, x_1 + y], returns
+        x_2.
         """
         if name != None:
             pad = name
         else:
             pad = self.default
-        inc_name(pad, self._name_index)
-        i = self._name_index[pad]
-        if i == 0:
-            fresh = pad
+        if free_in is None:
+            inc_name(pad, self._name_index)
+            i = self._name_index[pad]
+            if i == 0:
+                fresh = pad
+            else:
+                fresh = "{0!s}_{1!s}".format(pad, i)
+            return fresh
         else:
-            fresh = "{0!s}_{1!s}".format(pad, i)
-        return fresh
+            raise NotImplementedError()

@@ -414,20 +414,30 @@ def mktype(name):
 ###############################################################################
 
 
+#TODO: use built-in function?
+def fold_over(base_op, var, tm, **kwargs):
+    """
+    Apply a base operation to a list of
+    objects
+    """
+    if isinstance(var, list):
+        var.reverse()
+        res = tm
+        for v in var:
+            res = base_op(v, res, **kwargs)
+        var.reverse()
+        return res
+    else:
+        return base_op(var, tm, **kwargs)
+
+
 @with_info(st_term)
 def pi_base(var, codom, **kwargs):
     return elab.pi(var, codom, **kwargs)
 
 
 def pi(var, codom, **kwargs):
-    if isinstance(var, list):
-        var.reverse()
-        tm = codom
-        for v in var:
-            tm = pi_base(v, tm, **kwargs)
-        return tm
-    else:
-        return pi_base(var, codom, **kwargs)
+    return fold_over(pi_base, var, codom, **kwargs)
 
 
 @with_info(st_term)
@@ -436,14 +446,7 @@ def abst_base(var, body):
 
 
 def abst(var, body):
-    if isinstance(var, list):
-        var.reverse()
-        tm = body
-        for v in var:
-            tm = abst_base(v, tm)
-        return tm
-    else:
-        return abst_base(var, body)
+    return fold_over(abst_base, var, body)
 
 
 @with_info(st_term)
@@ -452,14 +455,7 @@ def forall_base(var, prop):
 
 
 def forall(var, prop):
-    if isinstance(var, list):
-        var.reverse()
-        tm = prop
-        for v in var:
-            tm = forall_base(v, tm)
-        return tm
-    else:
-        return forall_base(var, prop)
+    return fold_over(forall_base, var, prop)
 
 
 @with_info(st_term)
@@ -468,14 +464,7 @@ def exists_base(var, prop):
 
 
 def exists(var, prop):
-    if isinstance(var, list):
-        var.reverse()
-        tm = prop
-        for v in var:
-            tm = exists_base(v, tm)
-        return tm
-    else:
-        return exists_base(var, prop)
+    return fold_over(exists_base, var, prop)
 
 
 @with_info(st_term)
@@ -484,14 +473,7 @@ def sig_base(var, codom):
 
 
 def sig(var, codom):
-    if isinstance(var, list):
-        var.reverse()
-        tm = codom
-        for v in var:
-            tm = sig_base(v, tm)
-        return tm
-    else:
-        return sig_base(var, codom)
+    return fold_over(sig_base, var, codom)
 
 
 @with_info(st_term)
@@ -535,6 +517,7 @@ def cast(expr, ty):
 local_ctxt = Context("local_ctxt")
 
 verbose = False
+
 
 def deftype(name):
     """Define a type constant, and add it
@@ -708,15 +691,18 @@ def defsub(name, prop):
                         .format(name))
 
 
-def defclass(name, ty, defn):
+def defclass(name, params, defn):
     """Define a type class with the given name and type
     
     Arguments:
     - `name`: a string
-    - `ty`: an expression
-    - `def`: the definition of the class
+    - `params`: a list of parameters
+    - `def`: the definition of the class, which may depend on the parameters
     """
-    c = defexpr(name, defn, type=ty)
+    class_ty = pi(params, Bool)
+    class_def = abst(params, defn)
+    
+    c = defexpr(name, class_def, type=class_ty)
     c.info['is_class'] = True
     local_ctxt.add_to_field(name, c.type, 'classes')
     c_def = local_ctxt.defs[name]
@@ -802,8 +788,7 @@ eq = defexpr('==', abst([X, x, y], conj(Sub(x, y), Sub(y, x))), \
 
 op = defconst('op', X >> (X >> X))
 
-Mul = defclass('Mul', pi([X, op], Bool), \
-               abst([X, op], true))
+Mul = defclass('Mul', [X, op], true)
 
 mul_ev = Const('mul_ev', Mul(X, op))
 
@@ -811,8 +796,7 @@ mul = defexpr('*', abst([X, op, mul_ev], op), \
               pi([X, op, mul_ev], X >> (X >> X), impl=True), \
               infix=True)
 
-Add = defclass('Add', pi([X, op], Bool), \
-               abst([X, op], true))
+Add = defclass('Add', [X, op], true)
 
 add_ev = Const('add_ev', Add(X, op))
 
@@ -822,8 +806,7 @@ add = defexpr('+', abst([X, op, add_ev], op), \
 
 pred = defconst('pred', X >> (X >> Bool))
 
-Lt = defclass('Lt', pi([X, pred], Bool), \
-              abst([X, pred], true))
+Lt = defclass('Lt', [X, pred], true)
 
 lt_ev = Const('lt_ev', Lt(X, pred))
 

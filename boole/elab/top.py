@@ -26,7 +26,7 @@ if __name__ == '__main__':
 
     el = defconst('el', X)
 
-    One = defclass('One', pi([X, el], Bool), abst([X, el], true))
+    One = defclass('One', [X, el], true)
 
     definstance('One_int', One(Int, 1), triv())
 

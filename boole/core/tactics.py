@@ -295,9 +295,10 @@ class unpack(Tactic):
             while new_val.is_pair():
                 new_tele = new_tele.append(new_val.fst.name, new_val.fst.type)
                 new_val = new_val.snd
+            new_tele = new_tele.append(new_val.name, new_val.type)
             new_tele.pop(i)
             new_prop = self.sub_in([sig_val], [self.hyp_name], prop)
-            return [Goal(new_tele.concat(tele), new_prop)] + tail
+            return [Goal(new_tele, new_prop)] + tail
 
 
 class apply_atom(Tactic):
