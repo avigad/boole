@@ -51,6 +51,7 @@ class VarGen(object):
             i = self._name_index[pad]
             if i == 0:
                 fresh = pad
+                
             else:
                 fresh = "{0!s}_{1!s}".format(pad, i)
             return fresh

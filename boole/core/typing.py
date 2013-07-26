@@ -34,19 +34,21 @@ def max_sort(e1, e2):
     - `e1, e2`: expressions
     """
     if is_sort(e1) and is_sort(e2):
-        if e1.is_kind() or e2.is_kind():
-            return Kind()
+        if e1.is_kind():
+            return e1
+        elif e2.is_kind():
+            return e2
         elif e1.is_bool():
             return e2
         elif e2.is_bool():
             return e1
         else:
             assert(e1.is_type() and e2.is_type())
-            return Type()
+            return e1
     else:
         if not is_sort(e1):
             raise ExprError("Expected {0!s} be a sort".format(e1), e1)
-        if not is_sort(e2):
+        elif not is_sort(e2):
             raise ExprError("Expected {0!s} be a sort".format(e2), e2)
 
 
@@ -146,7 +148,7 @@ class ExprInfer(ExprVisitor):
         else:
             assert(expr.binder.is_forall() or expr.binder.is_exists())
             if Bool().equals(expr_ty):
-                return Bool()
+                return expr_ty
             else:
                 mess = "The type of {0!s} must be Bool".format(open_expr)
                 raise ExprTypeError(mess, expr)

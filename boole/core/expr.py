@@ -1349,3 +1349,67 @@ def unpack_sig(expr, open_bound):
             fst, ty = tup.pop()
             ret = Pair(fst, ret, ty)
         return ret
+
+
+#TODO: use sets and optimize
+class FreeVars(ExprVisitor):
+    """Returns the list of free variables of
+    an expression.
+    """
+    
+    def __init__(self):
+        ExprVisitor.__init__(self)
+
+    def visit_const(self, expr, *args, **kwargs):
+        return self.visit(expr.type, *args, **kwargs)+\
+               [expr]
+
+    def visit_db(self, expr, *args, **kwargs):
+        return []
+
+    def visit_type(self, expr, *args, **kwargs):
+        return []
+
+    def visit_kind(self, expr, *args, **kwargs):
+        return []
+
+    def visit_bool(self, expr, *args, **kwargs):
+        return []
+
+    def visit_bound(self, expr, *args, **kwargs):
+        return self.visit(expr.dom, *args, **kwargs)+\
+               self.visit(expr.body, *args, **kwargs)
+
+    def visit_app(self, expr, *args, **kwargs):
+        return self.visit(expr.conv, *args, **kwargs)+\
+               self.visit(expr.fun, *args, **kwargs)+\
+               self.visit(expr.arg, *args, **kwargs)
+
+    def visit_pair(self, expr, *args, **kwargs):
+        return self.visit(expr.fst, *args, **kwargs)+\
+               self.visit(expr.snd, *args, **kwargs)+\
+               self.visit(expr.type, *args, **kwargs)
+
+    def visit_fst(self, expr, *args, **kwargs):
+        return self.visit(expr.expr, *args, **kwargs)
+
+    def visit_snd(self, expr, *args, **kwargs):
+        return self.visit(expr.expr, *args, **kwargs)
+
+    def visit_ev(self, expr, *args, **kwargs):
+        return self.visit(expr.tele, *args, **kwargs)
+
+    def visit_sub(self, expr, *args, **kwargs):
+        return self.visit(expr.lhs, *args, **kwargs)+\
+               self.visit(expr.rhs, *args, **kwargs)
+
+    def visit_box(self, expr, *args, **kwargs):
+        return self.visit(expr.conv, *args, **kwargs)+\
+               self.visit(expr.expr, *args, **kwargs)+\
+               self.visit(expr.type, *args, **kwargs)
+
+    def visit_tele(self, expr, *args, **kwargs):
+        tele_vars = [v for v in self.visit(ty, *args, **kwargs)\
+                     for ty in expr.types]
+        return tele_vars
+        
