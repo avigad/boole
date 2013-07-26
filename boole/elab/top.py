@@ -20,10 +20,8 @@ import terms
 from terms import *
 
 
-if __name__ == '__main__':
-
-    terms.verbose = True
-
+def test1():
+    
     el = defconst('el', X)
 
     One = defclass('One', [X, el], true)
@@ -69,10 +67,10 @@ if __name__ == '__main__':
     op_pair = \
             abst([p1, p2], pair(op_a(p1[0], p2[0]), op_b(p1[1], p2[1])))
 
-
     definstance('mul_prod', \
                 forall([A, op_a, B, op_b], \
-                Mul(A, op_a) >= (Mul(B, op_b) >= Mul(A*B, op_pair))), \
+                implies(Mul(A, op_a), \
+                        implies(Mul(B, op_b), Mul(A*B, op_pair)))), \
                 triv())
 
 
@@ -102,7 +100,6 @@ if __name__ == '__main__':
     print
     print conv.beta_norm(expr.sub_in([mul_def], ['*'], test5_def))
     print
-
 
     n = Int('n')
     
@@ -164,3 +161,35 @@ if __name__ == '__main__':
     goal.interact(tac.unpack('p_7'))
 
     goal.interact(tac.simpl(conv.par_beta))
+
+
+def test2():
+    
+    x = Real('x')
+    y = Real('y')
+    z = Real('z')
+    i = Int('i')
+    j = Int('j')
+    k = Int('k')
+    p = Bool('p')
+    q = Bool('q')
+    r = Bool('r')
+    
+    defexpr('test', x * y - y * x)
+    defexpr('test', i * j - (j % i) + j / k)
+    defexpr('test', (x ** y) / (x ** 2.0) + z ** 3.0)
+    defexpr('test', p & ~q & implies(p & q, ~r))
+    defexpr('test', x * y == y * x)
+    defexpr('test', x != x)
+    defexpr('test', (x * y == y * x) & ((x + y) != (y + x)) & (~ (x > 2.0)))
+    defexpr('test', implies((x > 0.0) | (y > 0.0), x ** 2.0 + y ** 2.0 > 0.0))
+
+
+if __name__ == '__main__':
+
+    terms.verbose = True
+    
+    # test1()     # cody's tests
+    test2()    # jeremy's tests
+
+

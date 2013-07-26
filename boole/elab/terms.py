@@ -8,6 +8,7 @@
 #
 # Authors:
 # Cody Roux
+# Jeremy Avigad
 #
 #
 #
@@ -21,7 +22,7 @@ import boole.core.typing as typing
 import elab
 from elab import app_expr, mvar_infer, open_expr, sub_mvar, root_pi
 import boole.core.tactics as tac
-import boole.core.goals as goals
+# import boole.core.goals as goals
 import unif as u
 
 ###############################################################################
@@ -171,7 +172,7 @@ def print_ev(expr):
         return expr.to_string()
 
 
-def str_typ(expr):
+def typ_str(expr):
     if expr.is_app():
         return print_app(expr)
     elif expr.is_bound() and expr.binder.is_pi():
@@ -195,7 +196,7 @@ def print_bound(expr):
         expr.binder.name, expr.binder.var, open_self)
 
 
-def str_tm(expr):
+def tm_str(expr):
     if expr.is_app():
         return print_app(expr)
     elif expr.is_pair():
@@ -263,36 +264,114 @@ def tm_call(fun, *args):
     cast_args = map(to_expr, args)
     return app_expr(fun, fun_typ, conv, cast_args)
     
+@with_info(st_term)
+def tm_eq(expr1, expr2):
+    return eq(expr1, expr2)
+
+# no decorator here. Or: make neq a primitive?
+def tm_ne(expr1, expr2):
+    return tm_invert(tm_eq(expr1, expr2))
 
 @with_info(st_term)
-def add_tm(expr, arg):
+def tm_add(expr, arg):
     return add(expr, arg)
 
-
 @with_info(st_term)
-def mul_tm(expr, arg):
-    return mul(expr, arg)
-
-
-@with_info(st_term)
-def r_add_tm(expr, arg):
+def tm_radd(expr, arg):
     return add(arg, expr)
 
+@with_info(st_term)
+def tm_mul(expr, arg):
+    return mul(expr, arg)
 
 @with_info(st_term)
-def r_mul_tm(expr, arg):
+def tm_rmul(expr, arg):
     return mul(arg, expr)
 
+# note: 'sub' is used for the subtype relation
+@with_info(st_term)
+def tm_sub(expr, arg):
+    return minus(expr, arg)
 
 @with_info(st_term)
-def lt_tm(expr, arg):
+def tm_rsub(expr, arg):
+    return minus(arg, expr)
+
+@with_info(st_term)
+def tm_div(expr, arg):
+    return div(expr, arg)
+
+@with_info(st_term)
+def tm_rdiv(expr, arg):
+    return div(arg, expr)
+
+@with_info(st_term)
+def tm_mod(expr, arg):
+    return mod(expr, arg)
+
+@with_info(st_term)
+def tm_rmod(expr, arg):
+    return mod(arg, expr)
+
+@with_info(st_term)
+def tm_pow(expr, arg):
+    return power(expr, arg)
+
+@with_info(st_term)
+def tm_rpow(expr, arg):
+    return power(arg, expr)
+
+# note: 'neg' is used for boolean negation
+@with_info(st_term)
+def tm_neg(expr):
+    return uminus(expr)
+
+@with_info(st_term)
+def tm_abs(expr):
+    return mod(expr)
+
+@with_info(st_term)
+def tm_le(expr, arg):
+    return le(expr, arg)
+
+@with_info(st_term)
+def tm_lt(expr, arg):
     return lt(expr, arg)
 
-
+# TODO: make ge separate?
 @with_info(st_term)
-def gt_tm(expr, arg):
+def tm_ge(expr, arg):
+    return le(arg, expr)
+
+# TODO: make gt separate?
+@with_info(st_term)
+def tm_gt(expr, arg):
     return lt(arg, expr)
 
+@with_info(st_term)
+def tm_and(expr1, expr2):
+    return conj(expr1, expr2)
+
+@with_info(st_term)
+def tm_rand(expr1, expr2):
+    return conj(expr2, expr1)
+
+@with_info(st_term)
+def tm_or(expr1, expr2):
+    return disj(expr1, expr2)
+
+@with_info(st_term)
+def tm_ror(expr1, expr2):
+    return disj(expr2, expr1)
+
+@with_info(st_term)
+def tm_invert(expr):
+    return neg(expr)
+
+
+@with_info(st_typ)
+def type_arrow(type1, type2):
+    return pi(Const('_', type1), type2)
 
 #TODO: make this more clever
 @with_info(st_term)
@@ -312,30 +391,6 @@ def get_pair(expr, index):
                         .format(expr))
 
 
-@with_info(st_term)
-def eq_tm(expr1, expr2):
-    return eq(expr1, expr2)
-
-
-@with_info(st_term)
-def impl_tm(expr1, expr2):
-    return impl(expr1, expr2)
-
-
-@with_info(st_term)
-def and_tm(expr1, expr2):
-    return conj(expr1, expr2)
-
-
-@with_info(st_term)
-def or_tm(expr1, expr2):
-    return disj(expr1, expr2)
-
-
-@with_info(st_typ)
-def type_arrow(type1, type2):
-    return pi(Const('_', type1), type2)
-
 
 class StTerm(StExpr):
     """The information associated to terms
@@ -344,21 +399,33 @@ class StTerm(StExpr):
     def __init__(self):
         StExpr.__init__(self)
         self.name = 'st_term'
+        self.info['__str__'] = tm_str
         self.info['__call__'] = tm_call
-        self.info['__add__'] = add_tm
-        self.info['__mul__'] = mul_tm
-        self.info['__radd__'] = r_add_tm
-        self.info['__rmul__'] = r_mul_tm
-        self.info['__rshift__'] = type_arrow
-        #TODO: find a better notation for implication
-        self.info['__ge__'] = impl_tm
         self.info['__getitem__'] = get_pair
-        self.info['__eq__'] = eq_tm
-        self.info['__str__'] = str_tm
-        self.info['__lt__'] = lt_tm
-        self.info['__gt__'] = gt_tm
-        self.info['__and__'] = and_tm
-        self.info['__or__'] = or_tm
+        self.info['__eq__'] = tm_eq
+        self.info['__ne__'] = tm_ne
+        self.info['__add__'] = tm_add
+        self.info['__radd__'] = tm_radd
+        self.info['__mul__'] = tm_mul
+        self.info['__rmul__'] = tm_rmul
+        self.info['__sub__'] = tm_sub
+        self.info['__rsub__'] = tm_rsub
+        self.info['__div__'] = tm_div
+        self.info['__rdiv__'] = tm_div
+        self.info['__mod__'] = tm_mod
+        self.info['__rmod__'] = tm_rmod
+        self.info['__pow__'] = tm_pow
+        self.info['__rpow__'] = tm_rpow
+        self.info['__rshift__'] = type_arrow
+        self.info['__le__'] = tm_le
+        self.info['__lt__'] = tm_lt
+        self.info['__ge__'] = tm_ge
+        self.info['__gt__'] = tm_gt       
+        self.info['__and__'] = tm_and
+        self.info['__rand__'] = tm_rand
+        self.info['__or__'] = tm_or
+        self.info['__ror__'] = tm_ror
+        self.info['__invert__'] = tm_invert
 
 st_term._info = StTerm
 
@@ -378,7 +445,7 @@ def typ_mul(type1, type2):
 
 
 @with_info(st_typ)
-def le_typ(type1, type2):
+def typ_le(type1, type2):
     return Sub(type1, type2)
 
 
@@ -392,8 +459,8 @@ class StTyp(StExpr):
         self.info['__call__'] = typ_call
         self.info['__mul__'] = typ_mul
         self.info['__rshift__'] = type_arrow
-        self.info['__str__'] = str_typ
-        self.info['__le__'] = le_typ
+        self.info['__str__'] = typ_str
+        self.info['__le__'] = typ_le
 
 st_typ._info = StTyp
 
@@ -736,6 +803,7 @@ def definstance(name, ty, value):
 # Declarations for the simply typed theory.
 #
 ###############################################################################
+
 #create a single instance of Bool() and Type().
 Bool = e.Bool()
 Bool.info.update(StTyp())
@@ -743,17 +811,7 @@ Bool.info.update(StTyp())
 Type = e.Type()
 Type.info.update(StTyp())
 
-Real = deftype('Real')
-add_real = defconst('add_real', Real >> (Real >> Real))
-mul_real = defconst('mul_real', Real >> (Real >> Real))
-lt_real = defconst('lt_real', Real >> (Real >> Bool))
-
-Int = deftype('Int')
-int_sub_real = defsub('int_sub_real', Int <= Real)
-add_int = defconst('add_int', Int >> (Int >> Int))
-mul_int = defconst('mul_int', Int >> (Int >> Int))
-lt_int = defconst('lt_int', Int >> (Int >> Bool))
-
+# boolean connectives
 
 conj = defconst('&', Bool >> (Bool >> Bool), infix=True)
 disj = defconst('|', Bool >> (Bool >> Bool), infix=True)
@@ -761,8 +819,8 @@ neg = defconst('neg', Bool >> Bool)
 
 p = Bool('p')
 q = Bool('q')
-impl = defexpr('>=', abst(p, abst(q, Sub(p, q))), \
-               Bool >> (Bool >> Bool), infix=True)
+implies = defexpr('implies', abst(p, abst(q, Sub(p, q))), \
+               Bool >> (Bool >> Bool))
 
 #This is equivalent to the constant given as type to terms
 # of the form Ev(tele), as constants are only compared
@@ -771,12 +829,63 @@ true = defconst('true', Bool)
 
 false = defconst('false', Bool)
 
+# reals
+
+Real = deftype('Real')
+
+# binary operations on the reals
+
+add_real = defconst('add_real', Real >> (Real >> Real))
+mul_real = defconst('mul_real', Real >> (Real >> Real))
+minus_real = defconst('minus_real', Real >> (Real >> Real))
+divide_real = defconst('divide_real', Real >> (Real >> Real))
+power = defconst('**', Real >> (Real >> Real), infix = True) 
+    # for now, not overloaded
+
+# unary operations on the reals
+
+uminus_real = defconst('uminus_real', Real >> Real)
+abs_real = defconst('abs_real', Real >> Real)
+
+# binary predicates on the reals
+
+lt_real = defconst('lt_real', Real >> (Real >> Bool))
+# lt_real = defconst('gt_real', Real >> (Real >> Bool))
+le_real = defconst('le_real', Real >> (Real >> Bool))
+# ge_real = defconst('ge_real', Real >> (Real >> Bool))
+
+# integers
+
+Int = deftype('Int')
+int_sub_real = defsub('int_sub_real', Int <= Real)
+
+# binary operations on the integers
+
+add_int = defconst('add_int', Int >> (Int >> Int))
+mul_int = defconst('mul_int', Int >> (Int >> Int))
+minus_int = defconst('minus_int', Int >> (Int >> Int))
+divide_int = defconst('divide_int', Int >> (Int >> Int))
+mod = defconst('%', Int >> (Int >> Int), infix = True)
+
+# unary operations on the integers
+
+uminus_int = defconst('uminus_int', Int >> Int)
+abs_int = defconst('abs_int', Int >> Int)
+
+# binary predicates on the integers
+
+lt_int = defconst('lt_int', Int >> (Int >> Bool))
+# for now, gt is defined in terms of lt
+# gt_int = defconst('gt_int', Int >> (Int >> Bool))
+le_int = defconst('le_int', Int >> (Int >> Bool))
+# ditto
+# ge_int = defconst('ge_int', Int >> (Int >> Bool))
+
 ###############################################################################
 #
 # Equality and class instances for addition and multiplication
 #
 ###############################################################################
-
 
 X = deftype('X')
 
@@ -787,41 +896,75 @@ eq = defexpr('==', abst([X, x, y], conj(Sub(x, y), Sub(y, x))), \
              pi(X, X >> (X >> Bool), impl=True), infix=True)
 
 op = defconst('op', X >> (X >> X))
+uop = defconst('uop', X >> X)
 
 Mul = defclass('Mul', [X, op], true)
-
 mul_ev = Const('mul_ev', Mul(X, op))
-
 mul = defexpr('*', abst([X, op, mul_ev], op), \
               pi([X, op, mul_ev], X >> (X >> X), impl=True), \
               infix=True)
+definstance('Mul_real', Mul(Real, mul_real), triv())
+definstance('Mul_int', Mul(Int, mul_int), triv())
 
 Add = defclass('Add', [X, op], true)
-
 add_ev = Const('add_ev', Add(X, op))
-
 add = defexpr('+', abst([X, op, add_ev], op), \
               pi([X, op, add_ev], X >> (X >> X), impl=True), \
               infix=True)
+definstance('Add_real', Add(Real, add_real), triv())
+definstance('Add_int', Add(Int, add_int), triv())
+
+Minus = defclass('Minus', [X, op], true)
+minus_ev = Const('minus_ev', Minus(X, op))
+minus = defexpr('-', abst([X, op, minus_ev], op), \
+              pi([X, op, minus_ev], X >> (X >> X), impl=True), \
+              infix=True)
+definstance('Minus_real', Minus(Real, minus_real), triv())
+definstance('Minus_int', Minus(Int, minus_int), triv())
+
+Div = defclass('Div', [X, op], true)
+div_ev = Const('div_ev', Div(X, op))
+div = defexpr('/', abst([X, op, div_ev], op), \
+              pi([X, op, div_ev], X >> (X >> X), impl=True), \
+              infix=True)
+definstance('Div_real', Div(Real, divide_real), triv())
+definstance('Div_int', Div(Int, divide_int), triv())
+
+Uminus = defclass('Uminus', [X, uop], true)
+uminus_ev = Const('uminus_ev', Uminus(X, uop))
+#TODO: can we use '-' for this as well?
+uminus = defexpr('uminus', abst([X, uop, uminus_ev], uop), \
+              pi([X, uop, uminus_ev], X >> X, impl=True), \
+              infix=True)
+definstance('Uminus_real', Uminus(Real, uminus_real), triv())
+definstance('Uminus_int', Uminus(Int, uminus_int), triv())
+
+Abs = defclass('Abs', [X, uop], true)
+abs_ev = Const('abs_ev', Abs(X, uop))
+# note: 'abs' is a built-in reserved symbol
+absf = defexpr('abs', abst([X, uop, abs_ev], uop), \
+              pi([X, uop, abs_ev], X >> X, impl=True), \
+              infix=True)
+definstance('Abs_real', Abs(Real, abs_real), triv())
+definstance('Abs_int', Abs(Int, abs_int), triv())
+
 
 pred = defconst('pred', X >> (X >> Bool))
 
 Lt = defclass('Lt', [X, pred], true)
-
 lt_ev = Const('lt_ev', Lt(X, pred))
-
 lt = defexpr('<', abst([X, pred, lt_ev], pred), \
              pi([X, pred, lt_ev], X >> (X >> Bool), impl=True), \
              infix=True)
-
-
-definstance('Mul_real', Mul(Real, mul_real), triv())
-definstance('Mul_int', Mul(Int, mul_int), triv())
-
-definstance('Add_real', Add(Real, add_real), triv())
-definstance('Add_int', Add(Int, add_int), triv())
-
 definstance('Lt_real', Lt(Real, lt_real), triv())
 definstance('Lt_int', Lt(Int, lt_int), triv())
+
+Le = defclass('Le', [X, pred], true)
+le_ev = Const('le_ev', Le(X, pred))
+le = defexpr('<=', abst([X, pred, le_ev], pred), \
+             pi([X, pred, le_ev], X >> (X >> Bool), impl=True), \
+             infix=True)
+definstance('Le_real', Le(Real, lt_real), triv())
+definstance('Le_int', Le(Int, le_int), triv())
 
 verbose = True

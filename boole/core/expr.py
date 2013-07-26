@@ -1284,7 +1284,8 @@ def is_impl(expr):
     - `expr`:
     """
     root, args = root_app(expr)
-    return root.is_const() and root.name == '>=' and \
+    # TODO: hardcoding the name of implication here is inelegant?
+    return root.is_const() and root.name == 'implies' and \
            len(args) == 2
 
 

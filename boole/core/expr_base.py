@@ -1,6 +1,6 @@
 #############################################################################
 #
-# expr.py
+# expr_base.py
 #
 # description: basic types and expressions in Boole
 #
@@ -65,6 +65,55 @@ class Expr(object):
         except KeyError:
             raise TypeError('`BaseExpr` object is not callable')
 
+    def __getitem__(self, index):
+        """Call getitem implemented in info
+        """
+        try:
+            return self.info['__getitem__'](self, index)
+        except KeyError:
+            mess = '`BaseExpr` object does not support lookup'
+            raise TypeError(mess)
+        
+    # equality and disequality
+    
+    def __eq__(self, arg):
+        """Call eq implemented in info
+        """
+        try:
+            return self.info['__eq__'](self, arg)
+        except KeyError:
+            mess = '`BaseExpr` object does not support equality'
+            raise TypeError(mess)
+
+    def __ne__(self, arg):
+        """Call neq implemented in info
+        """
+        try:
+            return self.info['__ne__'](self, arg)
+        except KeyError:
+            mess = '`BaseExpr` object does not support equality'
+            raise TypeError(mess)
+
+    # binary arithmetic operations
+    
+    def __add__(self, arg):
+        """Call the addition implemented in info
+        """
+        try:
+            return self.info['__add__'](self, arg)
+        except KeyError:
+            mess = '`BaseExpr` object does not support addition'
+            raise TypeError(mess)
+
+    def __radd__(self, arg):
+        """Call the addition implemented in info
+        """
+        try:
+            return self.info['__radd__'](self, arg)
+        except KeyError:
+            mess = '`BaseExpr` object does not support addition'
+            raise TypeError(mess)
+
     def __mul__(self, arg):
         """Call the multiplication implemented in info
         """
@@ -75,15 +124,6 @@ class Expr(object):
             mess = '`BaseExpr` object does not support multiplication'
             raise TypeError(mess)
 
-    def __add__(self, arg):
-        """Call the addition implemented in info
-        """
-        try:
-            return self.info['__add__'](self, arg)
-        except KeyError:
-            mess = '`BaseExpr` object does not support addition'
-            raise TypeError(mess)
-
     def __rmul__(self, arg):
         """Call the multiplication implemented in info
         """
@@ -91,45 +131,103 @@ class Expr(object):
             return self.info['__rmul__'](self, arg)
         except KeyError:
             print self, self.info
-            mess = '`BaseExpr` object does not support left multiplication'
+            mess = '`BaseExpr` object does not support multiplication'
             raise TypeError(mess)
 
-    def __radd__(self, arg):
-        """Call the addition implemented in info
+    def __sub__(self, arg):
+        """Call the subtraction implemented in info
         """
         try:
-            return self.info['__radd__'](self, arg)
+            return self.info['__sub__'](self, arg)
         except KeyError:
-            mess = '`BaseExpr` object does not support left addition'
+            mess = '`BaseExpr` object does not support subtraction'
             raise TypeError(mess)
 
-    def __rshift__(self, arg):
-        """Call right_shift implemented in info
+    def __rsub__(self, arg):
+        """Call the subtraction implemented in info
         """
         try:
-            return self.info['__rshift__'](self, arg)
+            return self.info['__rsub__'](self, arg)
         except KeyError:
-            mess = '`BaseExpr` object can not be right-shifted'
+            mess = '`BaseExpr` object does not support subtraction'
             raise TypeError(mess)
-
-    def __eq__(self, arg):
-        """Call eq implemented in info
+        
+    def __div__(self, arg):
+        """Call the division implemented in info
         """
         try:
-            return self.info['__eq__'](self, arg)
+            return self.info['__div__'](self, arg)
         except KeyError:
-            mess = '`BaseExpr` object does not support equality'
+            mess = '`BaseExpr` object does not support division'
             raise TypeError(mess)
 
-    def __getitem__(self, index):
-        """Call getitem implemented in info
+    def __rdiv__(self, arg):
+        """Call the division implemented in info
         """
         try:
-            return self.info['__getitem__'](self, index)
+            return self.info['__rdiv__'](self, arg)
         except KeyError:
-            mess = '`BaseExpr` object does not support lookup'
+            mess = '`BaseExpr` object does not support division'
             raise TypeError(mess)
 
+    def __mod__(self, arg):
+        """Call the mod implemented in info
+        """
+        try:
+            return self.info['__mod__'](self, arg)
+        except KeyError:
+            mess = '`BaseExpr` object does not support mod'
+            raise TypeError(mess)
+
+    def __rmod__(self, arg):
+        """Call the mod implemented in info
+        """
+        try:
+            return self.info['__rmod__'](self, arg)
+        except KeyError:
+            mess = '`BaseExpr` object does not support mod'
+            raise TypeError(mess)
+
+    def __pow__(self, arg):
+        """Call the pow implemented in info
+        """
+        try:
+            return self.info['__pow__'](self, arg)
+        except KeyError:
+            mess = '`BaseExpr` object does not support ** or pow()'
+            raise TypeError(mess)
+
+    def __rpow__(self, arg):
+        """Call the pow implemented in info
+        """
+        try:
+            return self.info['__rpow__'](self, arg)
+        except KeyError:
+            mess = '`BaseExpr` object does not support ** or pow()'
+            raise TypeError(mess)
+
+    # unary arithmetic operations
+
+    def __neg__(self):
+        """Call negation implemented in info
+        """
+        try:
+            return self.info['__neg__'](self)
+        except KeyError:
+            mess = '`BaseExpr` object can not be negated'
+            raise TypeError(mess)
+
+    def __abs__(self):
+        """Call negation implemented in info
+        """
+        try:
+            return self.info['__abs__'](self)
+        except KeyError:
+            mess = '`BaseExpr` object does not support abs'
+            raise TypeError(mess)
+
+    # binary arithmetic relations
+    
     def __le__(self, arg):
         """Call le implemented in info
         """
@@ -166,6 +264,8 @@ class Expr(object):
             mess = '`BaseExpr` object does not support gt'
             raise TypeError(mess)
 
+    # bit operations
+          
     def __and__(self, arg):
         """Call and implemented in info
         """
@@ -175,6 +275,15 @@ class Expr(object):
             mess = '`BaseExpr` object does not support conjunction'
             raise TypeError(mess)
 
+    def __rand__(self, arg):
+        """Call and implemented in info
+        """
+        try:
+            return self.info['__rand__'](self, arg)
+        except KeyError:
+            mess = '`BaseExpr` object does not support conjunction'
+            raise TypeError(mess)
+    
     def __or__(self, arg):
         """Call or implemented in info
         """
@@ -184,6 +293,35 @@ class Expr(object):
             mess = '`BaseExpr` object does not support or'
             raise TypeError(mess)
 
+    def __ror__(self, arg):
+        """Call or implemented in info
+        """
+        try:
+            return self.info['__ror__'](self, arg)
+        except KeyError:
+            mess = '`BaseExpr` object does not support or'
+            raise TypeError(mess)
+        
+    def __invert__(self):
+        """Call not implemented in info
+        """
+        try:
+            return self.info['__invert__'](self)
+        except KeyError:
+            mess = '`BaseExpr` object does not support invert'
+            raise TypeError(mess)
+
+    def __rshift__(self, arg):
+        """Call right_shift implemented in info
+        """
+        try:
+            return self.info['__rshift__'](self, arg)
+        except KeyError:
+            mess = '`BaseExpr` object can not be right-shifted'
+            raise TypeError(mess)
+        
+    # methods to support recursion
+    
     def accept(self, visitor, *args, **kwargs):
         """
 
@@ -195,85 +333,85 @@ class Expr(object):
         raise NotImplementedError()
 
     def is_type(self):
-        """Tests wether the expression is an instance of
+        """Tests whether the expression is an instance of
         Type
         """
         return False
 
     def is_kind(self):
-        """Tests wether the expression is an instance of
+        """Tests whether the expression is an instance of
         Kind
         """
         return False
 
     def is_bound(self):
-        """Tests wether the expression is an instance of
+        """Tests whether the expression is an instance of
         Bound
         """
         return False
 
     def is_app(self):
-        """Tests wether the expression is an instance of
+        """Tests whether the expression is an instance of
         App
         """
         return False
 
     def is_pair(self):
-        """Tests wether the expression is an instance of
+        """Tests whether the expression is an instance of
         Tuple
         """
         return False
 
     def is_fst(self):
-        """Tests wether the expression is an instance of
+        """Tests whether the expression is an instance of
         Fst
         """
         return False
 
     def is_snd(self):
-        """Tests wether the expression is an instance of
+        """Tests whether the expression is an instance of
         Snd
         """
         return False
 
     def is_sub(self):
-        """Tests wether the expression is an instance of
+        """Tests whether the expression is an instance of
         Eq
         """
         return False
 
     def is_box(self):
-        """Tests wether the expression is an instance of
+        """Tests whether the expression is an instance of
         Box
         """
         return False
 
     def is_const(self):
-        """Tests wether the expression is an instance of
+        """Tests whether the expression is an instance of
         Const
         """
         return False
 
     def is_db(self):
-        """Tests wether the expression is an instance of
+        """Tests whether the expression is an instance of
         DB
         """
         return False
 
     def is_bool(self):
-        """Tests wether the expression is an instance of
+        """Tests whether the expression is an instance of
         Bool
         """
         return False
 
     def is_ev(self):
-        """Tests wether the expression is an instance of
+        """Tests whether the expression is an instance of
         EV
         """
         return False
 
     def is_tele(self):
-        """Tests wether the expression is an instance of
+        """Tests whether the expression is an instance of
         Tele
         """
         return False
