@@ -395,5 +395,6 @@ if __name__ == '__main__':
     print (T(x + y + 3))
     print (T(f(x + y) + f(f(x))))
     print (T((x + y) * (i + j)))
+    print (T(((x + y) <= f(x)) & ~(y < z)))
 
     
