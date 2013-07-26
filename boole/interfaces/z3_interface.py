@@ -6,12 +6,17 @@
 #
 ################################################################################
 
-from boole.core.expr import *
-from boole.core.model import Model
+from boole.elab.terms import *
+import boole.core.typing as ty
+import boole.core.tactics as tac
+import boole.interfaces.ineq_interface as ineq
+
 import z3
 
 from fractions import Fraction
 
+# TODO: what is the right way to test whether a type is a basic type, i.e.
+# Real, Int, Bool, or a user-defined constant?
 
 ################################################################################
 #
@@ -52,40 +57,41 @@ class Z3_Unexpected_Expression(Z3_Interface_Error):
 ################################################################################
 
 _built_in_z3_funs = {
-    equals.name: (lambda args, context: args[0] == args[1]),
-    not_equals.name: (lambda args, context: args[0] != args[1]),
+    eq.name: (lambda args, context: args[0] == args[1]),
+#    ne.name: (lambda args, context: args[0] != args[1]),
     conj.name: (lambda args, context: z3.And(args)),
-    And.name: (lambda args, context: z3.And(args)),
+#    And.name: (lambda args, context: z3.And(args)),
     disj.name: (lambda args, context: z3.Or(args)),
-    Or.name: (lambda args, context: z3.Or(args)),
+#    Or.name: (lambda args, context: z3.Or(args)),
     implies.name: 
         (lambda args, context: z3.Implies(args[0], args[1], context)),
-    bneg.name: (lambda args, context: z3.Not(args[0], context)),
-    plus.name: (lambda args, context: args[0] + args[1]),
-    Sum.name: (lambda args, context: z3.Sum(args)),
-    times.name: (lambda args, context: args[0] * args[1]),
-    Product.name: (lambda args, context: z3.Product(args)),
-    sub.name: (lambda args, context: args[0] - args[1]),
+    neg.name: (lambda args, context: z3.Not(args[0], context)),
+    add.name: (lambda args, context: args[0] + args[1]),
+#    Sum.name: (lambda args, context: z3.Sum(args)),
+    mul.name: (lambda args, context: args[0] * args[1]),
+#    Product.name: (lambda args, context: z3.Product(args)),
+    minus.name: (lambda args, context: args[0] - args[1]),
     div.name: (lambda args, context: args[0] / args[1]),
     power.name: (lambda args, context: pow(args[0], args[1])),
-    neg.name: (lambda args, context: -args[0]),
+    uminus.name: (lambda args, context: -args[0]),
     absf.name: (lambda args, context: abs(args[0])),
-    less_than.name: (lambda args, context: args[0] < args[1]),
-    less_eq.name: (lambda args, context: args[0] <= args[1]),
-    greater_than.name: (lambda args, context: args[0] > args[1]),
-    greater_eq.name: (lambda args, context: args[0] >= args[1])
+    lt.name: (lambda args, context: args[0] < args[1]),
+    le.name: (lambda args, context: args[0] <= args[1]),
+#    gt.name: (lambda args, context: args[0] > args[1]),
+#    ge.name: (lambda args, context: args[0] >= args[1])
 }
 
 _built_in_z3_sorts = {
     Int.name: z3.IntSort,
     Real.name: z3.RealSort,
-    Bool.name: z3.BoolSort
+#    Bool.name: z3.BoolSort
+    'Bool': z3.BoolSort
 }
 
 _built_in_z3_sort_values = {
-    Int.name: z3.IntVal,
-    Real.name: z3.RealVal,
-    Bool.name: z3.BoolVal
+    Int.name: (lambda s, ctxt: z3.IntVal(int(s), ctxt)),
+    Real.name: (lambda s, ctxt: z3.RealVal(float(s), ctxt)),
+    'Bool': (lambda s, ctxt: z3.BoolVal(bool(s), ctxt))
 }
 
 
@@ -95,77 +101,6 @@ _built_in_z3_sort_values = {
 #
 ################################################################################
        
-class _Make_Z3_Const(TypeVisitor):
-    """Visitor class for making a Z3 constant symbol of a given type.
-    """
-    
-    def __init__(self, translator):
-        """
-        Initialize with calling instance of Boole_to_Z3.
-        """
-        self.trans = translator
-        
-    def visit_basic(self, etype, name):
-        z3_sort = self.trans.get_z3_sort(etype)
-        z3_const = z3.Const(name, z3_sort)
-        self.trans.symbol_dict[name] = z3_const
-        return z3_const
-
-    def visit_enum(self, etype, name):
-        z3_sort = self.trans.get_z3_sort(etype)
-        z3_const = z3.Const(name, z3_sort)
-        self.trans.symbol_dict[name] = z3_const
-        return z3_const
-
-    def visit_prod(self, etype, name):
-        raise Z3_Unexpected_Type
-
-    def visit_fun(self, etype, name):
-        if (etype.dom != None) and (etype.codom != None):
-            if isinstance(etype.dom, ProdType):
-                arg_sorts = [self.trans.get_z3_sort(t) for t in 
-                             etype.dom.factors]
-            else:
-                arg_sorts = [self.trans.get_z3_sort(etype.dom)]
-            return_sort = self.trans.get_z3_sort(etype.codom)
-            z3_func = z3.Function(name, *(arg_sorts + [return_sort]))
-            self.trans.symbol_dict[name] = z3_func
-            return z3_func
-        else:
-            raise Z3_Unexpected_Type('Cannot handle polymorphism')
-
-
-class _Expr_Trans(ExprVisitor):
-    """Visitor class for translating an expression from 
-    Boole to Z3.
-    """
-
-    def __init__(self, translator):
-        """
-        Initialize with calling instance of Boole_to_Z3.
-        """
-        self.trans = translator
-        
-    def visit_const(self, expr):
-        return self.trans.get_z3_const(expr)
-    
-    def visit_app(self, expr):
-        args = [self.visit(arg) for arg in expr.args]
-        return self.trans.handle_function(expr.fun, args)
-    
-    def visit_abs(self, expr):
-        raise Z3_Unexpected_Expression
-        
-    def visit_forall(self, expr):
-        vars = [self.trans.get_z3_const(v) for v in expr.vars]
-        body = self.visit(expr.body)
-        return z3.ForAll(vars, body)
-    
-    def visit_exists(self, expr):
-        vars = [self.trans.get_z3_const(v) for v in expr.vars]
-        body = self.visit(expr.body)
-        return z3.Exists(vars, body)
-
         
 class Boole_to_Z3:
     """
@@ -186,8 +121,6 @@ class Boole_to_Z3:
     
     def __init__(self, context = None):
         self.reset(context)
-        self.make_z3_const = _Make_Z3_Const(self).visit
-        self.expr_trans = _Expr_Trans(self).visit
         
     def reset(self, context = None):
         if context != None:
@@ -210,34 +143,56 @@ class Boole_to_Z3:
         return z3_sort
 
     def get_z3_sort(self, s):
+        if s.equals(Bool):
+            return _built_in_z3_sorts['Bool'](self.context)
+        elif not s.is_const():
+            raise Z3_Unexpected_Type
         if s.name in self.sort_dict.keys():
             return self.sort_dict[s.name] 
         elif s.name in _built_in_z3_sorts.keys():
             return _built_in_z3_sorts[s.name](self.context)              
+#        else if s is an enumerated type:
+            return self.make_z3_enumerated_sort(s.name, s.elts)
         else:
-            if isinstance(s, BasicType):
-                return self.make_z3_sort(s.name)
-            elif isinstance(s, EnumType):
-                return self.make_z3_enumerated_sort(s.name, s.elts)
-            else:
-                raise Z3_Unexpected_Type
-                
+            return self.make_z3_sort(s.name)
+
+    def get_z3_fun_type(self, t):
+        codom, dom_list = root_pi(t)
+        arg_sorts = [self.get_z3_sort(t1) for t1 in dom_list]
+        return_sort = self.get_z3_sort(codom)
+        return (arg_sorts, return_sort)
+        
     def get_z3_const(self, c):
         if c.name in self.symbol_dict.keys():
             # defined constant
             return self.symbol_dict[c.name]
-        elif c.value != None:
+        elif c.info.is_const:
             # interpreted constant
-            etype = c.etype()
+            etype, _ = ty.infer(c)
             if etype.name in _built_in_z3_sort_values.keys():
                 val_trans = _built_in_z3_sort_values[etype.name]
-                return val_trans(c.value, self.context)
+                return val_trans(c.name, self.context)
             else:
                 raise Z3_Unexpected_Expression('Unrecognized value:' + str(c))                   
         else:
             # new constant
-            return self.make_z3_const(c.etype(), c.name)
-    
+            etype, _ = ty.infer(c)
+            return self.make_z3_const(etype, c.name)
+        
+    def make_z3_const(self, etype, name):
+        if etype.equals(Bool) or etype.is_const():
+            z3_sort = self.get_z3_sort(etype)
+            z3_const = z3.Const(name, z3_sort)
+            self.symbol_dict[name] = z3_const
+            return z3_const
+        elif etype.is_bound() and etype.binder.is_pi():
+            arg_sorts, return_sort = self.get_z3_fun_type(etype)
+            z3_func = z3.Function(name, *(arg_sorts + [return_sort]))
+            self.symbol_dict[name] = z3_func
+            return z3_func            
+        else:
+            raise Z3_Unexpected_Type('Cannot handle polymorphism')        
+        
     def handle_function(self, fun, args):
         """
         fun: Boole function symbol to apply
@@ -254,11 +209,21 @@ class Boole_to_Z3:
             return z3_fun(args, self.context)            
         else:
             # new function symbol
-            z3_fun = self.make_z3_const(fun.etype(), fun.name)
+            etype, _ = ty.infer(fun)
+            z3_fun = self.make_z3_const(etype, fun.name)
             return z3_fun(*args)
        
     def __call__(self, expr):
-        return self.expr_trans(expr)
+        if expr.is_const():
+            return self.get_z3_const(expr)
+        elif expr.is_app():
+            fun, args = root_app_implicit(expr)
+            args = [self.__call__(a) for a in args]
+            return self.handle_function(fun, args)
+        # elif is a forall or exists...
+        else:
+            raise Z3_Unexpected_Expression
+
             
             
 ################################################################################
@@ -272,107 +237,107 @@ class Boole_to_Z3:
 #
 ################################################################################
 
-class Z3_to_Boole:
-    
-    def __init__(self, language = None):
-        self.language = get_language(language)
-        
-    def __call__(self, expr, bound_variables = []):    
-        language = self.language
-        if z3.is_const(expr):
-            if z3.is_rational_value(expr):
-                # TODO: think about this
-                return rr(Fraction(expr.numerator_as_long(), \
-                                   expr.denominator_as_long()))  
-            if z3.is_int_value(expr):
-                # TODO: cast to int?
-                return ii(expr.as_long())
-            elif str(expr) in language.const_dict.keys():
-                return language.const_dict[str(expr)]
-            elif z3.is_true(expr):
-                return true
-            elif z3.is_false(expr):
-                return false
-            else:
-                raise Z3_Unexpected_Expression('Unrecognized constant')
-        elif z3.is_var(expr):    # a de Bruijn indexed bound variable
-            bv_length = len(bound_variables)
-            return bound_variables[bv_length - z3.get_var_index(expr) - 1]
-        elif z3.is_app(expr):
-            args = [self(expr.arg(i), bound_variables) 
-                for i in range(expr.num_args())]
-            if expr.decl().name() in language.const_dict.keys():
-                func = language.const_dict[expr.decl().name()]
-                return apply(func, args)
-            elif z3.is_eq(expr):
-                return args[0] == args[1]
-            elif z3.is_and(expr):
-                return apply(conj, args)
-            elif z3.is_or(expr):
-                return apply(disj, args)
-            elif z3.is_not(expr):
-                return apply(bneg, args)       
-            elif z3.is_add(expr):
-                # TODO: use plus in binary case?    
-                return apply(Sum, args)
-            elif z3.is_mul(expr):
-                return apply(Product, args)
-            elif z3.is_sub(expr):
-                return args[0] - args[1]
-            elif z3.is_div(expr):
-                return args[0] / args[1]
-            elif z3.is_lt(expr):
-                return args[0] < args[1]
-            elif z3.is_le(expr):
-                return args[0] <= args[1]
-            elif z3.is_gt(expr):
-                return args[0] > args[1]
-            elif z3.is_ge(expr):
-                return args[0] >= args[1]
-            elif z3.is_to_real(expr):    # TODO: ignore coercions?
-                return args[0]
-            elif z3.is_to_int(expr):
-                return args[0]
-            else:
-                raise Z3_Unexpected_Expression('Unrecognized application: ' + \
-                                               str(expr))          
-        elif z3.is_quantifier(expr):
-            num_vars = expr.num_vars()
-            vars = [language.const_dict[expr.var_name(i)] 
-                for i in range(num_vars)]
-            new_bound_variables = bound_variables + vars
-            body = self(expr.body(), new_bound_variables)
-            if expr.is_forall():
-                return Forall(vars, body)
-            else:
-                return Exists(vars, body)
-            
-        else:
-            raise Z3_Unexpected_Expression         
-
-    def value(self, z3_val):    
-        if z3.is_true(z3_val):
-            return True
-        elif z3.is_false(z3_val):
-            return False
-        elif z3.is_int_value(z3_val):
-            return z3_val.as_long()
-        elif z3.is_rational_value(z3_val):
-            return Fraction(z3_val.numerator().as_long(), 
-                            z3_val.denominator().as_long())
-        elif z3.is_expr(z3_val):
-            return str(z3_val)
-        else:
-            print "Error: unrecognized z3 value", z3_val
-
-    def model(self, z3_model):
-        M = Model()
-        M.show()
-        for symbol in z3_model.decls():
-            if symbol.name() in self.language.const_dict.keys():
-                c = self.language.const_dict[symbol.name()]
-                M[c] = self.value(z3_model[symbol])        
-        return M
+#class Z3_to_Boole:
+#    
+#    def __init__(self, language = None):
+#        self.language = get_language(language)
+#        
+#    def __call__(self, expr, bound_variables = []):    
+#        language = self.language
+#        if z3.is_const(expr):
+#            if z3.is_rational_value(expr):
+#                # TODO: think about this
+#                return rr(Fraction(expr.numerator_as_long(), \
+#                                   expr.denominator_as_long()))  
+#            if z3.is_int_value(expr):
+#                # TODO: cast to int?
+#                return ii(expr.as_long())
+#            elif str(expr) in language.const_dict.keys():
+#                return language.const_dict[str(expr)]
+#            elif z3.is_true(expr):
+#                return true
+#            elif z3.is_false(expr):
+#                return false
+#            else:
+#                raise Z3_Unexpected_Expression('Unrecognized constant')
+#        elif z3.is_var(expr):    # a de Bruijn indexed bound variable
+#            bv_length = len(bound_variables)
+#            return bound_variables[bv_length - z3.get_var_index(expr) - 1]
+#        elif z3.is_app(expr):
+#            args = [self(expr.arg(i), bound_variables) 
+#                for i in range(expr.num_args())]
+#            if expr.decl().name() in language.const_dict.keys():
+#                func = language.const_dict[expr.decl().name()]
+#                return apply(func, args)
+#            elif z3.is_eq(expr):
+#                return args[0] == args[1]
+#            elif z3.is_and(expr):
+#                return apply(conj, args)
+#            elif z3.is_or(expr):
+#                return apply(disj, args)
+#            elif z3.is_not(expr):
+#                return apply(bneg, args)       
+#            elif z3.is_add(expr):
+#                # TODO: use plus in binary case?    
+#                return apply(Sum, args)
+#            elif z3.is_mul(expr):
+#                return apply(Product, args)
+#            elif z3.is_sub(expr):
+#                return args[0] - args[1]
+#            elif z3.is_div(expr):
+#                return args[0] / args[1]
+#            elif z3.is_lt(expr):
+#                return args[0] < args[1]
+#            elif z3.is_le(expr):
+#                return args[0] <= args[1]
+#            elif z3.is_gt(expr):
+#                return args[0] > args[1]
+#            elif z3.is_ge(expr):
+#                return args[0] >= args[1]
+#            elif z3.is_to_real(expr):    # TODO: ignore coercions?
+#                return args[0]
+#            elif z3.is_to_int(expr):
+#                return args[0]
+#            else:
+#                raise Z3_Unexpected_Expression('Unrecognized application: ' + \
+#                                               str(expr))          
+#        elif z3.is_quantifier(expr):
+#            num_vars = expr.num_vars()
+#            vars = [language.const_dict[expr.var_name(i)] 
+#                for i in range(num_vars)]
+#            new_bound_variables = bound_variables + vars
+#            body = self(expr.body(), new_bound_variables)
+#            if expr.is_forall():
+#                return Forall(vars, body)
+#            else:
+#                return Exists(vars, body)
+#            
+#        else:
+#            raise Z3_Unexpected_Expression         
+#
+#    def value(self, z3_val):    
+#        if z3.is_true(z3_val):
+#            return True
+#        elif z3.is_false(z3_val):
+#            return False
+#        elif z3.is_int_value(z3_val):
+#            return z3_val.as_long()
+#        elif z3.is_rational_value(z3_val):
+#            return Fraction(z3_val.numerator().as_long(), 
+#                            z3_val.denominator().as_long())
+#        elif z3.is_expr(z3_val):
+#            return str(z3_val)
+#        else:
+#            print "Error: unrecognized z3 value", z3_val
+#
+#    def model(self, z3_model):
+#        M = Model()
+#        M.show()
+#        for symbol in z3_model.decls():
+#            if symbol.name() in self.language.const_dict.keys():
+#                c = self.language.const_dict[symbol.name()]
+#                M[c] = self.value(z3_model[symbol])        
+#        return M
 
 
 ################################################################################
@@ -385,7 +350,7 @@ class Z3_Solver():
     
     def __init__(self, language = None):
         self.boole_to_z3 = Boole_to_Z3()
-        self.z3_to_boole = Z3_to_Boole(get_language(language))
+#        self.z3_to_boole = Z3_to_Boole(get_language(language))
         self.solver = z3.Solver(ctx = self.boole_to_z3.context)
         
     def add(self, formula):
@@ -403,5 +368,32 @@ class Z3_Solver():
     def model(self):
         return self.z3_to_boole.model(self.z3_model())
 
+################################################################################
+#
+# Test these out
+#
+################################################################################
+
+if __name__ == '__main__':
+
+    x = Real('x')
+    y = Real('y')
+    z = Real('z')
+    i = Int('i')
+    j = Int('j')
+    k = Int('k')
+    p = Bool('p')
+    q = Bool('q')
+    r = Bool('r')
+    f = (Real >> Real)('f')
+    
+    T = Boole_to_Z3()
+    print (T(p))
+    print (T(p & q))
+    print (T(p & q & ~r))
+    print (T(x + y))
+    print (T(x + y + 3))
+    print (T(f(x + y) + f(f(x))))
+    print (T((x + y) * (i + j)))
 
     
