@@ -22,7 +22,7 @@ import boole.core.typing as typing
 import elab
 from elab import app_expr, mvar_infer, open_expr, sub_mvar, root_pi
 import boole.core.tactics as tac
-# import boole.core.goals as goals
+import boole.core.goals as goals
 import unif as u
 
 ###############################################################################
@@ -652,8 +652,84 @@ def equals(e1, e2):
     return conj(Sub(e1, e2), Sub(e2, e1))
 
 
-#TODO: clean this function!
-#TODO: abstract over local_ctxt
+# TODO: clean these functions!
+# TODO: abstract over local_ctxt
+
+# TODO: elab can be factored out of defexpr below (I think -- JA)
+def elaborate(expr, type=None, tactic=None):
+    """Elaborate an expression and (optionally) its type.
+    Returns the elaborated expression and its type, and any 
+    remaining obligations.
+    It also marks the expression and its type as elaborated.
+    
+    Arguments:
+    - `expr`: the expression to be elaborated
+    - `type`: it's putative type
+    - `tactic`: a tactic to use in the elaboration
+    """
+    
+    if expr.info.elaborated:
+        if type is None:
+            ty, obl = typing.infer(expr, ctxt=local_ctxt)
+        else:
+            ty, obl = typing.infer(expr, type=ty, ctxt=local_ctxt)
+        return (expr, ty, obl)
+            
+    _, obl = mvar_infer(expr, ctxt=local_ctxt)
+
+    u.mvar_stack.clear()
+    u.mvar_stack.new()
+    obl.solve_with(elab_tac)
+
+    val = sub_mvar(expr, undef=True)
+
+    if not (type is None):
+        _, obl = mvar_infer(type, ctxt=local_ctxt)
+
+        u.mvar_stack.clear()
+        u.mvar_stack.new()
+        obl.solve_with(elab_tac)
+
+        ty = sub_mvar(type, undef=True)
+
+    if type is None:
+        ty, obl = typing.infer(val, ctxt=local_ctxt)
+    else:
+        ty, obl = typing.infer(val, type=ty, ctxt=local_ctxt)
+
+    if tactic is None:
+        obl.solve_with(type_tac)
+    else:
+        obl.solve_with(tactic)
+        
+    # is this right? Or only if there are no obligations?
+    expr.info['elaborated'] = True
+        
+    return (val, ty, obl)
+
+def check(expr, type=None, tactic=None):
+    """Elaborates the expression if necessary, and shows the type. Returns
+    the elaborated expression
+    
+    Arguments:
+    - `expr`: the expression to be checked
+    - `type`: it's putative type
+    - `tactic`: a tactic to use in the elaboration
+    """
+
+    val, ty, obl = elaborate(expr, type, tactic)
+    if obl.is_solved():
+        if verbose:
+            print "{0!s} : {1!s}.\n".format(val, ty)
+    else:
+        local_ctxt.add_to_field(obl.name, obl, 'goals')
+        print "In checking the expression\n"\
+        "{0!s} : {1!s}".format(val, ty)
+        print "remaining type-checking constraints!"
+        print obl
+    return val
+
+   
 def defexpr(name, value, type=None, infix=None, tactic=None):
     """Define an expression with a given type and value.
     Checks that the type of value is correct, and adds the defining
