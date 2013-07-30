@@ -1245,7 +1245,7 @@ def root_pi(expr):
     """
     root = expr
     args = []
-    while root.is_bound() and root.binder.is_pi():
+    while root.is_pi():
         args.append(root.dom)
         _, root = open_bound_fresh(root)
     return (root, args)
@@ -1298,7 +1298,7 @@ def root_clause(expr):
     - `expr`: an expression
     """
     root = expr
-    while root.is_bound() and root.binder.is_forall():
+    while root.is_forall():
         _, root = open_bound_fresh(root)
     while is_impl(root):
         root = arg_i(root, 1)
@@ -1316,7 +1316,7 @@ def sig_to_tele(expr, open_bound):
     """
     sig_ty = expr
     tele = Tele([], [])
-    while sig_ty.is_bound() and sig_ty.binder.is_sig():
+    while sig_ty.is_sig():
         v, new_ty = open_bound(sig_ty)
         tele = tele.append(v, sig_ty.dom)
         sig_ty = new_ty
@@ -1334,7 +1334,7 @@ def unpack_sig(expr, open_bound):
     """
     sig_ty = expr
     tup = []
-    while sig_ty.is_bound() and sig_ty.binder.is_sig():
+    while sig_ty.is_sig():
         v, new_ty = open_bound(sig_ty)
         c = Const(v, sig_ty.dom)
         tup.append((c, sig_ty))

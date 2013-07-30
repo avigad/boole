@@ -107,8 +107,10 @@ if __name__ == '__main__':
 
     #grp_carr is invisible!
     #it appears in an implicit argument.
-    goal.interact(tac.unfold('*', 'one', 'grp_carr', 'grp_op', 'grp_one')\
-                  >>tac.simpl(conv.beta_norm))
+    goal.interact(tac.unfold('*', 'one', 'grp_carr', 'grp_op', 'grp_one'))
+                  # >>tac.simpl(conv.beta_norm))
+
+    goal.interact(tac.simpl(conv.beta_norm))
 
     goal.interact(unif.mvar_apply(goal[0]['G_unit_r_73']))
 

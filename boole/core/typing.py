@@ -156,7 +156,7 @@ class ExprInfer(ExprVisitor):
     def visit_app(self, expr, *args, **kwargs):
         fun_ty = self.visit(expr.fun, *args, **kwargs)
         arg_ty = self.visit(expr.arg, *args, **kwargs)
-        if fun_ty.is_bound() and fun_ty.binder.is_pi():
+        if fun_ty.is_pi():
             #We check that the types of the argument is
             #a subtype of the domain using expr.conv as
             #evidence.
@@ -168,7 +168,7 @@ class ExprInfer(ExprVisitor):
                                 .format(expr), expr)
 
     def visit_pair(self, expr, *args, **kwargs):
-        if expr.type.is_bound() and expr.type.binder.is_sig():
+        if expr.type.is_sig():
             self.check().visit(expr.fst, expr.type.dom, *args, **kwargs)
             codom = self.sub([expr.fst], expr.type.body)
             self.check().visit(expr.snd, codom, *args, **kwargs)
@@ -180,7 +180,7 @@ class ExprInfer(ExprVisitor):
 
     def visit_fst(self, expr, *args, **kwargs):
         arg_ty = self.visit(expr.expr, *args, **kwargs)
-        if arg_ty.is_bound() and arg_ty.binder.is_sig():
+        if arg_ty.is_sig():
             return arg_ty.dom
         else:
             mess = "Expected a Sig type, got {0!s} instead"\
@@ -189,7 +189,7 @@ class ExprInfer(ExprVisitor):
 
     def visit_snd(self, expr, *args, **kwargs):
         arg_ty = self.visit(expr.expr, *args, **kwargs)
-        if arg_ty.is_bound() and arg_ty.binder.is_sig():
+        if arg_ty.is_sig():
             fst_proj = Fst(expr.expr)
             return self.sub([fst_proj], arg_ty.body)
         else:

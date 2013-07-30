@@ -415,3 +415,35 @@ class Expr(object):
         Tele
         """
         return False
+
+    def is_pi(self):
+        """Tests whether the expression is an instance of
+        Bound and the binder is pi
+        """
+        return self.is_bound() and self.binder.is_pi()
+
+    def is_sig(self):
+        """Tests whether the expression is an instance of
+        Bound and the binder is sig
+        """
+        return self.is_bound() and self.binder.is_sig()
+
+    def is_forall(self):
+        """Tests whether the expression is an instance of
+        Bound and the binder is forall
+        """
+        return self.is_bound() and self.binder.is_forall()
+
+    def is_exists(self):
+        """Tests whether the expression is an instance of
+        Bound and the binder is exists
+        """
+        return self.is_bound() and self.binder.is_exists()
+
+    def is_abst(self):
+        """Tests whether the expression is an instance of
+        Bound and the binder is abst
+        """
+        return self.is_bound() and self.binder.is_abst()
+
+

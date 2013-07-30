@@ -166,7 +166,7 @@ class mvar_apply(Tactic):
             prop = goal.prop
             hyps = goal.tele
             hyp = self.hyp
-            while hyp.is_bound() and hyp.binder.is_forall():
+            while hyp.is_forall():
                 _, hyp = elab.mvar_open_bound_fresh(hyp)
             new_goals = []
             while e.is_impl(hyp):

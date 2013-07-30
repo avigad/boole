@@ -260,7 +260,7 @@ def root_pi(expr):
     """
     root = expr
     args = []
-    while root.is_bound() and root.binder.is_pi():
+    while root.is_pi():
         args.append(root.dom)
         _, root = open_bound_fresh(root)
     return (root, args)
@@ -678,7 +678,7 @@ def app_expr(f, f_ty, cast, args):
     #TODO: This is a bit of a hack. We need "maximally inserted arguments"
     #as in Coq to do this cleanly
     if len(args) == 0:
-        while rem_ty.is_bound() and rem_ty.binder.is_pi()\
+        while rem_ty.is_pi()\
               and rem_ty.info.implicit:
             mvar = mk_meta(rem_ty.binder.var, rem_ty.dom)
             #For now we generate the trivial evidence.
@@ -690,13 +690,13 @@ def app_expr(f, f_ty, cast, args):
             rem_ty = subst_expr([mvar], rem_ty.body)
     else:
         while len(rem_args) != 0:
-            if rem_ty.is_bound() and rem_ty.binder.is_pi()\
+            if rem_ty.is_pi()\
                and rem_ty.info.implicit:
                 mvar = mk_meta(rem_ty.binder.var, rem_ty.dom)
                 mcast = trivial
                 tm = t.App(mcast, tm, mvar)
                 rem_ty = subst_expr([mvar], rem_ty.body)
-            elif rem_ty.is_bound() and rem_ty.binder.is_pi():
+            elif rem_ty.is_pi():
                 tm = t.App(rem_cast[0], tm, rem_args[0])
                 rem_ty = subst_expr([rem_args[0]], rem_ty.body)
                 rem_cast = rem_cast[1:]

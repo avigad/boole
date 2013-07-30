@@ -240,11 +240,11 @@ if __name__ == '__main__':
 
         
     defthm('test',  \
-           (x > 0.0) >=\
-           ((x < 1.0) >=\
-            ((y > 0.0) >=\
-             ((y < 1.0) >=\
-              ((x + y) > (x * y))))))
+           implies(x > 0.0,\
+                   implies(x < 1.0,\
+                           implies(y > 0.0,\
+                                   implies(y < 1.0,\
+                                           (x + y) > (x * y))))))
 
     goal = local_ctxt.next_goal()
 

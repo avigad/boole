@@ -64,7 +64,7 @@ def root_app_implicit(expr):
 
     non_implicit = []
     i = 0
-    while ty.is_bound() and ty.binder.is_pi() and i < len(args):
+    while ty.is_pi() and i < len(args):
         if not ty.info.implicit:
             non_implicit.append(args[i])
         i += 1
@@ -175,9 +175,9 @@ def print_ev(expr):
 def typ_str(expr):
     if expr.is_app():
         return print_app(expr)
-    elif expr.is_bound() and expr.binder.is_pi():
+    elif expr.is_pi():
         return print_pi(expr)
-    elif expr.is_bound() and expr.binder.is_sig():
+    elif expr.is_sig():
         return print_sig(expr)
     elif expr.is_sub():
         return print_sub(expr)

@@ -126,8 +126,8 @@ class Boole_to_Z3:
         if context != None:
             self.context = context
         else:
-            self.context = z3.Context()           
-        self.sort_dict = {}        # sorts
+            self.context = z3.Context()
+            self.sort_dict = {}        # sorts
         self.symbol_dict = {}      # constant and function symbols
         
     def make_z3_sort(self, name):

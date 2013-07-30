@@ -27,8 +27,7 @@ def head_beta(expr, subst):
     - `expr`: an arbitrary expression.
     - `subst`: a substitution function
     """
-    if expr.is_app() and expr.fun.is_bound() and \
-           expr.fun.binder.is_abst():
+    if expr.is_app() and expr.fun.is_abst():
         return subst([expr.arg], expr.fun.body)
     elif expr.is_fst() and expr.expr.is_pair():
         return expr.expr.fst

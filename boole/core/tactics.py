@@ -205,8 +205,7 @@ class Destruct(Tactic):
                 # to A <= C and B(x) <= D(x)
                 lhs = prop.lhs
                 rhs = prop.rhs
-                if lhs.is_bound() and lhs.binder.is_sig()\
-                       and rhs.is_bound() and rhs.binder.is_sig():
+                if lhs.is_sig() and rhs.is_sig():
                     lhs_dom = prop.lhs.dom
                     rhs_dom = prop.rhs.dom
                     fr_var = fresh_name.get_name(lhs.binder.var)
@@ -217,9 +216,8 @@ class Destruct(Tactic):
                     dom_goal = sub_goal(tele, lhs_dom, rhs_dom)
                     codom_goal = sub_goal(tele, lhs_codom, rhs_codom)
                     return dom_goal + codom_goal + tail
-                elif lhs.is_bound() and rhs.is_bound() and \
-                         ((lhs.binder.is_pi() and rhs.binder.is_pi()) or \
-                          (lhs.binder.is_abst() and rhs.binder.is_abst())):
+                elif (lhs.is_pi() and rhs.is_pi()) or \
+                         (lhs.is_abst() and rhs.is_abst()):
                     # Pi(x:A, B) <= Pi(x:C, D) is simplified to
                     # A <= C and C <= A and B(x) <= D(x)
                     # and similarly for lambda.
@@ -495,7 +493,7 @@ class unfold(Tactic):
 def intro_fun(goal, context):
     hyps = goal.tele
     prop = goal.prop
-    while prop.is_bound() and prop.binder.is_forall():
+    while prop.is_forall():
         dom = prop.dom
         v, prop = expr.open_bound_fresh(prop)
         hyps = hyps.append(v, dom)
