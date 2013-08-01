@@ -502,10 +502,7 @@ class Ev(Expr):
         """
         
         Arguments:
-        - `tele`: a telescope of evidence for the proposition
-        prop.
-        - `prop`: a proposition whose evidence is supplied by self.
-        binds NO variables.
+        - `tele`: a telescope of evidence for a proposition
         """
         Expr.__init__(self)
         self.tele = tele

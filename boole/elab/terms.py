@@ -585,6 +585,96 @@ local_ctxt = Context("local_ctxt")
 
 verbose = False
 
+elab_tac = tac.par(u.unify) >> tac.trytac(u.instances)
+type_tac = tac.auto >> tac.trytac(u.instances)
+
+
+# TODO: elab can be factored out of defexpr below (I think -- JA)
+def elaborate(expr, type, elabtac, tactic):
+    """Elaborate an expression and (optionally) its type.
+    Returns the elaborated expression and its type, and any
+    remaining obligations.
+    It also marks the expression and its type as elaborated.
+    
+    Arguments:
+    - `expr`: the expression to be elaborated
+    - `type`: it's putative type
+    - `elabtac`: a tactic to use in the elaboration
+    - `tactic`: a tactic to use in the type-checking
+    """
+    if expr.info.elaborated and type is None:
+        ty, obl = typing.infer(expr, ctxt=local_ctxt)
+        if tactic is None:
+            obl.solve_with(type_tac)
+        else:
+            obl.solve_with(tactic)
+        return (expr, ty, obl)
+
+    _, obl = mvar_infer(expr, ctxt=local_ctxt)
+
+    u.mvar_stack.clear()
+    u.mvar_stack.new()
+
+    if elabtac is None:
+        obl.solve_with(elab_tac)
+    else:
+        obl.solve_with(elabtac)
+
+    val = sub_mvar(expr, undef=True)
+
+    if not (type is None):
+        _, obl = mvar_infer(type, ctxt=local_ctxt)
+
+        u.mvar_stack.clear()
+        u.mvar_stack.new()
+        
+        if elabtac is None:
+            obl.solve_with(elab_tac)
+        else:
+            obl.solve_with(elabtac)
+
+        ty = sub_mvar(type, undef=True)
+
+    if type is None:
+        ty, obl = typing.infer(val, ctxt=local_ctxt)
+    else:
+        ty, obl = typing.infer(val, type=ty, ctxt=local_ctxt)
+
+    if tactic is None:
+        obl.solve_with(type_tac)
+    else:
+        obl.solve_with(tactic)
+
+    val.info['elaborated'] = True
+
+    return (val, ty, obl)
+
+
+def check(expr, type=None, tactic=None):
+    """Elaborates the expression if necessary, and shows the type. Returns
+    the elaborated expression
+    
+    Arguments:
+    - `expr`: the expression to be checked
+    - `type`: it's putative type
+    - `tactic`: a tactic to use in the elaboration
+    """
+
+    val, ty, obl = elaborate(expr, type, None, tactic)
+    if obl.is_solved():
+        if verbose:
+            print "{0!s} : {1!s}.\n".format(val, ty)
+    else:
+        local_ctxt.add_to_field(obl.name, obl, 'goals')
+        print "In checking the expression\n"\
+        "{0!s} : {1!s}".format(val, ty)
+        print "remaining type-checking constraints!"
+        print obl
+    return val
+
+# TODO: clean these functions!
+# TODO: abstract over local_ctxt
+
 
 def deftype(name):
     """Define a type constant, and add it
@@ -600,40 +690,21 @@ def deftype(name):
     return c
 
 
-elab_tac = tac.par(u.unify) >> tac.trytac(u.instances)
-type_tac = tac.auto >> tac.trytac(u.instances)
-
-
 def defconst(name, type, infix=None, tactic=None):
     """Define a constant, add it to
     local_ctxt and return it.
     
     Arguments:
-    - `name`:
-    - `type`:
-    - `infix`:
+    - `name`: the name of the constant
+    - `type`: the type of the constant
+    - `infix`: if the constant being defined is a function,
+    infix specifies that it needs to be printed in infix style
+    - `tactic`: specifies an optional tactic to solve the proof
+    obligations
     """
     c = const(name, type, infix=infix)
-    
-    #first try to solve the meta-vars in the type of c
-    _, obl = mvar_infer(c, ctxt=local_ctxt)
 
-    u.mvar_stack.clear()
-    u.mvar_stack.new()
-    obl.solve_with(elab_tac)
-
-    #Now update the meta-variables of the type of c
-    #fail if there are undefined meta-vars.
-    c.type = sub_mvar(type, undef=True)
-
-    #Now type check the resulting term and try to solve the
-    #TCCs
-    _, obl = typing.infer(c, ctxt=local_ctxt)
-
-    if tactic is None:
-        obl.solve_with(type_tac)
-    else:
-        obl.solve_with(tactic)
+    c, _, obl = elaborate(c, None, None, tactic)
 
     c.info['checked'] = True
     local_ctxt.add_const(c)
@@ -652,84 +723,6 @@ def equals(e1, e2):
     return conj(Sub(e1, e2), Sub(e2, e1))
 
 
-# TODO: clean these functions!
-# TODO: abstract over local_ctxt
-
-# TODO: elab can be factored out of defexpr below (I think -- JA)
-def elaborate(expr, type=None, tactic=None):
-    """Elaborate an expression and (optionally) its type.
-    Returns the elaborated expression and its type, and any 
-    remaining obligations.
-    It also marks the expression and its type as elaborated.
-    
-    Arguments:
-    - `expr`: the expression to be elaborated
-    - `type`: it's putative type
-    - `tactic`: a tactic to use in the elaboration
-    """
-    
-    if expr.info.elaborated:
-        if type is None:
-            ty, obl = typing.infer(expr, ctxt=local_ctxt)
-        else:
-            ty, obl = typing.infer(expr, type=ty, ctxt=local_ctxt)
-        return (expr, ty, obl)
-            
-    _, obl = mvar_infer(expr, ctxt=local_ctxt)
-
-    u.mvar_stack.clear()
-    u.mvar_stack.new()
-    obl.solve_with(elab_tac)
-
-    val = sub_mvar(expr, undef=True)
-
-    if not (type is None):
-        _, obl = mvar_infer(type, ctxt=local_ctxt)
-
-        u.mvar_stack.clear()
-        u.mvar_stack.new()
-        obl.solve_with(elab_tac)
-
-        ty = sub_mvar(type, undef=True)
-
-    if type is None:
-        ty, obl = typing.infer(val, ctxt=local_ctxt)
-    else:
-        ty, obl = typing.infer(val, type=ty, ctxt=local_ctxt)
-
-    if tactic is None:
-        obl.solve_with(type_tac)
-    else:
-        obl.solve_with(tactic)
-        
-    # is this right? Or only if there are no obligations?
-    expr.info['elaborated'] = True
-        
-    return (val, ty, obl)
-
-def check(expr, type=None, tactic=None):
-    """Elaborates the expression if necessary, and shows the type. Returns
-    the elaborated expression
-    
-    Arguments:
-    - `expr`: the expression to be checked
-    - `type`: it's putative type
-    - `tactic`: a tactic to use in the elaboration
-    """
-
-    val, ty, obl = elaborate(expr, type, tactic)
-    if obl.is_solved():
-        if verbose:
-            print "{0!s} : {1!s}.\n".format(val, ty)
-    else:
-        local_ctxt.add_to_field(obl.name, obl, 'goals')
-        print "In checking the expression\n"\
-        "{0!s} : {1!s}".format(val, ty)
-        print "remaining type-checking constraints!"
-        print obl
-    return val
-
-   
 def defexpr(name, value, type=None, infix=None, tactic=None):
     """Define an expression with a given type and value.
     Checks that the type of value is correct, and adds the defining
@@ -740,32 +733,35 @@ def defexpr(name, value, type=None, infix=None, tactic=None):
     - `type`: an expression
     - `value`: an expression
     """
-    _, obl = mvar_infer(value, ctxt=local_ctxt)
+    # _, obl = mvar_infer(value, ctxt=local_ctxt)
 
-    u.mvar_stack.clear()
-    u.mvar_stack.new()
-    obl.solve_with(elab_tac)
+    # u.mvar_stack.clear()
+    # u.mvar_stack.new()
+    # obl.solve_with(elab_tac)
 
-    val = sub_mvar(value, undef=True)
+    # val = sub_mvar(value, undef=True)
 
-    if not (type is None):
-        _, obl = mvar_infer(type, ctxt=local_ctxt)
+    # if not (type is None):
+    #     _, obl = mvar_infer(type, ctxt=local_ctxt)
 
-        u.mvar_stack.clear()
-        u.mvar_stack.new()
-        obl.solve_with(elab_tac)
+    #     u.mvar_stack.clear()
+    #     u.mvar_stack.new()
+    #     obl.solve_with(elab_tac)
 
-        ty = sub_mvar(type, undef=True)
+    #     ty = sub_mvar(type, undef=True)
 
-    if type is None:
-        ty, obl = typing.infer(val, ctxt=local_ctxt)
-    else:
-        ty, obl = typing.infer(val, type=ty, ctxt=local_ctxt)
+    # if type is None:
+    #     ty, obl = typing.infer(val, ctxt=local_ctxt)
+    # else:
+    #     ty, obl = typing.infer(val, type=ty, ctxt=local_ctxt)
 
-    if tactic is None:
-        obl.solve_with(type_tac)
-    else:
-        obl.solve_with(tactic)
+    # if tactic is None:
+    #     obl.solve_with(type_tac)
+    # else:
+    #     obl.solve_with(tactic)
+
+
+    val, ty, obl = elaborate(value, type, None, tactic)
 
     c = const(name, ty, infix=infix)
     c.info['defined'] = True
@@ -916,7 +912,7 @@ mul_real = defconst('mul_real', Real >> (Real >> Real))
 minus_real = defconst('minus_real', Real >> (Real >> Real))
 divide_real = defconst('divide_real', Real >> (Real >> Real))
 power = defconst('**', Real >> (Real >> Real), infix = True) 
-    # for now, not overloaded
+# not overloaded for now
 
 # unary operations on the reals
 

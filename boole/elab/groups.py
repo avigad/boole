@@ -61,7 +61,7 @@ if __name__ == '__main__':
 
     G_unit_r = defconst('G_unit_r', forall(g, G_mul(g, G_one) == g))
 
-    grp_def = sig(G, sig(G_mul, sig(G_one, sig(G_unit_l, sig(G_unit_r, true)))))
+    grp_def = sig([G, G_mul, G_one, G_unit_l, G_unit_r], true)
 
     Grp = defexpr('Grp', grp_def)
 
@@ -108,7 +108,6 @@ if __name__ == '__main__':
     #grp_carr is invisible!
     #it appears in an implicit argument.
     goal.interact(tac.unfold('*', 'one', 'grp_carr', 'grp_op', 'grp_one'))
-                  # >>tac.simpl(conv.beta_norm))
 
     goal.interact(tac.simpl(conv.beta_norm))
 

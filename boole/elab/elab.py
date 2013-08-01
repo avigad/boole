@@ -385,7 +385,8 @@ class SubMvar(e.ExprVisitor):
         self.undef = undef
         
     def visit_const(self, expr):
-        return expr
+        ty = self.visit(expr.type)
+        return e.Const(expr.name, ty)
 
     def visit_db(self, expr):
         return expr

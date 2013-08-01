@@ -184,7 +184,6 @@ def test2():
     check(forall([x, y], x * y == y * x))
     check(forall([x,y], exists(z, ((x < z) & (z < y)))))
     
-    # Question: why do the last two have type 'Bool()'?
     # Note: leaving off some parens in the last example results in a 
     # horrible error message
     # check(forall([x,y], exists(z, (x < z & z < y))))
@@ -195,6 +194,6 @@ if __name__ == '__main__':
     terms.verbose = True
     
     test1()     # cody's tests
-    # test2()    # jeremy's tests
+    test2()    # jeremy's tests
 
 
