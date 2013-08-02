@@ -158,7 +158,7 @@ def test1():
 
     goal = local_ctxt.next_goal()
 
-    goal.interact(tac.unpack('p_7'))
+    goal.interact(tac.unpack('p'))
 
     goal.interact(tac.simpl(conv.par_beta))
 

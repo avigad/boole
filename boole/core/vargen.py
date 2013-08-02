@@ -28,7 +28,9 @@ class VarGen(object):
     """
 
     def __init__(self):
-        """Initialize the index to dictionary.
+        """Create a dictionary which associates an index to a name.
+        free_vars is a function which returns the list of free variables
+        of a term.
         """
         self.default = '_Boole'
         self._name_index = {}
@@ -46,14 +48,23 @@ class VarGen(object):
             pad = name
         else:
             pad = self.default
+
         if free_in is None:
             inc_name(pad, self._name_index)
             i = self._name_index[pad]
             if i == 0:
-                fresh = pad
+                return pad
                 
             else:
-                fresh = "{0!s}_{1!s}".format(pad, i)
+                return "{0!s}_{1!s}".format(pad, i)
             return fresh
         else:
-            raise NotImplementedError()
+            if not (pad in free_in):
+                return pad
+            else:
+                i = 0
+                fresh = "{0!s}_{1!s}".format(pad, i)
+                while fresh in free_in:
+                    i += 1
+                    fresh = "{0!s}_{1!s}".format(pad, i)
+                return fresh

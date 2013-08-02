@@ -16,6 +16,8 @@
 
 from expr_base import *
 
+import vargen
+
 ##############################################################################
 #
 # Expressions and types: these implement the term language of a dependent,
@@ -1206,7 +1208,7 @@ def open_bound_fresh(expr, checked=None):
     Arguments:
     - `expr`: an instance of Bound
     """
-    var = fresh_name.get_name(expr.binder.var)
+    var = fresh_name.get_name(expr.binder.var, free_vars(expr.body))
     return (var, open_expr(var, expr.dom, expr.body, checked=checked))
 
 ###############################################################################
@@ -1406,7 +1408,25 @@ class FreeVars(ExprVisitor):
                self.visit(expr.type, *args, **kwargs)
 
     def visit_tele(self, expr, *args, **kwargs):
-        tele_vars = [v for v in self.visit(ty, *args, **kwargs)\
-                     for ty in expr.types]
+        tele_vars = [v for ty in expr.types\
+                     for v in self.visit(ty, *args, **kwargs)]
         return tele_vars
-        
+
+
+def free_vars(expr):
+    """returns the list of free variables of an expression
+    
+    Arguments:
+    - `expr`:
+    """
+    l = FreeVars().visit(expr)
+    return [e.name for e in l]
+
+
+##############################################################################
+#
+# Global fresh variable generator for expressions
+#
+##############################################################################
+
+fresh_name = vargen.VarGen()

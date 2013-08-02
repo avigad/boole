@@ -14,7 +14,7 @@
 
 import conv
 import expr
-from expr_base import fresh_name
+from expr import fresh_name
 from goals import *
 
 ##############################################################################

@@ -20,8 +20,6 @@ import boole.core.info as info
 import boole.core.goals as goals
 import boole.core.conv as conv
 
-meta_var_gen = vargen.VarGen()
-
 ##############################################################################
 #
 # The type of Pending substitution and abstraction operations.
@@ -210,7 +208,7 @@ def open_expr(var, typ, expr, checked=None):
 
 
 def open_bound_fresh(expr, checked=None):
-    var = e.fresh_name.get_name(expr.binder.var)
+    var = e.fresh_name.get_name(expr.binder.var, free_vars(expr.body))
     return (var, open_expr(var, expr.dom, expr.body, checked=checked))
 
 
@@ -550,6 +548,24 @@ def mvar_is_present(expr, mvar=None):
         return True
     else:
         return False
+
+
+class MvarFreeVars(e.FreeVars):
+    
+    def __init__(self):
+        e.FreeVars.__init__(self)
+
+    def visit_mvar(self, expr, *args, **kwargs):
+        return self.visit(expr.tele, *args, **kwargs)
+
+
+def free_vars(expr):
+    l = MvarFreeVars().visit(expr)
+    return [exp.name for exp in l]
+
+
+meta_var_gen = vargen.VarGen()
+
 
 ###############################################################################
 #

@@ -103,7 +103,7 @@ if __name__ == '__main__':
 
     goal.interact(tac.unfold('Grp'))
 
-    goal.interact(tac.unpack('grp_28'))
+    goal.interact(tac.unpack('grp'))
 
     #grp_carr is invisible!
     #it appears in an implicit argument.
@@ -111,7 +111,7 @@ if __name__ == '__main__':
 
     goal.interact(tac.simpl(conv.beta_norm))
 
-    goal.interact(unif.mvar_apply(goal[0]['G_unit_r_73']))
+    goal.interact(unif.mvar_apply(goal[0]['G_unit_r']))
 
     goal.interact(unif.unify>>tac.par(tac.trivial))
 
