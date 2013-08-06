@@ -44,18 +44,19 @@ class Const(Expr):
     and constants are identified.
     """
 
-    def __init__(self, name, type, **kwargs):
+    def __init__(self, name, type, value = None, **kwargs):
         """
         
         Arguments:
         - `name`: A name representing the constant
         - `type`: an expression representing its type
-        - `checked`: a boolean indicating that the type
-        has been checked to be well-kinded.
+        - `value`: possibly a semantic value, making this an interpreted
+        constant
         """
         Expr.__init__(self)
         self.name = name
         self.type = type
+        self.value = value
         for k in kwargs:
             self.info[k] = kwargs[k]
 
