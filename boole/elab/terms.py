@@ -11,6 +11,8 @@
 # Jeremy Avigad
 #
 #
+# TODO: rename @with_info_new to @with_info, delete call commented lines
+#  (and also in info.py)
 #
 ##############################################################################
 
@@ -217,23 +219,47 @@ def tm_str(expr):
         return expr.to_string()
 
 
-class StExpr(ExprInfo):
-    """The information for forming and printing
-    simply typed terms.
-    """
+#class StExpr(ExprInfo):
+#    """The information for forming and printing
+#    simply typed terms.
+#    """
+#    
+#    def __init__(self):
+#        """
+#        """
+#        ExprInfo.__init__(self, 'st_expr', {})
+#
+#
+#st_term = infobox(None)
+#
+#st_typ = infobox(None)
+
+st_term = ExprInfo('term_info', {})
+st_typ = ExprInfo('type_info', {})
+
+def with_info_new(info):
+    """Returns the function which calls a function on
+    arguments, and update the info field of the result
+    with the values in info.
     
-    def __init__(self):
-        """
-        """
-        ExprInfo.__init__(self, 'st_expr', {})
+    Note: because the function returns a closure, info
+    is hardcoded in. But the *values* stored in info can 
+    be changed.
+
+    """
+    def appl(f):
+        def call_f(*args, **kwargs):
+            e = f(*args, **kwargs)
+            e.info.update(info)
+            e.info.name = info.name
+            for k in kwargs:
+                e.info[k] = kwargs[k]
+            return e
+        return call_f
+    return appl
 
 
-st_term = infobox(None)
-
-st_typ = infobox(None)
-
-
-@with_info(st_term)
+@with_info_new(st_term)
 def pair(expr1, expr2):
     """Turn a pair of simply typed arguments
     into a Pair.
@@ -249,7 +275,7 @@ def pair(expr1, expr2):
     return Pair(e1, e2, typ_mul(ty1, ty2))
 
 
-@with_info(st_term)
+@with_info_new(st_term)
 def tm_call(fun, *args):
     """Return the result of the application of
     fun to the arguments *args, using trivial
@@ -263,8 +289,11 @@ def tm_call(fun, *args):
     conv = [triv()] * len(args)
     cast_args = map(to_expr, args)
     return app_expr(fun, fun_typ, conv, cast_args)
+
+
+# TODO: these can all be inlined in the assignment to the st_info structure
     
-@with_info(st_term)
+# @with_info_new(st_term)
 def tm_eq(expr1, expr2):
     return eq(expr1, expr2)
 
@@ -272,109 +301,109 @@ def tm_eq(expr1, expr2):
 def tm_ne(expr1, expr2):
     return tm_invert(tm_eq(expr1, expr2))
 
-@with_info(st_term)
+# @with_info_new(st_term)
 def tm_add(expr, arg):
     return add(expr, arg)
 
-@with_info(st_term)
+# @with_info_new(st_term)
 def tm_radd(expr, arg):
     return add(arg, expr)
 
-@with_info(st_term)
+# @with_info_new(st_term)
 def tm_mul(expr, arg):
     return mul(expr, arg)
 
-@with_info(st_term)
+# @with_info_new(st_term)
 def tm_rmul(expr, arg):
     return mul(arg, expr)
 
 # note: 'sub' is used for the subtype relation
-@with_info(st_term)
+# @with_info_new(st_term)
 def tm_sub(expr, arg):
     return minus(expr, arg)
 
-@with_info(st_term)
+# @with_info_new(st_term)
 def tm_rsub(expr, arg):
     return minus(arg, expr)
 
-@with_info(st_term)
+# @with_info_new(st_term)
 def tm_div(expr, arg):
     return div(expr, arg)
 
-@with_info(st_term)
+# @with_info_new(st_term)
 def tm_rdiv(expr, arg):
     return div(arg, expr)
 
-@with_info(st_term)
+# @with_info_new(st_term)
 def tm_mod(expr, arg):
     return mod(expr, arg)
 
-@with_info(st_term)
+# @with_info_new(st_term)
 def tm_rmod(expr, arg):
     return mod(arg, expr)
 
-@with_info(st_term)
+# @with_info_new(st_term)
 def tm_pow(expr, arg):
     return power(expr, arg)
 
-@with_info(st_term)
+# @with_info_new(st_term)
 def tm_rpow(expr, arg):
     return power(arg, expr)
 
 # note: 'neg' is used for boolean negation
-@with_info(st_term)
+# @with_info_new(st_term)
 def tm_neg(expr):
     return uminus(expr)
 
-@with_info(st_term)
+# @with_info_new(st_term)
 def tm_abs(expr):
     return mod(expr)
 
-@with_info(st_term)
+# @with_info_new(st_term)
 def tm_le(expr, arg):
     return le(expr, arg)
 
-@with_info(st_term)
+# @with_info_new(st_term)
 def tm_lt(expr, arg):
     return lt(expr, arg)
 
 # TODO: make ge separate?
-@with_info(st_term)
+# @with_info_new(st_term)
 def tm_ge(expr, arg):
     return le(arg, expr)
 
 # TODO: make gt separate?
-@with_info(st_term)
+# @with_info_new(st_term)
 def tm_gt(expr, arg):
     return lt(arg, expr)
 
-@with_info(st_term)
+# @with_info_new(st_term)
 def tm_and(expr1, expr2):
     return conj(expr1, expr2)
 
-@with_info(st_term)
+# @with_info_new(st_term)
 def tm_rand(expr1, expr2):
     return conj(expr2, expr1)
 
-@with_info(st_term)
+# @with_info_new(st_term)
 def tm_or(expr1, expr2):
     return disj(expr1, expr2)
 
-@with_info(st_term)
+# @with_info_new(st_term)
 def tm_ror(expr1, expr2):
     return disj(expr2, expr1)
 
-@with_info(st_term)
+# @with_info_new(st_term)
 def tm_invert(expr):
     return neg(expr)
 
 
-@with_info(st_typ)
+# @with_info_new(st_typ)
 def type_arrow(type1, type2):
     return pi(Const('_', type1), type2)
 
 #TODO: make this more clever
-@with_info(st_term)
+@with_info_new(st_term)
 def get_pair(expr, index):
     """Get the field of an expression using python syntax
     
@@ -391,46 +420,75 @@ def get_pair(expr, index):
                         .format(expr))
 
 
+#
+#class StTerm(StExpr):
+#    """The information associated to terms
+#    """
+#    
+#    def __init__(self):
+#        StExpr.__init__(self)
+#        self.name = 'st_term'
+#        self.info['__str__'] = tm_str
+#        self.info['__call__'] = tm_call
+#        self.info['__getitem__'] = get_pair
+#        self.info['__eq__'] = tm_eq
+#        self.info['__ne__'] = tm_ne
+#        self.info['__add__'] = tm_add
+#        self.info['__radd__'] = tm_radd
+#        self.info['__mul__'] = tm_mul
+#        self.info['__rmul__'] = tm_rmul
+#        self.info['__sub__'] = tm_sub
+#        self.info['__rsub__'] = tm_rsub
+#        self.info['__div__'] = tm_div
+#        self.info['__rdiv__'] = tm_div
+#        self.info['__mod__'] = tm_mod
+#        self.info['__rmod__'] = tm_rmod
+#        self.info['__pow__'] = tm_pow
+#        self.info['__rpow__'] = tm_rpow
+#        self.info['__rshift__'] = type_arrow
+#        self.info['__le__'] = tm_le
+#        self.info['__lt__'] = tm_lt
+#        self.info['__ge__'] = tm_ge
+#        self.info['__gt__'] = tm_gt       
+#        self.info['__and__'] = tm_and
+#        self.info['__rand__'] = tm_rand
+#        self.info['__or__'] = tm_or
+#        self.info['__ror__'] = tm_ror
+#        self.info['__invert__'] = tm_invert
+#
+#st_term._info = StTerm
 
-class StTerm(StExpr):
-    """The information associated to terms
-    """
-    
-    def __init__(self):
-        StExpr.__init__(self)
-        self.name = 'st_term'
-        self.info['__str__'] = tm_str
-        self.info['__call__'] = tm_call
-        self.info['__getitem__'] = get_pair
-        self.info['__eq__'] = tm_eq
-        self.info['__ne__'] = tm_ne
-        self.info['__add__'] = tm_add
-        self.info['__radd__'] = tm_radd
-        self.info['__mul__'] = tm_mul
-        self.info['__rmul__'] = tm_rmul
-        self.info['__sub__'] = tm_sub
-        self.info['__rsub__'] = tm_rsub
-        self.info['__div__'] = tm_div
-        self.info['__rdiv__'] = tm_div
-        self.info['__mod__'] = tm_mod
-        self.info['__rmod__'] = tm_rmod
-        self.info['__pow__'] = tm_pow
-        self.info['__rpow__'] = tm_rpow
-        self.info['__rshift__'] = type_arrow
-        self.info['__le__'] = tm_le
-        self.info['__lt__'] = tm_lt
-        self.info['__ge__'] = tm_ge
-        self.info['__gt__'] = tm_gt       
-        self.info['__and__'] = tm_and
-        self.info['__rand__'] = tm_rand
-        self.info['__or__'] = tm_or
-        self.info['__ror__'] = tm_ror
-        self.info['__invert__'] = tm_invert
 
-st_term._info = StTerm
+st_term['__str__'] = tm_str
+st_term['__call__'] = tm_call
+st_term['__getitem__'] = get_pair
+st_term['__eq__'] = tm_eq
+st_term['__ne__'] = tm_ne
+st_term['__add__'] = tm_add
+st_term['__radd__'] = tm_radd
+st_term['__mul__'] = tm_mul
+st_term['__rmul__'] = tm_rmul
+st_term['__sub__'] = tm_sub
+st_term['__rsub__'] = tm_rsub
+st_term['__div__'] = tm_div
+st_term['__rdiv__'] = tm_div
+st_term['__mod__'] = tm_mod
+st_term['__rmod__'] = tm_rmod
+st_term['__pow__'] = tm_pow
+st_term['__rpow__'] = tm_rpow
+st_term['__rshift__'] = type_arrow
+st_term['__le__'] = tm_le
+st_term['__lt__'] = tm_lt
+st_term['__ge__'] = tm_ge
+st_term['__gt__'] = tm_gt       
+st_term['__and__'] = tm_and
+st_term['__rand__'] = tm_rand
+st_term['__or__'] = tm_or
+st_term['__ror__'] = tm_ror
+st_term['__invert__'] = tm_invert
 
 
-@with_info(st_term)
+@with_info_new(st_term)
 def const(name, type, infix=None):
     return Const(name, type)
 
@@ -439,33 +497,40 @@ def typ_call(type, name):
     return defconst(name, type)
 
 
-@with_info(st_typ)
+@with_info_new(st_typ)
 def typ_mul(type1, type2):
     return sig(Const('_', type1), type2)
 
 
-@with_info(st_typ)
+@with_info_new(st_typ)
 def typ_le(type1, type2):
     return Sub(type1, type2)
 
 
-class StTyp(StExpr):
-    """The information associated to types
-    """
-    
-    def __init__(self):
-        StExpr.__init__(self)
-        self.name = 'st_typ'
-        self.info['__call__'] = typ_call
-        self.info['__mul__'] = typ_mul
-        self.info['__rshift__'] = type_arrow
-        self.info['__str__'] = typ_str
-        self.info['__le__'] = typ_le
+#class StTyp(StExpr):
+#    """The information associated to types
+#    """
+#    
+#    def __init__(self):
+#        StExpr.__init__(self)
+#        self.name = 'st_typ'
+#        self.info['__call__'] = typ_call
+#        self.info['__mul__'] = typ_mul
+#        self.info['__rshift__'] = type_arrow
+#        self.info['__str__'] = typ_str
+#        self.info['__le__'] = typ_le
+#
+#st_typ._info = StTyp
 
-st_typ._info = StTyp
+
+st_typ['__call__'] = typ_call
+st_typ['__mul__'] = typ_mul
+st_typ['__rshift__'] = type_arrow
+st_typ['__str__'] = typ_str
+st_typ['__le__'] = typ_le
 
 
-@with_info(st_typ)
+@with_info_new(st_typ)
 def mktype(name):
     """
     
@@ -498,7 +563,7 @@ def fold_over(base_op, var, tm, **kwargs):
         return base_op(var, tm, **kwargs)
 
 
-@with_info(st_term)
+@with_info_new(st_term)
 def pi_base(var, codom, **kwargs):
     return elab.pi(var, codom, **kwargs)
 
@@ -507,7 +572,7 @@ def pi(var, codom, **kwargs):
     return fold_over(pi_base, var, codom, **kwargs)
 
 
-@with_info(st_term)
+@with_info_new(st_term)
 def abst_base(var, body):
     return elab.abst(var, body)
 
@@ -516,7 +581,7 @@ def abst(var, body):
     return fold_over(abst_base, var, body)
 
 
-@with_info(st_term)
+@with_info_new(st_term)
 def forall_base(var, prop):
     return elab.forall(var, prop)
 
@@ -525,7 +590,7 @@ def forall(var, prop):
     return fold_over(forall_base, var, prop)
 
 
-@with_info(st_term)
+@with_info_new(st_term)
 def exists_base(var, prop):
     return elab.exists(var, prop)
 
@@ -534,7 +599,7 @@ def exists(var, prop):
     return fold_over(exists_base, var, prop)
 
 
-@with_info(st_term)
+@with_info_new(st_term)
 def sig_base(var, codom):
     return elab.sig(var, codom)
 
@@ -543,27 +608,27 @@ def sig(var, codom):
     return fold_over(sig_base, var, codom)
 
 
-@with_info(st_term)
+@with_info_new(st_term)
 def true():
     return elab.true()
 
 
-@with_info(st_term)
+@with_info_new(st_term)
 def false():
     return elab.false()
 
 
-@with_info(st_term)
+@with_info_new(st_term)
 def nullctxt():
     return elab.nullctxt()
 
 
-@with_info(st_term)
+@with_info_new(st_term)
 def triv():
     return elab.trivial
 
 
-@with_info(st_term)
+@with_info_new(st_term)
 def cast(expr, ty):
     """cast an expression to ty
     
@@ -878,10 +943,12 @@ def definstance(name, ty, value):
 
 #create a single instance of Bool() and Type().
 Bool = e.Bool()
-Bool.info.update(StTyp())
+Bool.info.update(st_typ)
+#Bool.info.update(StTyp())
 
 Type = e.Type()
-Type.info.update(StTyp())
+Type.info.update(st_typ)
+#Type.info.update(StTyp())
 
 # boolean connectives
 

@@ -13,9 +13,9 @@
 ##############################################################################
 
 import boole.core.expr as expr
-import boole.core.tactics as tac
+#import boole.core.tactics as tac
 import boole.core.conv as conv
-import unif
+#import unif
 import terms
 from terms import *
 
