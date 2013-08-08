@@ -110,7 +110,6 @@ class Expr(object):
         try:
             return self.info['__mul__'](self, arg)
         except KeyError:
-            print self, self.info
             mess = '`BaseExpr` object does not support multiplication'
             raise TypeError(mess)
 
@@ -120,7 +119,6 @@ class Expr(object):
         try:
             return self.info['__rmul__'](self, arg)
         except KeyError:
-            print self, self.info
             mess = '`BaseExpr` object does not support multiplication'
             raise TypeError(mess)
 

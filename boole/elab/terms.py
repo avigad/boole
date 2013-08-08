@@ -398,7 +398,8 @@ def tm_invert(expr):
     return neg(expr)
 
 
-# @with_info_new(st_typ)
+# without the decorator, would have term info
+@with_info_new(st_typ)
 def type_arrow(type1, type2):
     return pi(Const('_', type1), type2)
 

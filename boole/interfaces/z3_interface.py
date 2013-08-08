@@ -388,11 +388,13 @@ if __name__ == '__main__':
     f = (Real >> Real)('f')
     
     T = Boole_to_Z3()
+    print f(x)
     print (T(p))
     print (T(p & q))
     print (T(p & q & ~r))
     print (T(x + y))
     print (T(x + y + 3))
+    print f
     print (T(f(x + y) + f(f(x))))
     print (T((x + y) * (i + j)))
     print (T(((x + y) <= f(x)) & ~(y < z)))
