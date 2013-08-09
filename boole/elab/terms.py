@@ -18,21 +18,35 @@
 
 from boole.core.info import *
 from boole.core.context import *
-from boole.core.expr import Const, Sub, Pair, Fst, Snd, Box, root_app, root_clause
+from boole.core.expr import Const, Sub, Pair, Fst, Snd, Box, root_app, \
+  root_clause
 import boole.core.expr as e
 import boole.core.typing as typing
 import elab
-from elab import app_expr, mvar_infer, open_expr, sub_mvar, root_pi
+from elab import app_expr, mvar_infer, open_expr, sub_mvar, root_pi, subst_expr
 import boole.core.tactics as tac
 import boole.core.goals as goals
 import unif as u
 
+##############################################################################
+#
+# Exceptions associated with expressions
+#
+###############################################################################
+
+class Term_Error(Exception):
+    """Errors for expressions
+    """
+    def __init__(self, mess, expr):
+        Exception.__init__(self, mess)
+        self.expr = expr
+ 
+        
 ###############################################################################
 #
 # various utility functions on expressions
 #
 ###############################################################################
-
 
 def ii(n):
     return Const(str(n), Int, is_const=True)
@@ -217,7 +231,6 @@ def tm_str(expr):
         return print_box(expr)
     else:
         return expr.to_string()
-
 
 #class StExpr(ExprInfo):
 #    """The information for forming and printing
@@ -638,6 +651,149 @@ def cast(expr, ty):
     - `ty`: a type equal to the type of expr
     """
     return Box(triv(), expr, ty)
+
+
+###############################################################################
+#
+# Alias the constructors so that they carry the appropriate info.
+#
+###############################################################################
+
+# TODO: we need a better API here. This term stuff is really
+#   confusing. (JA)
+
+# TODO: right now, open_expr in expr.py creates a constant without syntax.
+#    attached. Should that be deprecated in favor of the functions below?
+
+# TODO: right now, the next two functions instantiate bound variables with 
+#   the name originally provided by the user. But really we should generate
+#   a fresh name close by.
+
+# TODO: because we need the same routines for pi, sigma, and abstr as well,
+#   it seemed to make sense to have a general "dest_binder". But it digs
+#   into the fields of the classes; should this be abstracted more?
+
+# TODO: annoyingly, these functions failed on expressions with metavariables,
+#   because I was calling the wrong substitution (in core.expr, rather than 
+#   elab.elab. This is confusing! Why note just make the metavariables
+#   part of the core and eliminate the duplication? At least, the functions
+#   should only be defined once.
+ 
+def instantiate_bound_expr(e1, e2):
+    """Takes an expression e1 of the form  'Binder dom, body', and returns 
+    the result of substituting e2 in body.
+    """
+    if not e1.is_bound():
+        raise Term_Error('instantiate_bound: {0!s} is not bound'.format(e1))
+    return subst_expr([e2], e1.body)
+
+def dest_one_binder(expr):
+    """Returns the pair (v, b) where v is a variable, b is an expression,
+    and expr is the result of binding v in b expr.binder.
+    """
+    if not expr.is_bound():
+        raise Term_Error('dest_one_binder: {0!s} is not bound')
+    vname = expr.binder.var
+    dom = expr.dom
+    v = const(vname, dom)    # change this -- see above
+    b = instantiate_bound_expr(expr, v)
+    return (v, b)
+
+def dest_binder(expr):
+    """Returns the pair (vlist, b) where vlist is a list of variables, 
+    b is an expression, and expr is the result of iteratively binding 
+    the variables in vlist in b, using the same binder.
+    """
+    if not expr.is_bound():
+        raise Term_Error('dest_binder: {0!s} is not bound')
+    binder_name = expr.binder.name
+    b = expr
+    vlist = []
+    while b.is_bound() and b.binder.name == binder_name:
+        v, b = dest_one_binder(b)         
+        vlist.append(v)
+    return (vlist, b)
+   
+def dest_one_forall(expr):
+    """Returns a pair (v, b) such that v is a variable, b is an expression, 
+    and expr = forall(v, b).
+    """    
+    if not expr.is_forall(): 
+        raise Term_Error('dest_one_forall: {0!s} is not a forall')
+    return dest_one_binder(expr)
+
+def dest_forall(expr):
+    """Returns a pair (vlist, b) such that vlist is a list of variables, 
+    b is an expression, and expr = forall(vlist, b).
+    """    
+    if not expr.is_forall(): 
+        raise Term_Error('dest_forall: {0!s} is not a forall')
+    return dest_binder(expr)
+
+def dest_one_exists(expr):
+    """Returns a pair (v, b) such that v is a variable, b is an expression, 
+    and expr = exists(v, b).
+    """    
+    if not expr.is_exists(): 
+        raise Term_Error('dest_one_exists: {0!s} is not a exists')
+    return dest_one_binder(expr)
+
+def dest_exists(expr):
+    """Returns a pair (vlist, b) such that vlist is a list of variables, 
+    b is an expression, and expr = exists(vlist, b).
+    """    
+    if not expr.is_exists(): 
+        raise Term_Error('dest_exists: {0!s} is not a exists')
+    return dest_binder(expr)
+
+def dest_one_pi(expr):
+    """Returns a pair (v, b) such that v is a variable, b is an expression, 
+    and expr = pi(v, b).
+    """    
+    if not expr.is_pi(): 
+        raise Term_Error('dest_one_pi: {0!s} is not a pi')
+    return dest_one_binder(expr)
+
+def dest_pi(expr):
+    """Returns a pair (vlist, b) such that vlist is a list of variables, 
+    b is an expression, and expr = pi(vlist, b).
+    """    
+    if not expr.is_pi(): 
+        raise Term_Error('dest_pi: {0!s} is not a pi')
+    return dest_binder(expr)
+
+def dest_one_sig(expr):
+    """Returns a pair (v, b) such that v is a variable, b is an expression, 
+    and expr = sig(v, b).
+    """    
+    if not expr.is_sig(): 
+        raise Term_Error('dest_one_sig: {0!s} is not a sig')
+    return dest_one_binder(expr)
+
+def dest_sig(expr):
+    """Returns a pair (vlist, b) such that vlist is a list of variables, 
+    b is an expression, and expr = sig(vlist, b).
+    """    
+    if not expr.is_sig(): 
+        raise Term_Error('dest_sig: {0!s} is not a sig')
+    return dest_binder(expr)
+
+def dest_one_abst(expr):
+    """Returns a pair (v, b) such that v is a variable, b is an expression, 
+    and expr = abst(v, b).
+    """    
+    if not expr.is_abst(): 
+        raise Term_Error('dest_one_abst: {0!s} is not a abst')
+    return dest_one_binder(expr)
+
+def dest_abst(expr):
+    """Returns a pair (vlist, b) such that vlist is a list of variables, 
+    b is an expression, and expr = abst(vlist, b).
+    """    
+    if not expr.is_abst(): 
+        raise Term_Error('dest_abst: {0!s} is not a abst')
+    return dest_binder(expr)
+
 
 
 ###############################################################################
