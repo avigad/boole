@@ -19,7 +19,7 @@ from goals import *
 
 ##############################################################################
 #
-# Tacics: they act as goal transformers, taking a Goal as input and
+# Tacics: they act as goal transformers, taking a Goal list as input and
 # returning a (possibly empty) list of new goals, or failing
 #
 ##############################################################################
@@ -255,7 +255,6 @@ class Destruct(Tactic):
 destruct = Destruct()
 
 
-#TODO: substitute variable with pair of destructed values!
 class unpack(Tactic):
     """Take a hypothesis name, and if it exists and is a sigma type,
     destroy the sigma type and add all the fields to the context.
@@ -491,6 +490,8 @@ class unfold(Tactic):
 
 
 def intro_fun(goal, context):
+    """Introduces hypotheses into the context.
+    """
     hyps = goal.tele
     prop = goal.prop
     while prop.is_forall():

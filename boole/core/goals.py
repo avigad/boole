@@ -72,12 +72,15 @@ class Goals(object):
     goals. The empty obligation is considered solved.
     """
     
-    def __init__(self, name, context):
+    def __init__(self, name, context, goals=None):
         """a Goals object has a name, a context
         and a list of goals. prev allows to make one step back.
         """
         self.name = name
-        self.goals = []
+        if goals is None:
+            self.goals = []
+        else:
+            self.goals = goals
         self.context = context
         self.prev = None
 
@@ -88,11 +91,6 @@ class Goals(object):
         - `constr`:
         """
         self.goals.append(goal)
-
-    def is_solved(self):
-        """Returns true if there are no obligations left.
-        """
-        return (len(self.goals) == 0)
 
     def __str__(self):
         """
@@ -110,6 +108,11 @@ class Goals(object):
 
     def __getitem__(self, i):
         return self.goals[i]
+
+    def is_solved(self):
+        """Returns true if there are no obligations left.
+        """
+        return (len(self.goals) == 0)
 
     def solve_with(self, tactic):
         """Remove the obligations which can

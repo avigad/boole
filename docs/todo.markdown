@@ -6,17 +6,12 @@
 
 ## Short term
 
-- Use "M[x] = ..." or "M['x'] = ..." for model assignment?
-
-- Settle on case conventions for predicates and functions
-
-- Settle on conventions for naming classes, including error messages
-
-- Check the order of operations with <, &, >>, etc. -- they may not act
-  as expected
-
 - Debug and develop tests
 
+- Notion of value attached to a constant or an expression
+  in general
+
+- Better syntactic "candy": colored keywords, unicode lambda and pi...
 
 ## General
 
@@ -33,8 +28,6 @@
 - Do away with Star types, and "And" and "Sum", etc.? Make these abbreviations
   for iterated binary operations?
 
-- Develop better handling for various types of polymorphism.
-
 - Other types
 
     * list types
@@ -47,8 +40,6 @@
 
 - "Some" operator
 
-- Definitions
-
 - Latex output
 
 - Parser and pretty printer
@@ -60,8 +51,6 @@
 
 - Develop classes of semantic objects (ints, reals, functions) rather than
   using Python objects
-
-- Why is evaluation slow?
 
 - Quickcheck - testing with random variables
 
@@ -112,17 +101,11 @@
 
 ## Reasoner
 
-- Develop notion of 'goal'
-
-    * local hypotheses (named)
-
-    * main assertion
-
-- Develop 'proof', 'proof state'
+- Develop 'proof state'; should proofs be treated as lists or as trees?
+  should tactics operate on single goals (composed with list monad), or
+  directly on lists?
  
 - Develop tactic language
-
-    * apply hypothesis or background fact
 
     * rewrite with hypothesis or background fact
 

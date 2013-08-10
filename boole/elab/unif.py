@@ -147,10 +147,10 @@ solve_mvar = SolveMvar()
 #TODO: unsound with xi in empty domain
 class mvar_apply(Tactic):
     """Takes a hypothesis of the form
-    forall(x1,...,xn, p1 >= ... pn >= p)
+    forall(x1,...,xn, implies([p1,... pn], p))
     and applies it to the goal r, generating
     the goal
-    p[sub] >= r
+    p[sub] <= r
     with [sub] sending each xi to a fresh meta-variable.
     """
     

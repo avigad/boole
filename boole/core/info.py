@@ -110,23 +110,22 @@ class DefaultInfo(ExprInfo):
         self.info['__str__'] = lambda x: x.to_string()
         self.info['checked'] = False
 
-
 ###############################################################################
 #
 # Decorators for adding information to terms.
 #
 ###############################################################################
-    
+
 
 def same_info(f):
-    """Decorator that keeps the same information as the second argument
-    of f
+    """Decorator that gives the same information as the second
+    argument of f to the output.
     """
     def call_f(obj, expr, *args, **kwargs):
         e = f(obj, expr, *args, **kwargs)
         #if expr is a de Bruijn index, then it
         # contains no interesting information, and it
-        # is most likely substituted by the e, which
+        # is most likely substituted by expr, which
         # should keep its own info.
         if expr.is_db():
             pass
