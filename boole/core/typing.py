@@ -14,7 +14,6 @@
 from expr import *
 import goals
 import context
-import tactics
 
 
 def is_sort(expr):

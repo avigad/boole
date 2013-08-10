@@ -22,8 +22,6 @@ from terms import *
 
 if __name__ == '__main__':
 
-    terms.verbose = False
-
     el = defconst('el', X)
 
     One = defclass('One', [X, el], true)
@@ -116,7 +114,7 @@ if __name__ == '__main__':
     goal.interact(unif.unify>>tac.par(tac.trivial))
 
 
-    # g = defconst('g', grp_carr(grp))
-    # h = defconst('h', grp_carr(grp))
+    g = defconst('g', grp_carr(grp))
+    h = defconst('h', grp_carr(grp))
 
-    # defhyp('toto', g * h == one() * h * g)
+    defhyp('toto', g * h == one() * h * g)

@@ -199,7 +199,7 @@ def sub_in(exprs, vars, expr):
     return subst_expr(exprs, abstract_expr(vars, expr))
 
 
-def open_expr(var, typ, expr, checked=None):
+def open_expr(var, typ, expr, checked):
     if checked == None:
         const = e.Const(var, typ, checked=True)
     else:
@@ -209,7 +209,7 @@ def open_expr(var, typ, expr, checked=None):
 
 def open_bound_fresh(expr, checked=None):
     var = e.fresh_name.get_name(expr.binder.var, free_vars(expr.body))
-    return (var, open_expr(var, expr.dom, expr.body, checked=checked))
+    return (var, open_expr(var, expr.dom, expr.body, checked))
 
 
 def mvar_open_expr(var, typ, expr):

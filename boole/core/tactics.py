@@ -209,10 +209,10 @@ class Destruct(Tactic):
                     lhs_dom = prop.lhs.dom
                     rhs_dom = prop.rhs.dom
                     fr_var = fresh_name.get_name(lhs.binder.var)
-                    lhs_codom = self.open_expr(fr_var, lhs_dom, lhs.body)
+                    lhs_codom = self.open_expr(fr_var, lhs_dom, lhs.body, None)
                     #The lhs domain must be a subtype of the rhs domain
                     #for this expression to make sense
-                    rhs_codom = self.open_expr(fr_var, lhs_dom, rhs.body)
+                    rhs_codom = self.open_expr(fr_var, lhs_dom, rhs.body, None)
                     dom_goal = sub_goal(tele, lhs_dom, rhs_dom)
                     codom_goal = sub_goal(tele, lhs_codom, rhs_codom)
                     return dom_goal + codom_goal + tail
@@ -222,10 +222,10 @@ class Destruct(Tactic):
                     # A <= C and C <= A and B(x) <= D(x)
                     # and similarly for lambda.
                     var = fresh_name.get_name(lhs.binder.var)
-                    codom_l = self.open_expr(var, lhs.dom, lhs.body)
+                    codom_l = self.open_expr(var, lhs.dom, lhs.body, None)
                     #We use the same domain here, as they must be equal
                     # anyways
-                    codom_r = self.open_expr(var, lhs.dom, rhs.body)
+                    codom_r = self.open_expr(var, lhs.dom, rhs.body, None)
                     dom_goals = eq_goal(tele, lhs.dom, rhs.dom)
                     codom_goal = sub_goal(tele, codom_l, codom_r)
                     return dom_goals + codom_goal + tail

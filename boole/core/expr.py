@@ -281,12 +281,12 @@ class Bound(Expr):
         # substituting the DB index by a constant
         # with the appropriate name.
         var = self.binder.var
-        open_self = open_expr(var, self.dom, self.body)
+        open_self = open_expr(var, self.dom, self.body, None)
         return "{0!s}({1!s}, {2!s})".format(\
             self.binder.name, self.binder.var, open_self)
 
     def to_string_raw(self):
-        return "{0!s}({1!s},{2!s},{3!s})".format(\
+        return "{0!s}({1!s}, {2!s}, {3!s})".format(\
             self.binder.name, self.binder.var, self.dom, self.body)
 
     def is_bound(self):
@@ -1179,7 +1179,7 @@ def sub_in(exprs, vars, expr):
     return subst_expr(exprs, abstract_expr(vars, expr))
 
 
-def open_expr(var, typ, expr, checked=None):
+def open_expr(var, typ, expr, checked):
     """Return the opened version of an expression
     with a bound variable, by substituting
     the bound name with a constant of type
@@ -1210,7 +1210,7 @@ def open_bound_fresh(expr, checked=None):
     - `expr`: an instance of Bound
     """
     var = fresh_name.get_name(expr.binder.var, free_vars(expr.body))
-    return (var, open_expr(var, expr.dom, expr.body, checked=checked))
+    return (var, open_expr(var, expr.dom, expr.body, checked))
 
 ###############################################################################
 #

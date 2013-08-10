@@ -195,11 +195,6 @@ def print_bound(expr):
     else:
         vars_str = ', '.join(map(str, vars))
         return "{0!s}([{1!s}], {2!s})".format(b.name, vars_str, body)
-# old code:
-#    var = expr.binder.var
-#    open_self = open_expr(var, expr.dom, expr.body)
-#    return "{0!s}({1!s}, {2!s})".format(\
-#        expr.binder.name, expr.binder.var, open_self)
 
 def tm_str(expr):
     if expr.is_app():
