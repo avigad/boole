@@ -41,7 +41,8 @@ if __name__ == '__main__':
     test((x + y) * (i + j))
     test(And((x + y) <= f(x), Not(y < z)))
     test(Forall(x, x == x))
-    test(Forall([x, y], Exists(z, x + z == y)))    
+    test(Forall([x, y], Exists(z, x + z == y)))
+    test(Implies([p, q], Or(r, (x == 7))))   
     
     S = Z3_Solver()
     S.add(Implies([p, q], Or(r, (x == 7))))

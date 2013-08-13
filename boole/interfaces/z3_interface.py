@@ -279,7 +279,7 @@ class Z3_to_Boole:
         dom_types = [self.mk_sort(f.domain(i)) for i in range(0, f.arity())]
         cod_type = self.mk_sort(f.range())
         dom_types.reverse()
-        fun_type = reduce(type_arrow, dom_types, cod_type)
+        fun_type = reduce((lambda X, Y: type_arrow(Y, X)), dom_types, cod_type)
         return const(f.name(), fun_type)
             
     def __call__(self, expr, bound_variables = []):    
@@ -337,10 +337,11 @@ class Z3_to_Boole:
                 return args[0]
             elif z3.is_to_int(expr):
                 return args[0]
+            elif expr.decl().name() == 'implies':
+                return Implies(args[0], args[1])
             else:
                 func = self.mk_func(expr.decl())
                 return func(*args)
-                
 #            else:
 #                raise Z3_Unexpected_Expression('Unrecognized application: ' + \
 #                                               str(expr))          
@@ -415,55 +416,3 @@ class Z3_Solver():
     def model(self):
         return self.z3_to_boole.model(self.z3_model())
 
-################################################################################
-#
-# Test these out
-#
-################################################################################
-
-if __name__ == '__main__':
-
-    x = Real('x')
-    y = Real('y')
-    z = Real('z')
-    i = Int('i')
-    j = Int('j')
-    k = Int('k')
-    p = Bool('p')
-    q = Bool('q')
-    r = Bool('r')
-    f = (Real >> Real)('f')
-    
-    T1 = Boole_to_Z3()
-    T2 = Z3_to_Boole()
-    
-    def test(expr):
-        e1 = T1(expr)
-        e2 = T2(e1)
-        print 'Boole expression:', expr
-        print 'Translated to Z3:', e1
-        print 'Translated back:', e2
-        print
-        
-    test(p)
-    test(And(p,q))
-    test(And(p, q, Not(r)))
-    test(x + y)
-    test(x + y + 3)
-    test(f(x + y) + f(f(x)))
-    test((x + y) * (i + j))
-    test(And((x + y) <= f(x), Not(y < z)))
-    test(Forall(x, x == x))
-    test(Forall([x, y], Exists(z, x + z == y)))    
-    
-    S = Z3_Solver()
-    S.add(Implies([p, q], Or(r, (x == 7))))
-    S.add(And(p, q))
-    S.add(Not(r))
-    if (S.check()):
-        print S.z3_model()
-        
-    
-    
-
-    

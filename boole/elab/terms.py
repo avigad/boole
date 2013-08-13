@@ -93,7 +93,7 @@ def print_Implies(expr):
         return "{0!s}({1!s}, {2!s})".format(Implies, hyps[0], conc)
     else:
         hyp_str = ", ".join(map(str, hyps))
-        return "{0!s}([{1!s}], {2!s})".format(Implies, hyps, conc)
+        return "{0!s}([{1!s}], {2!s})".format(Implies, hyp_str, conc)
     
 def print_pair(expr):
     """
@@ -316,7 +316,8 @@ def iterative_left_assoc_call(op, *args):
     e = reduce(mk_left_assoc(op), args[1:], args[0])
     return e
 
-def mk_Implies(hyp, conc):
+# note: to use reduce, the arguments have to go in this order
+def mk_Implies(conc, hyp):
     e = tm_call(Implies, hyp, conc)
 #    e.info['__str__'] = print_Implies
     return e
@@ -327,7 +328,7 @@ def Implies_call(op, hyps, conc):
     if isinstance(hyps, list):
         return reduce(mk_Implies, reversed(hyps), conc)
     else:
-        return mk_Implies(hyps, conc)
+        return tm_call(Implies, hyps, conc)
     
 #TODO: make this more clever
 @with__info(st_term)
