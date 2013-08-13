@@ -282,7 +282,7 @@ class Bound(Expr):
         # with the appropriate name.
         var = self.binder.var
         open_self = open_expr(var, self.dom, self.body)
-        return "{0!s}({1!s},{2!s})".format(\
+        return "{0!s}({1!s}, {2!s})".format(\
             self.binder.name, self.binder.var, open_self)
 
     def to_string_raw(self):
@@ -711,7 +711,7 @@ class Forall(Binder):
     
     def __init__(self, var):
         Binder.__init__(self, var)
-        self.name = "forall"
+        self.name = "Forall"
         
     def is_forall(self):
         return True
@@ -723,7 +723,7 @@ class Exists(Binder):
     
     def __init__(self, var):
         Binder.__init__(self, var)
-        self.name = "exists"
+        self.name = "Exists"
         
     def is_exists(self):
         return True
@@ -772,9 +772,9 @@ class Tele(Expr):
         Arguments:
         - `self`:
         """
-        var_str = ','.join(self.vars)
-        ty_str = ','.join(map(str, self.types))
-        return "Tele([{0!s}],[{1!s}])".format(var_str, ty_str)
+        var_str = ', '.join(self.vars)
+        ty_str = ', '.join(map(str, self.types))
+        return "Tele([{0!s}], [{1!s}])".format(var_str, ty_str)
 
     def equals(self, tele):
         """Structural equality.
@@ -1285,7 +1285,7 @@ def is_impl(expr):
     """
     root, args = root_app(expr)
     # TODO: hardcoding the name of implication here is inelegant?
-    return root.is_const() and root.name == 'implies' and \
+    return root.is_const() and root.name == 'Implies' and \
            len(args) == 2
 
 

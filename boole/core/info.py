@@ -9,8 +9,6 @@
 # Authors:
 # Cody Roux
 #
-#
-#
 ##############################################################################
 
 
@@ -112,49 +110,12 @@ class DefaultInfo(ExprInfo):
         self.info['__str__'] = lambda x: x.to_string()
         self.info['checked'] = False
 
+
 ###############################################################################
 #
 # Decorators for adding information to terms.
 #
 ###############################################################################
-
-#class infobox(object):
-#    """Dark magic required to dynamically update info on
-#    statically created objects.
-#    """
-#    
-#    def __init__(self, info):
-#        """
-#        
-#        Arguments:
-#        - `info`:
-#        """
-#        self._info = info
-#
-#    def info(self):
-#        """instantiates and returns the _info field when requested
-#        """
-#        return self._info()
-#
-#
-##TODO: make this more elegant
-#def with_info(infobx):
-#    """Returns the function which calls a function on
-#    arguments, and update the info field of the result.
-#    
-#    Arguments:
-#    - `info`: an ExprInfo
-#    """
-#    def appl(f):
-#        def call_f(*args, **kwargs):
-#            e = f(*args, **kwargs)
-#            e.info.update(infobx.info())
-#            e.info.name = infobx.info().name
-#            for k in kwargs:
-#                e.info[k] = kwargs[k]
-#            return e
-#        return call_f
-#    return appl
     
 
 def same_info(f):

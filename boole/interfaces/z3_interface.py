@@ -20,6 +20,11 @@ from fractions import Fraction
 # TODO: what is the right way to test whether a type is a basic type, i.e.
 # Real, Int, Bool, or a user-defined constant?
 
+# TODO: in translation back to Boole, right now constants and variables
+# are created anew. Instead, we should use constants and variables in the
+# context.
+
+
 ################################################################################
 #
 # Exceptions associated with Z3 interface
@@ -60,11 +65,11 @@ class Z3_Unexpected_Expression(Z3_Interface_Error):
 
 _built_in_z3_funs = {
     eq.name: (lambda args, context: args[0] == args[1]),
-    conj.name: (lambda args, context: z3.And(args)),
-    disj.name: (lambda args, context: z3.Or(args)),
-    implies.name: 
+    And.name: (lambda args, context: z3.And(args)),
+    Or.name: (lambda args, context: z3.Or(args)),
+    Implies.name: 
         (lambda args, context: z3.Implies(args[0], args[1], context)),
-    neg.name: (lambda args, context: z3.Not(args[0], context)),
+    Not.name: (lambda args, context: z3.Not(args[0], context)),
     add.name: (lambda args, context: args[0] + args[1]),
     mul.name: (lambda args, context: args[0] * args[1]),
     minus.name: (lambda args, context: args[0] - args[1]),
@@ -219,16 +224,16 @@ class Boole_to_Z3:
         if expr.is_const():
             return self.get_z3_const(expr)
         elif expr.is_app():
-            fun, args = root_app_implicit(expr)
+            fun, args = dest_app_implicit(expr)
             args = [self.__call__(a) for a in args]
             return self.handle_function(fun, args)
         elif expr.is_forall():
-            vlist, body = dest_forall(expr)
+            vlist, body = dest_Forall(expr)
             z3_vars = [self(v) for v in vlist]
             z3_body = self(body)
             return z3.ForAll(z3_vars, z3_body)
         elif expr.is_exists():
-            vlist, body = dest_exists(expr)
+            vlist, body = dest_Exists(expr)
             z3_vars = [self(v) for v in vlist]
             z3_body = self(body)
             return z3.Exists(z3_vars, z3_body)
@@ -307,11 +312,11 @@ class Z3_to_Boole:
             if z3.is_eq(expr):
                 return args[0] == args[1]
             elif z3.is_and(expr):
-                return apply(conj, args)
+                return And(*args)
             elif z3.is_or(expr):
-                return apply(disj, args)
+                return Or(*args)
             elif z3.is_not(expr):
-                return apply(neg, args)       
+                return Not(*args)       
             elif z3.is_add(expr):
                 return reduce(operator.add, args[1:], args[0])
             elif z3.is_mul(expr):
@@ -348,9 +353,9 @@ class Z3_to_Boole:
             new_bound_variables = bound_variables + vars
             body = self(expr.body(), new_bound_variables)
             if expr.is_forall():
-                return forall(vars, body)
+                return Forall(vars, body)
             else:
-                return exists(vars, body)
+                return Exists(vars, body)
             
         else:
             raise Z3_Unexpected_Expression         
@@ -441,23 +446,20 @@ if __name__ == '__main__':
         print
         
     test(p)
-    test(p & q)
-
-    test(p)
-    test(p & q)
-    test(p & q & ~r)
+    test(And(p,q))
+    test(And(p, q, Not(r)))
     test(x + y)
     test(x + y + 3)
     test(f(x + y) + f(f(x)))
     test((x + y) * (i + j))
-    test(((x + y) <= f(x)) & ~(y < z))
-    test(forall(x, x == x))
-    test(forall([x, y], exists(z, x + z == y)))    
+    test(And((x + y) <= f(x), Not(y < z)))
+    test(Forall(x, x == x))
+    test(Forall([x, y], Exists(z, x + z == y)))    
     
     S = Z3_Solver()
-    S.add(implies(p & q, r | (x == 7)))
-    S.add(p & q)
-    S.add(~r)
+    S.add(Implies([p, q], Or(r, (x == 7))))
+    S.add(And(p, q))
+    S.add(Not(r))
     if (S.check()):
         print S.z3_model()
         
