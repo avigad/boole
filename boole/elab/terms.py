@@ -67,7 +67,7 @@ def print_app(expr):
     elif root.is_const() and root.name == 'Implies':
         return print_Implies(expr)
     elif root.info.infix and len(args) == 2:
-        return "({0!s} {1!s} {2!s})".format(args[0], root, args[1])
+        return "{0!s} {1!s} {2!s}".format(args[0], root, args[1])
     else:
         args_str = map(str, args)
         args_str = ", ".join(args_str)
@@ -76,12 +76,12 @@ def print_app(expr):
 def print_app_left_assoc(expr, op):
     """Prints an expression of the form
     op(... op(op(e1, e2), e3) ..., en) as 'op(e1, ..., en)', or, if op
-    is infix, as '(e1 op e2 op ... op en)'
+    is infix, as 'e1 op e2 op ... op en'
     """
     args = dest_binop_left(expr, op)
     args_str = map(str, args)
     if op.info.infix:
-        return "({0!s})".format((' '+str(op)+' ').join(args_str))
+        return (' '+str(op)+' ').join(args_str)
     else:
         return "{0!s}({1!s})".format(op, ', '.join(args_str))
 
@@ -351,9 +351,32 @@ def get_pair(expr, index):
 def type_arrow(type1, type2):
     return pi(Const('_', type1), type2)
 
+# this is used for functions that take a string, consisting either of
+# a single name, or a list of names, e.g.
+#
+#   Int('x')
+#   Int('x y z')
+#   Int('x,y,z')
+#
+# It is modeled after Sage's SR.var
+def _str_to_list(s):
+    if ',' in s:
+        return [item.strip() for item in s.split(',')]
+    elif ' ' in s:
+        return [item.strip() for item in s.split()]
+    else:
+        return [s]
+    
 # a special call method for types - create a constant of that type       
-def typ_call(type, name):
-    return defconst(name, type)
+def typ_call(type, name_str):
+    names = _str_to_list(name_str)
+    if len(names) == 1:
+        return defconst(names[0], type)
+    else:
+        consts = ()
+        for name in names:
+            consts += (defconst(name, type),)
+        return consts
 
 @with__info(st_typ)
 def typ_mul(type1, type2):
@@ -742,9 +765,11 @@ def dest_Implies(expr):
 #
 ###############################################################################
 
-verbose = True
+verbose = False
 
 def set_verbose(setting = True):
+    global verbose
+    
     verbose = setting
 
 

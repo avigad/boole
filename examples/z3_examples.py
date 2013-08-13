@@ -2,6 +2,8 @@
 #
 # z3_examples.py
 #
+# Authors:
+# Jeremy Avigad
 #
 ################################################################################
 
@@ -12,12 +14,8 @@ from boole.interfaces.z3_interface import *
 
 if __name__ == '__main__':
 
-    x = Real('x')
-    y = Real('y')
-    z = Real('z')
-    i = Int('i')
-    j = Int('j')
-    k = Int('k')
+    x, y, z = Real('x, y, z')
+    i, j, k = Int('i j k')
     p = Bool('p')
     q = Bool('q')
     r = Bool('r')

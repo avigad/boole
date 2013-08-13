@@ -1,8 +1,8 @@
 #############################################################################
 #
-# top.py
+# syntax.py
 #
-# description: The top-level environment in which to play around
+# description: examples of syntax
 #
 #
 # Authors:
@@ -13,11 +13,9 @@
 ##############################################################################
 
 import boole.core.expr as expr
-#import boole.core.tactics as tac
 import boole.core.conv as conv
-#import unif
-import terms
-from terms import *
+import boole.elab.terms
+from boole.elab.terms import *
 
 
 def test1():
@@ -183,15 +181,11 @@ def test2():
     check(Implies(Or(x > 0.0, y > 0.0), x ** 2.0 + y ** 2.0 > 0.0))
     check(Forall([x, y], x * y == y * x))
     check(Forall([x,y], Exists(z, And(x < z, z < y))))
-    
-    # Note: leaving off some parens in the last example results in a 
-    # horrible error message
-    # check(forall([x,y], exists(z, (x < z & z < y))))
-    
+        
 
 if __name__ == '__main__':
 
-    terms.verbose = True
+    set_verbose()
     
     test1()     # cody's tests
     test2()    # jeremy's tests
