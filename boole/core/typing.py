@@ -268,7 +268,12 @@ class ExprCheck(ExprVisitor):
         #check that expr is well-formed
         self.infer().visit(expr, constrs, *args, **kwargs)
         if self.visit(prop, Bool(), constrs, *args, **kwargs):
-            constrs.append(goals.Goal(expr.tele, prop))
+            #if the proposition is trivially true (pointer equal)
+            # we don't add it to the list of constraints.
+            if prop.is_sub() and (prop.lhs is prop.rhs):
+                pass
+            else:
+                constrs.append(goals.Goal(expr.tele, prop))
             return True
         else:
             return False
