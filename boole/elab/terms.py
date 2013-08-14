@@ -387,6 +387,7 @@ def typ_mul(type1, type2):
 def typ_le(type1, type2):
     return Sub(type1, type2)
 
+# TODO: Why not use Type instead of e.Type() here?
 @with__info(st_typ)
 def mktype(name):
     """
@@ -1064,6 +1065,24 @@ def ii(n):
 def rr(n):
     val = Value(n, desc = float_val, is_num = True)    
     return Const(str(n), Real, is_const=True)
+
+enumtype_val = defconst('enumtype_val', value_description)
+enumelt_val = defconst('enum_val', value_description)
+
+def defenumtype(name, elts):
+    """ Takes a name and list of strings, and builds an enumerated type
+    
+    For example: Beatles, (John, Paul, George, Ringo) =
+      defenumtype('Beatles', ['John', 'Paul', 'George', 'Ringo')
+    """
+    enumtype = deftype(name)
+    enumtype.value = Value(elts, enumtype_val)
+    consts = ()
+    for e in elts:
+        c = defconst(e, enumtype)
+        c.value = Value(e, enumelt_val)
+        consts += (c,)
+    return enumtype, consts
 
 
 ###############################################################################

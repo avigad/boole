@@ -382,9 +382,11 @@ class SubMvar(e.ExprVisitor):
         e.ExprVisitor.__init__(self)
         self.undef = undef
         
+# TODO (JDA): I had to modify the third line below by adding the value.
+# Is this right? What about the instances of Const with true and false below?
     def visit_const(self, expr):
         ty = self.visit(expr.type)
-        return e.Const(expr.name, ty)
+        return e.Const(expr.name, ty, value=expr.value)
 
     def visit_db(self, expr):
         return expr

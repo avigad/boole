@@ -24,6 +24,8 @@ from fractions import Fraction
 # are created anew. Instead, we should use constants and variables in the
 # context.
 
+# TODO: in the translation back to Boole, enumerated types are not
+# handled correctly. (We just make a new type.)
 
 ################################################################################
 #
@@ -157,9 +159,10 @@ class Boole_to_Z3:
         if s.name in self.sort_dict.keys():
             return self.sort_dict[s.name] 
         elif s.name in _built_in_z3_sorts.keys():
-            return _built_in_z3_sorts[s.name](self.context)              
-#        else if s is an enumerated type:
-#            return self.make_z3_enumerated_sort(s.name, s.elts)
+            return _built_in_z3_sorts[s.name](self.context)
+        elif s.value and s.value.desc == enumtype_val:
+            # s is an enumerated type              
+            return self.make_z3_enumerated_sort(s.name, s.value.pyval)
         else:
             return self.make_z3_sort(s.name)
 
@@ -178,8 +181,11 @@ class Boole_to_Z3:
             if etype.name in _built_in_z3_sort_values.keys():
                 val_trans = _built_in_z3_sort_values[etype.name]
                 return val_trans(c.value.pyval, self.context)
+            elif etype.value and etype.value.desc == enumtype_val:
+                self.get_z3_sort(etype)  # creates the enum type if not there
+                return self.symbol_dict[c.value.pyval]
             else:
-                raise Z3_Unexpected_Expression('Unrecognized value:' + str(c))                   
+                raise Z3_Unexpected_Expression('Unrecognized value: ' + str(c))                   
         else:
             # new constant
             etype, _ = ty.infer(c)

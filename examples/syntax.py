@@ -173,6 +173,9 @@ def test2():
     q = Bool('q')
     r = Bool('r')
     
+    Beatles, (John, Paul, George, Ringo) = \
+        defenumtype('Beatles', ['John', 'Paul', 'George', 'Ringo'])
+    
     check(x * y - y * x)
     check(i * j - (j % i) + j / k)
     check((x ** y) / (x ** 2.0) + z ** 3.0)
@@ -181,6 +184,8 @@ def test2():
     check(Implies(Or(x > 0.0, y > 0.0), x ** 2.0 + y ** 2.0 > 0.0))
     check(Forall([x, y], x * y == y * x))
     check(Forall([x,y], Exists(z, And(x < z, z < y))))
+    check(Beatles)
+    check(John)
         
 
 if __name__ == '__main__':
