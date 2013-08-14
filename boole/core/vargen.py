@@ -53,11 +53,9 @@ class VarGen(object):
             inc_name(pad, self._name_index)
             i = self._name_index[pad]
             if i == 0:
-                return pad
-                
+                return pad                
             else:
                 return "{0!s}_{1!s}".format(pad, i)
-            return fresh
         else:
             if not (pad in free_in):
                 return pad

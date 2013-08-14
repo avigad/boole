@@ -295,8 +295,8 @@ def tm_call(fun, *args):
     return app_expr(fun, fun_typ, conv, cast_args)
 
 @with__info(st_term)
-def const(name, type, infix=None):
-    return Const(name, type)
+def const(name, type, value = None, infix=None):
+    return Const(name, type, value)
 
 # Special call methods for 'And', 'Or', and 'Implies'. Allosw e.g.
 # And(e1, e2, e3) and Implies([e1, e2, e3], e4), and specifies that the
@@ -1051,20 +1051,19 @@ local_ctxt = Context("local_ctxt")
 #
 ###############################################################################
 
-# TODO: what is is_const used for?
+# TODO: before we used is_const -- delete everywhere?
 
 value_description = deftype('value_description')
 int_val = defconst('int_val', value_description)
 float_val = defconst('float_val', value_description)
- 
+
 def ii(n):
     val = Value(n, desc = int_val, is_num = True)
-    return Const(str(n), Int, val, is_const=True)
-
+    return const(str(n), Int, val)
 
 def rr(n):
     val = Value(n, desc = float_val, is_num = True)    
-    return Const(str(n), Real, is_const=True)
+    return const(str(n), Real, val)
 
 enumtype_val = defconst('enumtype_val', value_description)
 enumelt_val = defconst('enum_val', value_description)
