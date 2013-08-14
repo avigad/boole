@@ -47,11 +47,9 @@ class Term_Error(Exception):
 # TODO: wouldn't it be clearer to inline most of these in the definitions
 # of term_str and typ_str?
 
-# TODO: now print_app(expr) checks explicitly for ac operators or implication.
-# Originally, I handled this by putting a special string method in the info
-# field of any expression with one of these operators at the head. But this 
-# caused problems when an expression was beta normalized, changing the symbol
-# but not changing the expression info.
+# TODO: print_app uses info fields 'print_iterable' and 'print_Implies' to
+# determine if special print methods are needed for application.
+# Is that o.k.?
 
 def print_app(expr):
     """Takes an application and prints it in the following manner:
@@ -62,9 +60,9 @@ def print_app(expr):
     - `expr`: an expression
     """
     root, args = dest_app_implicit(expr)
-    if root.is_const() and root.name in ('*', '+', 'And', 'Or'):
-        return print_app_left_assoc(expr, root)
-    elif root.is_const() and root.name == 'Implies':
+    if root.is_const() and root.info.print_iterable_app:
+        return print_iterable_app(expr, root)
+    elif root.is_const() and root.info.print_Implies:
         return print_Implies(expr)
     elif root.info.infix and len(args) == 2:
         return "{0!s} {1!s} {2!s}".format(args[0], root, args[1])
@@ -73,7 +71,7 @@ def print_app(expr):
         args_str = ", ".join(args_str)
         return "{0!s}({1!s})".format(root, args_str)
     
-def print_app_left_assoc(expr, op):
+def print_iterable_app(expr, op):
     """Prints an expression of the form
     op(... op(op(e1, e2), e3) ..., en) as 'op(e1, ..., en)', or, if op
     is infix, as 'e1 op e2 op ... op en'
@@ -302,18 +300,16 @@ def const(name, type, infix=None):
 # This also works for add and mul, so we can write e.g.
 #   add(e1, e2, ...) and mul(e1, e2, ...)
 
-def mk_left_assoc(op):
-    """For example, mk_left_assoc(And) is a function that builds a binary
+def mk_iterative_app(op):
+    """For example, mk_iterative_app(And) is a function that builds a binary
     'And' with the right __str__ method.
     """
     def f(e1, e2):
-        e = tm_call(op, e1, e2)
-#        e.info['__str__'] =  (lambda expr: print_app_left_assoc(expr, op))
-        return e
+        return tm_call(op, e1, e2)
     return f
 
-def iterative_left_assoc_call(op, *args):
-    e = reduce(mk_left_assoc(op), args[1:], args[0])
+def iterative_app_call(op, *args):
+    e = reduce(mk_iterative_app(op), args[1:], args[0])
     return e
 
 # note: to use reduce, the arguments have to go in this order
@@ -1081,11 +1077,13 @@ Type.info.update(st_typ)
 
 # allow input and output syntax And(e1, e2, ..., en)
 And = defconst('And', Bool >> (Bool >> Bool))
-And.info['__call__'] = iterative_left_assoc_call
+And.info['__call__'] = iterative_app_call
+And.info['print_iterable_app'] = True
 
 # allow input and output syntax Or(e1, e2, ..., en)
 Or = defconst('Or', Bool >> (Bool >> Bool))
-Or.info['__call__'] = iterative_left_assoc_call
+Or.info['__call__'] = iterative_app_call
+Or.info['print_iterable_app'] = True
 
 Not = defconst('Not', Bool >> Bool)
 
@@ -1095,6 +1093,7 @@ q = Bool('q')
 Implies = defexpr('Implies', abst(p, abst(q, Sub(p, q))), \
                Bool >> (Bool >> Bool))
 Implies.info['__call__'] = Implies_call
+Implies.info['print_Implies'] = True
 
 #This is equivalent to the constant given as type to terms
 # of the form Ev(tele), as constants are only compared
@@ -1174,23 +1173,23 @@ eq = defexpr('==', abst([X, x, y], And(Sub(x, y), Sub(y, x))), \
 op = defconst('op', X >> (X >> X))
 uop = defconst('uop', X >> X)
 
-# use output syntax (e1 * e2 * ... * en) for iterated multiplication
+# allow input syntax mul(e1, e2, ..., en)
 Mul = defclass('Mul', [X, op], true)
 mul_ev = Const('mul_ev', Mul(X, op))
 mul = defexpr('*', abst([X, op, mul_ev], op), \
               pi([X, op, mul_ev], X >> (X >> X), impl=True), \
               infix=True)
-mul.info['__call__'] = iterative_left_assoc_call
+mul.info['__call__'] = iterative_app_call
 definstance('Mul_real', Mul(Real, mul_real), triv())
 definstance('Mul_int', Mul(Int, mul_int), triv())
 
-# use output syntax (e1 + e2 + ... + en) for iterated addition
+# allow input synatx add(e1, e2, ..., en)
 Add = defclass('Add', [X, op], true)
 add_ev = Const('add_ev', Add(X, op))
 add = defexpr('+', abst([X, op, add_ev], op), \
               pi([X, op, add_ev], X >> (X >> X), impl=True), \
               infix=True)
-add.info['__call__'] = iterative_left_assoc_call
+add.info['__call__'] = iterative_app_call
 definstance('Add_real', Add(Real, add_real), triv())
 definstance('Add_int', Add(Int, add_int), triv())
 
