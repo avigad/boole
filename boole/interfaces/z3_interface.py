@@ -134,7 +134,7 @@ class Boole_to_Z3:
             self.context = context
         else:
             self.context = z3.Context()
-            self.sort_dict = {}        # sorts
+        self.sort_dict = {}        # sorts
         self.symbol_dict = {}      # constant and function symbols
         
     def make_z3_sort(self, name):
@@ -173,12 +173,11 @@ class Boole_to_Z3:
         if c.name in self.symbol_dict.keys():
             # defined constant
             return self.symbol_dict[c.name]
-        elif c.info.is_const:
-            # interpreted constant
+        elif c.value != None:    # interpreted constant
             etype, _ = ty.infer(c)
             if etype.name in _built_in_z3_sort_values.keys():
                 val_trans = _built_in_z3_sort_values[etype.name]
-                return val_trans(c.name, self.context)
+                return val_trans(c.value.pyval, self.context)
             else:
                 raise Z3_Unexpected_Expression('Unrecognized value:' + str(c))                   
         else:

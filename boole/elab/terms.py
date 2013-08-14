@@ -23,6 +23,7 @@ from elab import app_expr, mvar_infer, open_expr, sub_mvar, root_pi, subst_expr
 import boole.core.tactics as tac
 import boole.core.goals as goals
 import unif as u
+from boole.semantics.value import Value
 
 
 ###############################################################################
@@ -50,6 +51,9 @@ class Term_Error(Exception):
 # TODO: print_app uses info fields 'print_iterable' and 'print_Implies' to
 # determine if special print methods are needed for application.
 # Is that o.k.?
+
+# TODO: right now the str method uses the name of the constant to print out
+# a value. Should the value class instead determine how values are printed out?
 
 def print_app(expr):
     """Takes an application and prints it in the following manner:
@@ -561,7 +565,7 @@ def dest_app_implicit(expr):
 
 # TODO: annoyingly, these functions failed on expressions with metavariables,
 #   because I was calling the wrong substitution (in core.expr, rather than 
-#   elab.elab. This is confusing! Why note just make the metavariables
+#   elab.elab). This is confusing! Why note just make the metavariables
 #   part of the core and eliminate the duplication? At least, the functions
 #   should only be defined once.
  
@@ -1040,15 +1044,25 @@ local_ctxt = Context("local_ctxt")
 
 ###############################################################################
 #
-# Integer and real constants
+# Create some basic kinds of values.
+#
+# Terms of type value_description can be used
 #
 ###############################################################################
+
+# TODO: what is is_const used for?
+
+value_description = deftype('value_description')
+int_val = defconst('int_val', value_description)
+float_val = defconst('float_val', value_description)
  
 def ii(n):
-    return Const(str(n), Int, is_const=True)
+    val = Value(n, desc = int_val, is_num = True)
+    return Const(str(n), Int, val, is_const=True)
 
 
 def rr(n):
+    val = Value(n, desc = float_val, is_num = True)    
     return Const(str(n), Real, is_const=True)
 
 

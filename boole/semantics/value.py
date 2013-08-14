@@ -23,12 +23,12 @@ class Value(object):
       of the object in question
     """
 
-    def __init__(self, pyval = None, is_num = False, desc = None):
+    def __init__(self, pyval = None, desc = None, is_num = False):
         """Creats the object
         """
         self.pyval = pyval
-        self.is_num = is_num
         self.desc = desc
+        self.is_num = is_num
         
     # TODO: what should the string method do? For now, just take the Python
     # object
