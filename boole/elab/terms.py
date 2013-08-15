@@ -135,7 +135,7 @@ def print_pi(expr):
     Arguments:
     - `expr`:
     """
-    return "({0!s})>>{1!s}".format(expr.dom, expr.body)
+    return "({0!s}) -> {1!s}".format(expr.dom, expr.body)
 
 def print_sig(expr):
     """
@@ -184,8 +184,17 @@ def typ_str(expr):
     else:
         return expr.to_string()
 
-# TODO: it is confusing that there are to_string methods in expr.py, in 
-# addition to these.
+def print_abst(expr):
+    """Prints an abstraction using the unicode symbol lambda.
+    
+    Arguments:
+    - `expr`:
+    """
+    o_expr = open_expr(expr.binder.var, expr.dom, expr.body, None)
+    return "lambda({0!s},{1!s})"\
+           .format(expr.binder.var, o_expr)
+    # return u"\u03BB({0!s},{1!s})"\
+    #        .format(expr.binder.var, open_expr)
 
 def print_bound(expr):
     b = expr.binder
@@ -207,6 +216,8 @@ def tm_str(expr):
         return print_snd(expr)
     elif expr.is_sub():
         return print_eq(expr)
+    elif expr.is_abst():
+        return print_abst(expr)
     elif expr.is_bound():
         return print_bound(expr)
     elif expr.is_ev():
@@ -390,7 +401,7 @@ def mktype(name):
     Arguments:
     - `name`:
     """
-    return Const(name, e.Type())
+    return Const(name, Type)
 
 
 ###############################################################################
