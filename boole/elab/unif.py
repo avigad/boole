@@ -201,13 +201,13 @@ class instance(Tactic):
             if root.info.is_class and self.root.equals(root):
                 return mvar_apply(self.inst).solve(goals, context)
             else:
-                mess = "Expression {0!s} is not a class"\
-                       .format(root)
+                mess = "Expression {0!s} is not an instance of {1!s}"\
+                       .format(root, self.root)
                 raise TacticFailure(mess, self, goals)
 
 
 #TODO: succeed if only "complicated" goals remain, without
-# uninstanciated Mvars.
+# uninstantiated Mvars.
 class Instances(Tactic):
     """Recusively tries to apply every instance in the context,
     and fails if none solve the goal.

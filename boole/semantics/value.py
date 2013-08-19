@@ -19,7 +19,7 @@ class Value(object):
     Arguments:
     - pyval: a python value
     - is_num: a boolean, indicates that pyval supports numeric operations
-    - desc: an expression that, together with the pyval, gives a description
+    - desc: a boole expression that, together with the pyval, gives a description
       of the object in question
     """
 

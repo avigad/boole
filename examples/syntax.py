@@ -66,9 +66,9 @@ def test1():
             abst([p1, p2], pair(op_a(p1[0], p2[0]), op_b(p1[1], p2[1])))
 
     definstance('mul_prod', \
-                Forall([A, op_a, B, op_b], \
-                Implies(Mul(A, op_a), \
-                        Implies(Mul(B, op_b), Mul(A*B, op_pair)))), \
+                forall([A, op_a, B, op_b], \
+                implies(Mul(A, op_a), \
+                        implies(Mul(B, op_b), Mul(A*B, op_pair)))), \
                 triv())
 
 
@@ -124,7 +124,7 @@ def test1():
     add_cons_eq = sum_vec(cons(a, v1), cons(b, v2)) == cons(a+b, sum_vec(v1, v2))
 
     add_cons = defhyp('add_cons', \
-                      Forall(n, Forall(a, Forall(b, Forall(v1, Forall(v2, add_cons_eq))))))
+                      forall(n, forall(a, forall(b, forall(v1, forall(v2, add_cons_eq))))))
 
 
     rev = defconst('rev', pi(n, Vec(n) >> Vec(n), impl=True))
@@ -148,7 +148,7 @@ def test1():
     
     p = (Real * Real)('p')
 
-    fa = Forall(p, (p[0] + p[1]) == (p[1] + p[0]))
+    fa = forall(p, (p[0] + p[1]) == (p[1] + p[0]))
 
     plus_commut_stmt = defexpr('plus_commut_stmt', fa, type=Bool)
     
@@ -179,11 +179,11 @@ def test2():
     check(x * y - y * x)
     check(i * j - (j % i) + j / k)
     check((x ** y) / (x ** 2.0) + z ** 3.0)
-    check(And(p, Not(q), Implies([p, q], Not(r))))
+    check(And(p, Not(q), implies([p, q], Not(r))))
     check(And(x * y == y * x, x + y != y + x, Not(x > 2.0)))
-    check(Implies(Or(x > 0.0, y > 0.0), x ** 2.0 + y ** 2.0 > 0.0))
-    check(Forall([x, y], x * y == y * x))
-    check(Forall([x,y], Exists(z, And(x < z, z < y))))
+    check(implies(Or(x > 0.0, y > 0.0), x ** 2.0 + y ** 2.0 > 0.0))
+    check(forall([x, y], x * y == y * x))
+    check(forall([x,y], exists(z, And(x < z, z < y))))
     check(Beatles)
     check(John)
         

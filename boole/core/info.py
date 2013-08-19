@@ -117,6 +117,28 @@ class DefaultInfo(ExprInfo):
 ###############################################################################
 
 
+def with_info(info):
+    """Returns the function which calls a function on
+    arguments, and update the info field of the result
+    with the values in info.
+    
+    Note: because the function returns a closure, info
+    is hardcoded in. But the *values* stored in info can
+    be changed.
+
+    """
+    def appl(f):
+        def call_f(*args, **kwargs):
+            e = f(*args, **kwargs)
+            e.info.update(info)
+            e.info.name = info.name
+            for k in kwargs:
+                e.info[k] = kwargs[k]
+            return e
+        return call_f
+    return appl
+
+
 def same_info(f):
     """Decorator that gives the same information as the second
     argument of f to the output.

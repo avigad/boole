@@ -44,7 +44,7 @@ class Const(Expr):
     and constants are identified.
     """
 
-    def __init__(self, name, type, value = None, **kwargs):
+    def __init__(self, name, type, value=None, **kwargs):
         """
         
         Arguments:
@@ -711,7 +711,7 @@ class Forall(Binder):
     
     def __init__(self, var):
         Binder.__init__(self, var)
-        self.name = "Forall"
+        self.name = "forall"
         
     def is_forall(self):
         return True
@@ -723,7 +723,7 @@ class Exists(Binder):
     
     def __init__(self, var):
         Binder.__init__(self, var)
-        self.name = "Exists"
+        self.name = "exists"
         
     def is_exists(self):
         return True
@@ -1209,8 +1209,34 @@ def open_bound_fresh(expr, checked=None):
     Arguments:
     - `expr`: an instance of Bound
     """
+    assert(expr.is_bound())
     var = fresh_name.get_name(expr.binder.var, free_vars(expr.body))
     return (var, open_expr(var, expr.dom, expr.body, checked))
+
+
+def open_bound_fresh_const(expr):
+    """Returns the pair (v, b) where v is a variable, b is an expression,
+    and expr is the result of binding v in b expr.binder.
+    """
+    assert(expr.is_bound())
+    var = fresh_name.get_name(expr.binder.var, free_vars(expr.body))
+    return (Const(var, expr.dom), open_expr(var, expr.dom, expr.body, None))
+
+
+def open_bound_fresh_consts(expr):
+    """Returns the pair (vlist, b) where vlist is a list of variables,
+    b is an expression, and expr is the result of iteratively binding
+    the variables in vlist in b, using the same binder.
+    """
+    assert(expr.is_bound())
+    b = expr
+    vlist = []
+    while b.is_bound() and b.binder.name == expr.binder.name\
+              and str(b.info) == str(expr.info):
+        v, b = open_bound_fresh_const(b)
+        vlist.append(v)
+    return (vlist, b)
+
 
 ###############################################################################
 #
@@ -1278,14 +1304,14 @@ def is_eq(expr):
 
 def is_impl(expr):
     """Returns True if the expression
-    is of the form impl(e1, e2), False otherwise.
+    is of the form implies(e1, e2), False otherwise.
     
     Arguments:
     - `expr`:
     """
     root, args = root_app(expr)
     # TODO: hardcoding the name of implication here is inelegant?
-    return root.is_const() and root.name == 'Implies' and \
+    return root.is_const() and root.name == 'implies' and \
            len(args) == 2
 
 

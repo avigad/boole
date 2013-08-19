@@ -49,10 +49,9 @@ def test_same_info():
 
 def test_with_info():
 
-    test_info = lambda : ExprInfo('test_info', {})
-    test_info_box = infobox(test_info)
+    test_info = ExprInfo('test_info', {})
 
-    @with_info(test_info_box)
+    @with_info(test_info)
     def ident(expr):
         return expr
 

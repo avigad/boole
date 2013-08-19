@@ -40,14 +40,14 @@ def test0():
     test(f(x + y) + f(f(x)))
     test((x + y) * (i + j))
     test(And((x + y) <= f(x), Not(y < z)))
-    test(Forall(x, x == x))
-    test(Forall([x, y], Exists(z, x + z == y)))
-    test(Implies([p, q], Or(r, (x == 7))))  
+    test(forall(x, x == x))
+    test(forall([x, y], exists(z, x + z == y)))
+    test(implies([p, q], Or(r, (x == 7))))  
     test(John)
     test(Likes(John, Paul))
     
     S = Z3_Solver()
-    S.add(Implies([p, q], Or(r, (x == 7))))
+    S.add(implies([p, q], Or(r, (x == 7))))
     S.add(And(p, q))
     S.add(Not(r))
     if (S.check()):
@@ -59,7 +59,7 @@ def test1():
     p, q, r, s, t, u = Bool('p q r s t u')
     x, y, z = Real('x y z')
     
-    formula = Not(Implies(And(p, Or(q, Not(r))), And(p, q, Not(r), x == y)))
+    formula = Not(implies(And(p, Or(q, Not(r))), And(p, q, Not(r), x == y)))
     print 'Formula: ', formula
     
     s = Z3_Solver()
@@ -105,14 +105,14 @@ def test4():
     x = Men('x')
     
     s = Z3_Solver()
-    s.add(Forall(x, Or(tall(x) == 0, tall(x) == 1)))
-    s.add(Forall(x, Or(dark(x) == 0, dark(x) == 1)))
-    s.add(Forall(x, Or(handsome(x) == 0, handsome(x) == 1)))
+    s.add(forall(x, Or(tall(x) == 0, tall(x) == 1)))
+    s.add(forall(x, Or(dark(x) == 0, dark(x) == 1)))
+    s.add(forall(x, Or(handsome(x) == 0, handsome(x) == 1)))
     s.add(tall(Alec) + tall(Bill) + tall(Carl) + tall(Dave) == 3)
     s.add(dark(Alec) + dark(Bill) + dark(Carl) + dark(Dave) == 2)
     s.add(handsome(Alec) + handsome(Bill) + handsome(Carl) + handsome(Dave) == \
           1)
-    s.add(Forall(x, Or(tall(x) == 1, dark(x) == 1, handsome(x) == 1)))
+    s.add(forall(x, Or(tall(x) == 1, dark(x) == 1, handsome(x) == 1)))
     s.add(dark(Alec) == dark(Dave))   
     s.add(tall(Bill) == tall(Carl))
     s.add(tall(Carl) != tall(Dave))

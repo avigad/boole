@@ -212,6 +212,22 @@ def open_bound_fresh(expr, checked=None):
     return (var, open_expr(var, expr.dom, expr.body, checked))
 
 
+def open_bound_fresh_const(expr):
+    assert(expr.is_bound())
+    var = e.fresh_name.get_name(expr.binder.var, free_vars(expr.body))
+    return (e.Const(var, expr.dom), open_expr(var, expr.dom, expr.body, None))
+
+
+def open_bound_fresh_consts(expr):
+    assert(expr.is_bound())
+    b = expr
+    vlist = []
+    while b.is_bound() and b.binder.name == expr.binder.name\
+              and str(b.info) == str(expr.info):
+        v, b = open_bound_fresh_const(b)
+        vlist.append(v)
+    return (vlist, b)
+
 def mvar_open_expr(var, typ, expr):
     mvar = Mvar(var, typ)
     return subst_expr([mvar], expr)
@@ -816,18 +832,6 @@ def sig(var, codom):
     else:
         mess = "Expected {0!s} to be a constant".format(var)
         raise e.ExprError(mess, var)
-
-
-def true():
-    """The true constant.
-    """
-    return e.Const('true', e.Bool())
-
-
-def false():
-    """The false constant.
-    """
-    return e.Const('false', e.Bool())
 
 
 def nullctxt():
