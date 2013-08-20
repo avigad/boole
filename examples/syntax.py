@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 #############################################################################
 #
 # syntax.py
@@ -77,10 +79,11 @@ def test1():
 
     test3_def = local_ctxt.defs['test3']
 
-    mul_def = local_ctxt.defs['*']
+    #TODO: this is an issue: we do not want users to have to enter unicode
+    mul_def = local_ctxt.defs[mul.name]
 
     print
-    print conv.beta_norm(expr.sub_in([mul_def], ['*'], test3_def))
+    print conv.beta_norm(expr.sub_in([mul_def], [mul.name], test3_def))
     print
     
     test4 = defexpr('test4', pair(3.0, pair(3.0, 3)) * pair(2.0, pair(2.0, 2)))
@@ -88,7 +91,7 @@ def test1():
     test4_def = local_ctxt.defs['test4']
 
     print
-    print conv.beta_norm(expr.sub_in([mul_def], ['*'], test4_def))
+    print conv.beta_norm(expr.sub_in([mul_def], [mul.name], test4_def))
     print
 
     test5 = defexpr('test5', pair(pair(3.0, 3), pair(3, 3)) * pair(pair(2.0, 2), pair(2, 2)))
@@ -96,7 +99,7 @@ def test1():
     test5_def = local_ctxt.defs['test5']
 
     print
-    print conv.beta_norm(expr.sub_in([mul_def], ['*'], test5_def))
+    print conv.beta_norm(expr.sub_in([mul_def], [mul.name], test5_def))
     print
 
     n = Int('n')
@@ -123,8 +126,7 @@ def test1():
 
     add_cons_eq = sum_vec(cons(a, v1), cons(b, v2)) == cons(a+b, sum_vec(v1, v2))
 
-    add_cons = defhyp('add_cons', \
-                      forall(n, forall(a, forall(b, forall(v1, forall(v2, add_cons_eq))))))
+    add_cons = defhyp('add_cons', forall([n, a, b, v1, v2], add_cons_eq))
 
 
     rev = defconst('rev', pi(n, Vec(n) >> Vec(n), impl=True))

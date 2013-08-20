@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 ###############################################################################
 #
 # terms.py
@@ -141,7 +143,7 @@ def print_pi(expr):
     Arguments:
     - `expr`:
     """
-    return "({0!s}) -> {1!s}".format(expr.dom, expr.body)
+    return "({0!s}) → {1!s}".format(expr.dom, expr.body)
 
 
 def print_sig(expr):
@@ -150,7 +152,7 @@ def print_sig(expr):
     Arguments:
     - `expr`:
     """
-    return "{0!s}*{1!s}".format(expr.dom, expr.body)
+    return "{0!s}×{1!s}".format(expr.dom, expr.body)
 
 
 def print_sub(expr):
@@ -159,11 +161,11 @@ def print_sub(expr):
     Arguments:
     - `expr`:
     """
-    return "{0!s} <= {1!s}".format(expr.lhs, expr.rhs)
+    return "{0!s} ≤ {1!s}".format(expr.lhs, expr.rhs)
 
 
 def print_eq(expr):
-    return "{0!s} == {1!s}".format(expr.lhs, expr.rhs)
+    return "{0!s} ≃ {1!s}".format(expr.lhs, expr.rhs)
 
 
 def print_bool():
@@ -198,27 +200,24 @@ def typ_str(expr):
         return expr.to_string()
 
 
-def print_abst(expr):
-    """Prints an abstraction using the unicode symbol lambda.
-    
-    Arguments:
-    - `expr`:
-    """
-    o_expr = elab.open_bound_fresh(expr)
-    return "lambda({0!s},{1!s})"\
-           .format(expr.binder.var, o_expr)
-    # return u"\u03BB({0!s},{1!s})"\
-    #        .format(expr.binder.var, open_expr)
+binder_utf_name = {
+    'pi': 'Π',
+    'sig': 'Σ',
+    'abst': 'λ',
+    'forall': '∀',
+    'exists': '∃'
+    }
 
 
 def print_bound(expr):
     b = expr.binder
     vars, body = elab.open_bound_fresh_consts(expr)
+    name = binder_utf_name[b.name]
     if len(vars) == 1:
-        return "{0!s}({1!s}, {2!s})".format(b.name, vars[0], body)
+        return "{0!s}({1!s}, {2!s})".format(name, vars[0], body)
     else:
         vars_str = ', '.join(map(str, vars))
-        return "{0!s}([{1!s}], {2!s})".format(b.name, vars_str, body)
+        return "{0!s}([{1!s}], {2!s})".format(name, vars_str, body)
 
 
 def tm_str(expr):
@@ -232,8 +231,6 @@ def tm_str(expr):
         return print_snd(expr)
     elif expr.is_sub():
         return print_eq(expr)
-    elif expr.is_abst():
-        return print_abst(expr)
     elif expr.is_bound():
         return print_bound(expr)
     elif expr.is_ev():
@@ -1014,7 +1011,7 @@ Or = defconst('Or', Bool >> (Bool >> Bool))
 Or.info['__call__'] = iterative_app_call
 Or.info['print_iterable_app'] = True
 
-Not = defconst('Not', Bool >> Bool)
+Not = defconst('¬', Bool >> Bool)
 
 p = Bool('p')
 q = Bool('q')
@@ -1096,7 +1093,7 @@ X = deftype('X')
 x = X('x')
 y = X('y')
 
-eq = defexpr('==', abst([X, x, y], And(Sub(x, y), Sub(y, x))), \
+eq = defexpr('≃', abst([X, x, y], And(Sub(x, y), Sub(y, x))), \
              pi(X, X >> (X >> Bool), impl=True), infix=True)
 
 op = defconst('op', X >> (X >> X))
@@ -1105,7 +1102,7 @@ uop = defconst('uop', X >> X)
 # allow input syntax mul(e1, e2, ..., en)
 Mul = defclass('Mul', [X, op], true)
 mul_ev = Const('mul_ev', Mul(X, op))
-mul = defexpr('*', abst([X, op, mul_ev], op), \
+mul = defexpr('×', abst([X, op, mul_ev], op), \
               pi([X, op, mul_ev], X >> (X >> X), impl=True), \
               infix=True)
 mul.info['__call__'] = iterative_app_call
@@ -1157,7 +1154,6 @@ absf = defexpr('abs', abst([X, uop, abs_ev], uop), \
 definstance('Abs_real', Abs(Real, abs_real), triv())
 definstance('Abs_int', Abs(Int, abs_int), triv())
 
-
 pred = defconst('pred', X >> (X >> Bool))
 
 Lt = defclass('Lt', [X, pred], true)
@@ -1170,7 +1166,7 @@ definstance('Lt_int', Lt(Int, lt_int), triv())
 
 Le = defclass('Le', [X, pred], true)
 le_ev = Const('le_ev', Le(X, pred))
-le = defexpr('<=', abst([X, pred, le_ev], pred), \
+le = defexpr('≤', abst([X, pred, le_ev], pred), \
              pi([X, pred, le_ev], X >> (X >> Bool), impl=True), \
              infix=True)
 definstance('Le_real', Le(Real, lt_real), triv())

@@ -278,6 +278,7 @@ class unpack(Tactic):
             goal, tail = (goals[0], goals[1:])
             tele = goal.tele
             prop = goal.prop
+            print tele.vars
             try:
                 i = tele.vars.index(self.hyp_name)
             except ValueError:

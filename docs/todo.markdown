@@ -11,7 +11,9 @@
 - Notion of value attached to a constant or an expression
   in general
 
-- Better syntactic "candy": colored keywords, unicode lambda and pi...
+- Better syntactic "candy": colored keywords...
+
+- Have a "unicode mode" and "plaintext mode", save the plaintext name for lookup.
 
 ## General
 
