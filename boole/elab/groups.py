@@ -107,7 +107,7 @@ if __name__ == '__main__':
 
     #grp_carr is invisible!
     #it appears in an implicit argument.
-    goal.interact(tac.unfold(mul.name, 'one', 'grp_carr', 'grp_op', 'grp_one'))
+    goal.interact(tac.unfold('*', 'one', 'grp_carr', 'grp_op', 'grp_one'))
 
     goal.interact(tac.simpl(conv.beta_norm))
 

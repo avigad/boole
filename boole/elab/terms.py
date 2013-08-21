@@ -65,16 +65,20 @@ def print_app(expr):
     - `expr`: an expression
     """
     root, args = dest_app_implicit(expr)
+    if root.info.unicode is None:
+        root_name = root
+    else:
+        root_name = root.info.unicode
     if root.is_const() and root.info.print_iterable_app:
         return print_iterable_app(expr, root)
     elif root.is_const() and root.info.print_implies:
         return print_implies(expr)
     elif root.info.infix and len(args) == 2:
-        return "({0!s} {1!s} {2!s})".format(args[0], root, args[1])
+        return "({0!s} {1!s} {2!s})".format(args[0], root_name, args[1])
     else:
         args_str = map(str, args)
         args_str = ", ".join(args_str)
-        return "{0!s}({1!s})".format(root, args_str)
+        return "{0!s}({1!s})".format(root_name, args_str)
 
 
 def print_iterable_app(expr, op):
@@ -84,10 +88,14 @@ def print_iterable_app(expr, op):
     """
     args = dest_binop_left(expr, op)
     args_str = map(str, args)
-    if op.info.infix:
-        return '(' + (' ' + str(op) + ' ').join(args_str) + ')'
+    if op.info.unicode is None:
+        op_name = op
     else:
-        return "{0!s}({1!s})".format(op, ', '.join(args_str))
+        op_name = op.info.unicode
+    if op.info.infix:
+        return '(' + (' ' + str(op_name) + ' ').join(args_str) + ')'
+    else:
+        return "{0!s}({1!s})".format(op_name, ', '.join(args_str))
 
 
 def print_implies(expr):
@@ -297,7 +305,7 @@ def tm_call(fun, *args):
 
 
 @with_info(st_term)
-def const(name, type, value = None, infix=None):
+def const(name, type, value = None, **kwargs):
     return Const(name, type, value)
 
 # Special call methods for 'And', 'Or', and 'implies'. Allosw e.g.
@@ -769,7 +777,7 @@ def deftype(name):
     return c
 
 
-def defconst(name, type, infix=None, tactic=None):
+def defconst(name, type, tactic=None, **kwargs):
     """Define a constant, add it to
     local_ctxt and return it.
     
@@ -781,7 +789,7 @@ def defconst(name, type, infix=None, tactic=None):
     - `tactic`: specifies an optional tactic to solve the proof
     obligations
     """
-    c = const(name, type, infix=infix)
+    c = const(name, type, **kwargs)
 
     c, _, obl = elaborate(c, None, None, tactic)
 
@@ -798,7 +806,7 @@ def defconst(name, type, infix=None, tactic=None):
     return c
 
 
-def defexpr(name, value, type=None, infix=None, tactic=None):
+def defexpr(name, value, type=None, tactic=None, **kwargs):
     """Define an expression with a given type and value.
     Checks that the type of value is correct, and adds the defining
     equation to the context.
@@ -810,7 +818,7 @@ def defexpr(name, value, type=None, infix=None, tactic=None):
     """
     val, ty, obl = elaborate(value, type, None, tactic)
 
-    c = const(name, ty, infix=infix)
+    c = const(name, ty, **kwargs)
     c.info['defined'] = True
     c.info['checked'] = True
     local_ctxt.add_const(c)
@@ -1011,7 +1019,7 @@ Or = defconst('Or', Bool >> (Bool >> Bool))
 Or.info['__call__'] = iterative_app_call
 Or.info['print_iterable_app'] = True
 
-Not = defconst('¬', Bool >> Bool)
+Not = defconst('Not', Bool >> Bool, unicode='¬')
 
 p = Bool('p')
 q = Bool('q')
@@ -1093,8 +1101,8 @@ X = deftype('X')
 x = X('x')
 y = X('y')
 
-eq = defexpr('≃', abst([X, x, y], And(Sub(x, y), Sub(y, x))), \
-             pi(X, X >> (X >> Bool), impl=True), infix=True)
+eq = defexpr('==', abst([X, x, y], And(Sub(x, y), Sub(y, x))), \
+             pi(X, X >> (X >> Bool), impl=True), infix=True, unicode='≃')
 
 op = defconst('op', X >> (X >> X))
 uop = defconst('uop', X >> X)
@@ -1102,9 +1110,9 @@ uop = defconst('uop', X >> X)
 # allow input syntax mul(e1, e2, ..., en)
 Mul = defclass('Mul', [X, op], true)
 mul_ev = Const('mul_ev', Mul(X, op))
-mul = defexpr('×', abst([X, op, mul_ev], op), \
+mul = defexpr('*', abst([X, op, mul_ev], op), \
               pi([X, op, mul_ev], X >> (X >> X), impl=True), \
-              infix=True)
+              infix=True, unicode='×')
 mul.info['__call__'] = iterative_app_call
 mul.info['print_iterable_app'] = True
 definstance('Mul_real', Mul(Real, mul_real), triv())
@@ -1166,8 +1174,8 @@ definstance('Lt_int', Lt(Int, lt_int), triv())
 
 Le = defclass('Le', [X, pred], true)
 le_ev = Const('le_ev', Le(X, pred))
-le = defexpr('≤', abst([X, pred, le_ev], pred), \
+le = defexpr('<=', abst([X, pred, le_ev], pred), \
              pi([X, pred, le_ev], X >> (X >> Bool), impl=True), \
-             infix=True)
+             infix=True, unicode='≤')
 definstance('Le_real', Le(Real, lt_real), triv())
 definstance('Le_int', Le(Int, le_int), triv())

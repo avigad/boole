@@ -1301,7 +1301,7 @@ def is_eq(expr):
     """
     root, args = root_app(expr)
     #There is an implicit type argument
-    return root.is_const() and (root.name == '≃') and (len(args) == 3)
+    return root.is_const() and (root.name == '==') and (len(args) == 3)
 
 
 def is_impl(expr):

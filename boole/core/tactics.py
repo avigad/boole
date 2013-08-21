@@ -126,7 +126,7 @@ class tac_from_fun(Tactic):
 def triv_fun(goal, context):
     prop = goal.prop
     hyps = goal.tele
-    if prop.is_const() and prop.name == "true":
+    if prop.is_const() and prop.name == 'true':
         return []
     elif prop.is_sub() or expr.is_eq(prop):
         if prop.is_sub():
