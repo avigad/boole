@@ -66,7 +66,7 @@ bin_op = Const('bin_op', Bound(Pi('x'), Real, Bound(Pi('y'), Real, Bool())))
 sig = Bound(Sig('x'), Real, Bound(Sig('y'), Real, \
                                   App(triv, App(triv, bin_op, DB(1)), DB(0))))
 
-tele = Tele(['x', 'y', 'hyp'], [Real, Real, App(triv, App(triv, bin_op, x), y)])
+bin_op_x_y = App(triv, App(triv, bin_op, x), y)
 
 def test_triv():
     """
@@ -117,3 +117,13 @@ def test_destruct():
     assert(g.goals[2].prop.is_sub())
     assert(g.goals[2].prop.lhs.equals(Real))
     assert(g.goals[2].prop.rhs.equals(Real2))
+
+def test_unpack():
+    ctxt = context.Context('test_ctxt')
+    s = Const('s', sig)
+    goal = Goal(Tele(['s'], [sig]), Sub(s, s))
+    g = Goals('test', ctxt, goals = [goal])
+    g.solve_with(unpack('s'))
+    assert(g.goals[0]['h'].equals(bin_op_x_y))
+    assert(g.goals[0].prop.lhs.is_pair())
+

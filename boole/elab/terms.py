@@ -18,6 +18,7 @@ from boole.core.info import *
 from boole.core.context import *
 from boole.core.expr import Const, Sub, Pair, Fst, Snd, Box, root_app, \
   root_clause, root_pi
+from color import *
 import boole.core.expr as e
 import boole.core.typing as typing
 import elab
@@ -33,7 +34,7 @@ from boole.semantics.value import Value
 #
 ###############################################################################
 
-class Term_Error(Exception):
+class TermError(Exception):
     """Errors for expressions
     """
     def __init__(self, mess):
@@ -46,6 +47,15 @@ class Term_Error(Exception):
 #
 ###############################################################################
 
+def print_const(expr):
+    """Pretty prints constants: if there is a unicode name
+    in the info field, return that, otherwise return the ascii name.
+    """
+    if expr.info.unicode is None:
+        return expr.name
+    else:
+        return expr.info.unicode
+
 # TODO: wouldn't it be clearer to inline most of these in the definitions
 # of term_str and typ_str?
 
@@ -56,6 +66,7 @@ class Term_Error(Exception):
 # TODO: right now the str method uses the name of the constant to print out
 # a value. Should the value class instead determine how values are printed out?
 
+
 def print_app(expr):
     """Takes an application and prints it in the following manner:
     if the application is of the form (..(f a0)... an), print
@@ -65,20 +76,16 @@ def print_app(expr):
     - `expr`: an expression
     """
     root, args = dest_app_implicit(expr)
-    if root.info.unicode is None:
-        root_name = root
-    else:
-        root_name = root.info.unicode
     if root.is_const() and root.info.print_iterable_app:
         return print_iterable_app(expr, root)
     elif root.is_const() and root.info.print_implies:
         return print_implies(expr)
     elif root.info.infix and len(args) == 2:
-        return "({0!s} {1!s} {2!s})".format(args[0], root_name, args[1])
+        return "({0!s} {1!s} {2!s})".format(args[0], root, args[1])
     else:
         args_str = map(str, args)
         args_str = ", ".join(args_str)
-        return "{0!s}({1!s})".format(root_name, args_str)
+        return "{0!s}({1!s})".format(root, args_str)
 
 
 def print_iterable_app(expr, op):
@@ -88,14 +95,10 @@ def print_iterable_app(expr, op):
     """
     args = dest_binop_left(expr, op)
     args_str = map(str, args)
-    if op.info.unicode is None:
-        op_name = op
-    else:
-        op_name = op.info.unicode
     if op.info.infix:
-        return '(' + (' ' + str(op_name) + ' ').join(args_str) + ')'
+        return '(' + (' ' + str(op) + ' ').join(args_str) + ')'
     else:
-        return "{0!s}({1!s})".format(op_name, ', '.join(args_str))
+        return "{0!s}({1!s})".format(op, ', '.join(args_str))
 
 
 def print_implies(expr):
@@ -124,7 +127,7 @@ def print_fst(expr):
     Arguments:
     - `expr`:
     """
-    return "fst({0!s})".format(expr.expr)
+    return color.cyan + "fst" + color.reset + "({0!s})".format(expr.expr)
 
 
 def print_snd(expr):
@@ -133,7 +136,7 @@ def print_snd(expr):
     Arguments:
     - `expr`:
     """
-    return "snd({0!s})".format(expr.expr)
+    return color.cyan + "snd" + color.reset + "({0!s})".format(expr.expr)
 
 
 def print_box(expr):
@@ -142,7 +145,8 @@ def print_box(expr):
     Arguments:
     - `expr`:
     """
-    return "cast({0!s}, {1!s})".format(expr.expr, expr.type)
+    return color.purple + "cast" + color.reset +\
+           "({0!s}, {1!s})".format(expr.expr, expr.type)
 
 
 def print_pi(expr):
@@ -160,7 +164,7 @@ def print_sig(expr):
     Arguments:
     - `expr`:
     """
-    return "{0!s}×{1!s}".format(expr.dom, expr.body)
+    return "{0!s} × {1!s}".format(expr.dom, expr.body)
 
 
 def print_sub(expr):
@@ -177,21 +181,23 @@ def print_eq(expr):
 
 
 def print_bool():
-    return "Bool"
+    return color.green + "Bool" + color.reset
 
 
 def print_type():
-    return "Type"
+    return color.green + "Type" + color.reset
 
 
 def print_ev(expr):
     if len(expr.tele) == 0:
-        return "triv()"
+        return color.cyan + "triv()" + color.reset
     else:
         return expr.to_string()
 
 
 def typ_str(expr):
+    if expr.is_const():
+        return print_const(expr)
     if expr.is_app():
         return print_app(expr)
     elif expr.is_pi():
@@ -209,11 +215,11 @@ def typ_str(expr):
 
 
 binder_utf_name = {
-    'pi': 'Π',
-    'sig': 'Σ',
-    'abst': 'λ',
-    'forall': '∀',
-    'exists': '∃'
+    'pi': color.purple + 'Π' + color.reset,
+    'sig': color.purple + 'Σ' + color.reset,
+    'abst': color.purple + 'λ' + color.reset,
+    'forall': color.purple + '∀' + color.reset,
+    'exists': color.purple + '∃' + color.reset
     }
 
 
@@ -229,6 +235,8 @@ def print_bound(expr):
 
 
 def tm_str(expr):
+    if expr.is_const():
+        return print_const(expr)
     if expr.is_app():
         return print_app(expr)
     elif expr.is_pair():
@@ -568,11 +576,11 @@ def dest_binop_left(expr, op):
     that is, an iterated application of op associating to the left.
     """
     if not expr.is_app():
-        raise Term_Error('dest_binop_left: DEBUG')
-#        raise Term_Error('dest_binop_left: {0!s} is not {1!s}'.format(expr, op))
+        raise TermError('dest_binop_left: DEBUG')
+#        raise TermError('dest_binop_left: {0!s} is not {1!s}'.format(expr, op))
     r, args = dest_app_implicit(expr)
     if not r.is_const() or r.name != op.name:
-        raise Term_Error('dest_binop_left: {0!s} is not {1!s}'.format(expr, op))
+        raise TermError('dest_binop_left: {0!s} is not {1!s}'.format(expr, op))
     elist = [args[1]]
     expr = args[0]
     while r.is_const() and r.name == op.name and expr.is_app():
@@ -591,10 +599,10 @@ def dest_binop_right(expr, op):
     that is, an iterated application of op associating to the right.
     """
     if not expr.is_app():
-        raise Term_Error('dest_binop: {0!s} is not an {1!s}'.format(expr, op))
+        raise TermError('dest_binop: {0!s} is not an {1!s}'.format(expr, op))
     r, args = dest_app_implicit(expr)
     if not r.is_const() or r.name != op.name:
-        raise Term_Error('dest_binop: {0!s} is not {1!s}'.format(expr, op))
+        raise TermError('dest_binop: {0!s} is not {1!s}'.format(expr, op))
     elist = [args[0]]
     expr = args[1]
     while r.is_const() and r.name == op.name and expr.is_app():
@@ -759,7 +767,6 @@ def check(expr, type=None, tactic=None):
 # TODO: right now these just use the default local context. Abstract over
 #   local_ctxt.
 #
-# TODO: clean these! 
 #
 ###############################################################################
 
@@ -976,12 +983,14 @@ float_val = defconst('float_val', value_description)
 
 def ii(n):
     val = Value(n, desc=int_val, is_num=True)
-    return const(str(n), Int, val)
+    return const(str(n), Int, val, \
+                 unicode=color.orange + str(n) + color.reset)
 
 
 def rr(n):
     val = Value(n, desc=float_val, is_num=True)
-    return const(str(n), Real, val)
+    return const(str(n), Real, val, \
+                 unicode=color.orange + str(n) + color.reset)
 
 enumtype_val = defconst('enumtype_val', value_description)
 enumelt_val = defconst('enum_val', value_description)
@@ -1010,12 +1019,14 @@ def defenumtype(name, elts):
 ###############################################################################
 
 # allow input and output syntax And(e1, e2, ..., en)
-And = defconst('And', Bool >> (Bool >> Bool))
+And = defconst('And', Bool >> (Bool >> Bool), \
+               unicode=color.purple + 'And' + color.reset)
 And.info['__call__'] = iterative_app_call
 And.info['print_iterable_app'] = True
 
 # allow input and output syntax Or(e1, e2, ..., en)
-Or = defconst('Or', Bool >> (Bool >> Bool))
+Or = defconst('Or', Bool >> (Bool >> Bool), \
+              unicode=color.purple + 'Or' + color.reset)
 Or.info['__call__'] = iterative_app_call
 Or.info['print_iterable_app'] = True
 
@@ -1025,16 +1036,19 @@ p = Bool('p')
 q = Bool('q')
 # allow input and output syntax implies([h1, ..., hn], conc)
 implies = defexpr('implies', abst(p, abst(q, Sub(p, q))), \
-               Bool >> (Bool >> Bool))
+               Bool >> (Bool >> Bool), \
+                  unicode=color.purple + 'implies' + color.reset)
 implies.info['__call__'] = implies_call
 implies.info['print_implies'] = True
 
 #This is equivalent to the constant given as type to terms
 # of the form Ev(tele), as constants are only compared
 # by name. As a result, it is proven using the auto tactic
-true = defconst('true', Bool)
+true = defconst('true', Bool, \
+                unicode=color.cyan + 'true' + color.reset)
 
-false = defconst('false', Bool)
+false = defconst('false', Bool, \
+                unicode=color.cyan + 'false' + color.reset)
 
 
 ###############################################################################

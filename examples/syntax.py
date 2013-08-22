@@ -127,7 +127,6 @@ def test1():
 
     add_cons = defhyp('add_cons', forall([n, a, b, v1, v2], add_cons_eq))
 
-
     rev = defconst('rev', pi(n, Vec(n) >> Vec(n), impl=True))
 
     v3 = defconst('v3', Vec(3))
@@ -187,7 +186,7 @@ def test2():
     check(forall([x,y], exists(z, And(x < z, z < y))))
     check(Beatles)
     check(John)
-        
+
 
 if __name__ == '__main__':
 
@@ -195,5 +194,4 @@ if __name__ == '__main__':
     
     test1()     # cody's tests
     test2()    # jeremy's tests
-
 
