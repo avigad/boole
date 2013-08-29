@@ -54,6 +54,9 @@ class PendAbs(Pending):
         """
         return MvarAbst(self.names).visit(expr, self.depth)
 
+    def __str__(self):
+        return "PendAbs({0!s}, {1!s})".format(self.names, self.depth)
+
 
 class PendSub(Pending):
     """A pending Substitution
@@ -76,6 +79,9 @@ class PendSub(Pending):
         - `expr`:
         """
         return MvarSubst(self.exprs).visit(expr, self.depth)
+
+    def __str__(self):
+        return "PendSub({0!s}, {1!s})".format(self.exprs, self.depth)
 
 ##############################################################################
 #
@@ -143,7 +149,7 @@ class Mvar(expr_base.Expr):
 
 ##############################################################################
 #
-# We re-write all the function defined on Expr
+# We re-write all the functions defined on Expr
 #  to handle the extra constructor
 #
 ##############################################################################
@@ -156,12 +162,13 @@ class MvarAbst(e.AbstractExpr):
 
     def visit_mvar(self, expr, depth):
         expr.tele = self.visit(expr.tele, depth)
-        #Add the abstraction to the list of pending abstractions
-        #to be performed when substituting a value
+
+        #This code should not be needed
         # print "Abstracting over", self.names[0]
         # expr.pending.append(PendAbs(self.names, depth))
-        #return the actual object here, as we want the value to
-        #be propagated at each instance of the meta-variable
+
+        # return the actual object here, as we want the value to
+        # be propagated at each instance of the meta-variable
         return expr
 
 
@@ -173,7 +180,7 @@ class MvarSubst(e.SubstExpr):
     def visit_mvar(self, expr, depth):
         expr.tele = self.visit(expr.tele, depth)
         #We record the opens performed on an Mvar, and apply
-        #them as it is substituted by it's value
+        #them in reverse as it is substituted by its value
         if self.is_open:
             names = [exp.name for exp in self.exprs]
             expr.pending.append(PendAbs(names, depth))
@@ -720,7 +727,7 @@ def app_expr(f, f_ty, cast, args):
             #If more information is needed, we need to go through the whole
             #term to collect local information (variables), to add them
             #the evidence term
-            mcast = trivial
+            mcast = trivial()
             tm = t.App(mcast, tm, mvar)
             rem_ty = subst_expr([mvar], rem_ty.body)
     else:
@@ -728,7 +735,7 @@ def app_expr(f, f_ty, cast, args):
             if rem_ty.is_pi()\
                and rem_ty.info.implicit:
                 mvar = mk_meta(rem_ty.binder.var, rem_ty.dom)
-                mcast = trivial
+                mcast = trivial()
                 tm = t.App(mcast, tm, mvar)
                 rem_ty = subst_expr([mvar], rem_ty.body)
             elif rem_ty.is_pi():
@@ -782,6 +789,7 @@ def abst(var, body):
         body_abs = abstract_expr([var.name], body)
         return e.Bound(e.Abst(var.name), var.type, body_abs)
     else:
+        print var.__class__
         mess = "Expected {0!s} to be a constant".format(var)
         raise e.ExprError(mess, var)
 
@@ -840,4 +848,7 @@ def nullctxt():
     return e.Tele([], [])
 
 
-trivial = e.Ev(nullctxt())
+def trivial():
+    """The empty evidence term
+    """
+    return e.Ev(nullctxt())

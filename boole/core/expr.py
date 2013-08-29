@@ -1352,23 +1352,39 @@ def sig_to_tele(expr, open_bound):
     return tele.append(hyp, sig_ty)
 
 
-def unpack_sig(expr, open_bound):
+def unpack_sig(expr, open_bound, names):
     """Takes a sigma type S = Sig(x1:A1,Sig(x2:A2,...,An)..)
     and returns the dependent tuple
     (x1, (x2,(...,h)..) with xi : Ai and h : An
     
     Arguments:
     - `expr`: an expression
+    -`open_bound`: a function used to unpack a constructor which
+    binds a variable
+    -`names`: either None, or a list of names to give to the projections.
     """
     sig_ty = expr
     tup = []
+    if names is None:
+        proj_names = []
+    else:
+        proj_names = names[:]
+    proj_names.reverse()
     while sig_ty.is_sig():
         v, new_ty = open_bound(sig_ty)
-        c = Const(v, sig_ty.dom)
+        try:
+            #FIXME: possible name capture
+            n = proj_names.pop()
+        except IndexError:
+            n = v
+        c = Const(n, sig_ty.dom)
         tup.append((c, sig_ty))
         sig_ty = new_ty
-    hyp = fresh_name.get_name('h')
-    c = Const(hyp, sig_ty)
+    try:
+        n = proj_names.pop()
+    except IndexError:
+        n = fresh_name.get_name('h')
+    c = Const(n, sig_ty)
     if len(tup) == 0:
         return c
     else:

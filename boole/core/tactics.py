@@ -257,17 +257,20 @@ destruct = Destruct()
 
 class unpack(Tactic):
     """Take a hypothesis name, and if it is present and is a sig type,
-    destroy the sigma type and add all the fields to the context.
+    destroy it and add all the fields to the context.
     """
     
-    def __init__(self, hyp_name):
+    def __init__(self, hyp_name, names=None):
         """
         
         Arguments:
-        - `hyp_name`:
+        - `hyp_name`: the name of a hypothesis which has as type a sig
+        type
+        - `names`: an optional list of names for the projections 
         """
         Tactic.__init__(self, 'unpack({0!s})'.format(hyp_name))
         self.hyp_name = hyp_name
+        self.names = names
         self.open_bound = expr.open_bound_fresh
         self.sub_in = expr.sub_in
         
@@ -286,10 +289,11 @@ class unpack(Tactic):
                 raise TacticFailure(mess, self, goals)
 
             h = tele.types[i]
-            sig_val = expr.unpack_sig(h, self.open_bound)
+            sig_val = expr.unpack_sig(h, self.open_bound, self.names)
             new_tele = tele
             new_val = sig_val
             while new_val.is_pair():
+                assert(new_val.fst.is_const())
                 new_tele = new_tele.append(new_val.fst.name, new_val.fst.type)
                 new_val = new_val.snd
             new_tele = new_tele.append(new_val.name, new_val.type)

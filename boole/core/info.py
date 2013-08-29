@@ -78,6 +78,7 @@ class ExprInfo(object):
         Arguments:
         - `info`:
         """
+        self.name = info.name
         for k in info.info:
             self.info[k] = info.info[k]
 

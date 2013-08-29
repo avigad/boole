@@ -467,6 +467,8 @@ def fold_over(base_op, var, tm, **kwargs):
         return base_op(var, tm, **kwargs)
 
 
+#TODO: this should be st_typ, but arrows are not printed
+#correctly at the type level.
 @with_info(st_term)
 def pi_base(var, codom, **kwargs):
     return elab.pi(var, codom, **kwargs)
@@ -503,7 +505,7 @@ def exists(var, prop):
     return fold_over(exists_base, var, prop)
 
 
-@with_info(st_term)
+@with_info(st_typ)
 def sig_base(var, codom):
     return elab.sig(var, codom)
 
@@ -519,7 +521,7 @@ def nullctxt():
 
 @with_info(st_term)
 def triv():
-    return elab.trivial
+    return elab.trivial()
 
 
 @with_info(st_term)
@@ -734,6 +736,11 @@ def elaborate(expr, type, elabtac, tactic):
 
     val.info['elaborated'] = True
 
+    if type is None and ty.info.name == "default":
+        #TODO: this should be st_typ, but arrows are not printed
+        #correctly at the type level.
+        ty.info.update(st_term)
+
     return (val, ty, obl)
 
 
@@ -770,14 +777,14 @@ def check(expr, type=None, tactic=None):
 #
 ###############################################################################
 
-def deftype(name):
+def deftype(name, **kwargs):
     """Define a type constant, and add it
     to local_ctxt.
     
     Arguments:
     - `name`:
     """
-    c = mktype(name)
+    c = mktype(name, **kwargs)
     local_ctxt.add_const(c)
     if verbose:
         print "{0!s} : {1!s} is assumed.\n".format(c, c.type)
@@ -798,7 +805,7 @@ def defconst(name, type, tactic=None, **kwargs):
     """
     c = const(name, type, **kwargs)
 
-    c, _, obl = elaborate(c, None, None, tactic)
+    c, _, obl = elaborate(c, type, None, tactic)
 
     c.info['checked'] = True
     local_ctxt.add_const(c)
@@ -959,13 +966,13 @@ Type.info.update(st_typ)
 
 
 @with_info(st_typ)
-def mktype(name):
+def mktype(name, **kwargs):
     """
     
     Arguments:
     - `name`:
     """
-    return Const(name, Type)
+    return Const(name, Type, **kwargs)
 
 
 ###############################################################################
@@ -1030,14 +1037,13 @@ Or = defconst('Or', Bool >> (Bool >> Bool), \
 Or.info['__call__'] = iterative_app_call
 Or.info['print_iterable_app'] = True
 
-Not = defconst('Not', Bool >> Bool, unicode='¬')
+Not = defconst('Not', Bool >> Bool, unicode=color.purple + '¬' + color.reset)
 
 p = Bool('p')
 q = Bool('q')
+implies = defexpr('implies', abst([p, q], Sub(p, q)), Bool >> (Bool >> Bool), \
+          unicode=color.purple + 'implies' + color.reset)
 # allow input and output syntax implies([h1, ..., hn], conc)
-implies = defexpr('implies', abst(p, abst(q, Sub(p, q))), \
-               Bool >> (Bool >> Bool), \
-                  unicode=color.purple + 'implies' + color.reset)
 implies.info['__call__'] = implies_call
 implies.info['print_implies'] = True
 
@@ -1059,7 +1065,7 @@ false = defconst('false', Bool, \
 
 # reals
 
-Real = deftype('Real')
+Real = deftype('Real', unicode=color.green + 'Real' + color.reset)
 
 # binary operations on the reals
 
@@ -1082,7 +1088,7 @@ le_real = defconst('le_real', Real >> (Real >> Bool))
 
 # integers
 
-Int = deftype('Int')
+Int = deftype('Int', unicode=color.green + 'Int' + color.reset)
 int_sub_real = defsub('int_sub_real', Int <= Real)
 
 # binary operations on the integers

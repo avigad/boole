@@ -17,9 +17,8 @@
 import boole.core.expr as expr
 import boole.core.tactics as tac
 import boole.core.conv as conv
-import unif
-import terms
-from terms import *
+import boole.elab.unif as unif
+from boole.elab.terms import *
 
 
 if __name__ == '__main__':

@@ -90,5 +90,5 @@
                           ("\\<\\(Type\\|Bool\\|Kind\\|Real\\|Int\\)\\>" 0 'font-lock-type-face)
                           ("\\<[\\+-]?[0-9]+\\(.[0-9]+\\)?\\>" 0 'font-lock-constant-face)
                           ("\\<\\(true\\|false\\)\\>" 0 'font-lock-constant-face)
-                          ("\\<\\(defconst\\|defexpr\\|defhyp\\|defthm\\|defsub\\|defclass\\|definstance\\)\\>" 0 'font-lock-function-name-face)
+                          ("\\<\\(deftype\\|defconst\\|defexpr\\|defhyp\\|defthm\\|defsub\\|defclass\\|definstance\\)\\>" 0 'font-lock-function-name-face)
                           ))
