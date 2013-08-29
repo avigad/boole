@@ -18,6 +18,7 @@ from boole.core.tactics import Tactic, TacticFailure, \
      now, par, trytac, simpl, trivial, repeat
 import boole.core.tactics as tac
 import elab
+import boole.core.conv as conv
 
 
 ###############################################################################
@@ -89,14 +90,14 @@ class unfold(tac.unfold):
 
     def __init__(self, *names):
         tac.unfold.__init__(self, *names)
-        self.sub_in = elab.sub_in
+        self.sub_in = e.sub_in
 
 
 class DestructMvar(tac.Destruct):
     
     def __init__(self, ):
         tac.Destruct.__init__(self)
-        self.open_expr = elab.open_expr
+        self.open_expr = e.open_expr
 
 
 destruct = DestructMvar()
@@ -126,7 +127,6 @@ class OccursCheck(Exception):
         Exception.__init__(self)
         self.mvar = mvar
         self.term = term
-        
 
 
 def split(mvar, goals):
@@ -168,7 +168,7 @@ def cross(l_goals, r_goals):
     - `l_goals`: a list of goals of the form T <= X
     - `r_goals`: a list of goals of the form X <= U
     """
-    return [Goal(elab.nullctxt(), e.Sub(c.prop.lhs, d.prop.rhs))\
+    return [Goal(e.nullctxt(), e.Sub(c.prop.lhs, d.prop.rhs))\
             for c in l_goals for d in r_goals]
 
 
@@ -183,7 +183,7 @@ def max_type(types, ctxt):
     - `ctxt`: a goal context
     """
     for t in types:
-        max_list = [Goals(elab.nullctxt(), e.Sub(u, t))\
+        max_list = [Goals(e.nullctxt(), e.Sub(u, t))\
                     for u in types]
         max_goal = Goals('max_goal', ctxt, goals=max_list)
         max_goal.solve_with(par(trivial))
@@ -203,7 +203,7 @@ def min_type(types, ctxt):
     - `ctxt`: a goal context
     """
     for t in types:
-        min_list = [Goals(elab.nullctxt(), e.Sub(t, u))\
+        min_list = [Goals(e.nullctxt(), e.Sub(t, u))\
                     for u in types]
         min_goal = Goals('min_goal', ctxt, goals=min_list)
         min_goal.solve_with(par(trivial))
@@ -245,7 +245,7 @@ class SolveMvars(Tactic):
                 lt, gt, other = split(m, ineqs)
                 m_elim = cross(lt, gt) + other
                 self.solve(m_elim, context)
-                raise NotImplemented()
+                raise NotImplementedError()
                 
                 
 
@@ -271,10 +271,10 @@ class SolveMvar(Tactic):
             goal, tail = (goals[0], goals[1:])
             prop = goal.prop
             if prop.is_sub():
-                if isinstance(prop.lhs, elab.Mvar):
+                if isinstance(prop.lhs, e.Mvar):
                     mvar = prop.lhs
                     tm = prop.rhs
-                elif isinstance(prop.rhs, elab.Mvar):
+                elif isinstance(prop.rhs, e.Mvar):
                     mvar = prop.rhs
                     tm = prop.lhs
                 else:
@@ -399,7 +399,7 @@ instances = Instances()
 ###############################################################################
 
 
-unif_step = sub_mvar >> simpl(elab.par_beta) >> par(trivial) >> (solve_mvar | destruct)
+unif_step = sub_mvar >> simpl(conv.par_beta) >> par(trivial) >> (solve_mvar | destruct)
 
 
 unify = repeat(unif_step)

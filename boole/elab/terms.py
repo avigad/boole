@@ -17,12 +17,12 @@
 from boole.core.info import *
 from boole.core.context import *
 from boole.core.expr import Const, Sub, Pair, Fst, Snd, Box, root_app, \
-  root_clause, root_pi
+  root_clause, root_pi, open_expr, subst_expr
 from color import *
 import boole.core.expr as e
 import boole.core.typing as typing
 import elab
-from elab import app_expr, mvar_infer, open_expr, sub_mvar, subst_expr
+from elab import app_expr, mvar_infer, sub_mvar
 import boole.core.tactics as tac
 import unif as u
 from boole.semantics.value import Value
@@ -225,7 +225,7 @@ binder_utf_name = {
 
 def print_bound(expr):
     b = expr.binder
-    vars, body = elab.open_bound_fresh_consts(expr)
+    vars, body = e.open_bound_fresh_consts(expr)
     name = binder_utf_name[b.name]
     if len(vars) == 1:
         return "{0!s}({1!s}, {2!s})".format(name, vars[0], body)
@@ -505,7 +505,7 @@ def exists(var, prop):
     return fold_over(exists_base, var, prop)
 
 
-@with_info(st_typ)
+@with_info(st_term)
 def sig_base(var, codom):
     return elab.sig(var, codom)
 
@@ -516,7 +516,7 @@ def sig(var, codom):
 
 @with_info(st_term)
 def nullctxt():
-    return elab.nullctxt()
+    return e.nullctxt()
 
 
 @with_info(st_term)
@@ -549,7 +549,7 @@ def dest_app_implicit(expr):
     - `expr`: an expression
     """
     r, args = root_app(expr)
-    
+
     ty, _ = mvar_infer(r, ctxt=local_ctxt)
 
     non_implicit = []

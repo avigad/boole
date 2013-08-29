@@ -20,319 +20,22 @@ import boole.core.info as info
 import boole.core.goals as goals
 import boole.core.conv as conv
 
-##############################################################################
+
+###############################################################################
 #
-# The type of Pending substitution and abstraction operations.
-# These are performed as the meta-variable is instantiated to a value
+# Utility functions for manipulating a term with mvars.
 #
-##############################################################################
+###############################################################################
 
-
-class Pending(object):
-    pass
-
-
-class PendAbs(Pending):
-    """A pending abstraction
-    """
-    
-    def __init__(self, names, depth):
-        """
-        
-        Arguments:
-        - `names`:
-        """
-        Pending.__init__(self)
-        self.names = names
-        self.depth = depth
-        
-    def now(self, expr):
-        """Evaluate the abstraction
-        
-        Arguments:
-        - `expr`:
-        """
-        return MvarAbst(self.names).visit(expr, self.depth)
-
-    def __str__(self):
-        return "PendAbs({0!s}, {1!s})".format(self.names, self.depth)
-
-
-class PendSub(Pending):
-    """A pending Substitution
-    """
-    
-    def __init__(self, exprs, depth):
-        """
-        
-        Arguments:
-        - `names`:
-        """
-        Pending.__init__(self)
-        self.exprs = exprs
-        self.depth = depth
-
-    def now(self, expr):
-        """Evaluate the substitution
-        
-        Arguments:
-        - `expr`:
-        """
-        return MvarSubst(self.exprs).visit(expr, self.depth)
-
-    def __str__(self):
-        return "PendSub({0!s}, {1!s})".format(self.exprs, self.depth)
-
-##############################################################################
-#
-# We add a new constructor to the Expr class: it represents meta-variables
-# which can be given a value when determined to be equal to an expression
-# by unification.
-#
-##############################################################################
-
-
-class Mvar(expr_base.Expr):
-    """Unification variables for implicit arguments
-    """
-    
-    def __init__(self, name, type):
-        """
-        Same definition as for Const, without info fields
-        and the additional information for:
-        - potential value,
-        - the conext in which it was created (to be used when finding
-        a value)
-        - the pending abstractions to be applied to the final value when found.
-        """
-        expr_base.Expr.__init__(self)
-        self.name = name
-        self.type = type
-        self._value = None
-        self.tele = nullctxt()
-        self.pending = []
-
-    def accept(self, visitor, *args, **kwargs):
-        return visitor.visit_mvar(self, *args, **kwargs)
-
-    def set_val(self, val):
-        """Give a value to the meta-variable
-        
-        Arguments:
-        - `val`: an expression
-        """
-        #update the info field to correspond to that
-        #of the value: this makes mvar substitution
-        #behave correctly with respect to info
-        self.info = val.info
-        self._value = val
-
-    def to_string(self):
-        return "?{0!s}".format(self.name)
-
-    def equals(self, expr):
-        #There should only be one instance of
-        #each meta-variable, so we use pointer equality
-        return self is expr
-
-    def has_value(self):
-        """Returns True if the expression has a value
-        """
-        return not (self._value is None)
-
-    def clear(self):
-        """Clear the value and the information of the
-        meta-variable.
-        """
-        self.info = info.DefaultInfo()
-        self._value = None
-
-##############################################################################
-#
-# We re-write all the functions defined on Expr
-#  to handle the extra constructor
-#
-##############################################################################
-
-
-class MvarAbst(e.AbstractExpr):
-    
-    def __init__(self, names):
-        e.AbstractExpr.__init__(self, names)
-
-    def visit_mvar(self, expr, depth):
-        expr.tele = self.visit(expr.tele, depth)
-
-        #This code should not be needed
-        # print "Abstracting over", self.names[0]
-        # expr.pending.append(PendAbs(self.names, depth))
-
-        # return the actual object here, as we want the value to
-        # be propagated at each instance of the meta-variable
-        return expr
-
-
-class MvarSubst(e.SubstExpr):
-
-    def __init__(self, exprs, is_open=None):
-        e.SubstExpr.__init__(self, exprs, is_open=is_open)
-
-    def visit_mvar(self, expr, depth):
-        expr.tele = self.visit(expr.tele, depth)
-        #We record the opens performed on an Mvar, and apply
-        #them in reverse as it is substituted by its value
-        if self.is_open:
-            names = [exp.name for exp in self.exprs]
-            expr.pending.append(PendAbs(names, depth))
-        # expr.pending.append(PendSub(self.exprs, depth))
-        return expr
-
-
-#rewrite code here from expr.py
-def abstract_expr(vars, expr):
-    abstractor = MvarAbst(vars)
-    return abstractor.visit(expr, 0)
-
-
-def subst_expr(exprs, expr, is_open=None):
-    if is_open != None:
-        subster = MvarSubst(exprs, is_open=is_open)
-    else:
-        subster = MvarSubst(exprs)
-    return subster.visit(expr, 0)
-
-
-def sub_in(exprs, vars, expr):
-    return subst_expr(exprs, abstract_expr(vars, expr))
-
-
-def open_expr(var, typ, expr, checked):
-    if checked == None:
-        const = e.Const(var, typ, checked=True)
-    else:
-        const = e.Const(var, typ, checked=checked)
-    return subst_expr([const], expr, is_open=True)
-
-
-def open_bound_fresh(expr, checked=None):
-    var = e.fresh_name.get_name(expr.binder.var, free_vars(expr.body))
-    return (var, open_expr(var, expr.dom, expr.body, checked))
-
-
-def open_bound_fresh_const(expr):
-    assert(expr.is_bound())
-    var = e.fresh_name.get_name(expr.binder.var, free_vars(expr.body))
-    return (e.Const(var, expr.dom), open_expr(var, expr.dom, expr.body, None))
-
-
-def open_bound_fresh_consts(expr):
-    assert(expr.is_bound())
-    b = expr
-    vlist = []
-    while b.is_bound() and b.binder.name == expr.binder.name\
-              and str(b.info) == str(expr.info):
-        v, b = open_bound_fresh_const(b)
-        vlist.append(v)
-    return (vlist, b)
 
 def mvar_open_expr(var, typ, expr):
-    mvar = Mvar(var, typ)
-    return subst_expr([mvar], expr)
+    mvar = e.Mvar(var, typ)
+    return e.subst_expr([mvar], expr)
 
 
 def mvar_open_bound_fresh(expr):
     var = meta_var_gen.get_name(expr.binder.var)
     return (var, mvar_open_expr(var, expr.dom, expr.body))
-
-
-def open_tele(tele, vars, checked=False):
-    """Takes a telescope and returns a list of pairs
-    (constant, type) where the subsequent types may depend
-    on the constant.
-    
-    Arguments:
-    - `tele`:
-    """
-    opened_ty = tele.types
-    consts = []
-    for i in range(0, tele.len):
-        opened_ty[i] = subst_expr(consts, opened_ty[i], is_open=True)
-        x = e.Const(vars[i], opened_ty[i], checked=checked)
-        consts.append(x)
-    return (consts, opened_ty)
-
-
-def open_tele_fresh(tele, checked=False):
-    """Open a telescope with fresh variables
-    
-    Arguments:
-    - `tele`: a telescope
-    """
-    fr_vars = [e.fresh_name.get_name(v) for v in tele.vars]
-    return open_tele(tele, fr_vars, checked=checked)
-
-
-def root_pi(expr):
-    """Returns the pair (r, [an,..,a0])
-    such that expr = Pi(a0, Pi(.. Pi(an, r)..)
-    
-    Arguments:
-    - `expr`: an expression
-    """
-    root = expr
-    args = []
-    while root.is_pi():
-        args.append(root.dom)
-        _, root = open_bound_fresh(root)
-    return (root, args)
-
-
-class MvarInfer(t.ExprInfer):
-    """Infer the type and generate constraints for a term containing
-    meta-variables. A constraint is created when a meta-variable is of
-    type Bool.
-    """
-    
-    def __init__(self):
-        t.ExprInfer.__init__(self)
-        self.check = MvarCheck
-        self.sub = subst_expr
-        self.abst = abstract_expr
-        self.open_fresh = open_bound_fresh
-        self.open_tele_fresh = open_tele_fresh
-
-    def visit_mvar(self, expr, constrs, *args, **kwargs):
-        sort = self.visit(expr.type, constrs, *args, **kwargs)
-        if t.is_sort(sort):
-            #If the meta-variable stands as evidence for a proposition
-            #we add that proposition to the set of constraints, and
-            #set the value of the meta-variable to Ev.
-            if sort.is_bool():
-                expr.set_val(e.Ev(expr.tele))
-                constrs.append(goals.Goal(expr.tele, expr.type))
-            return expr.type
-        else:
-            mess = "The type of {0!s} is {1!s} "
-            "which should be Type, Kind or Bool"\
-                   .format(expr.type, sort)
-            raise t.ExprTypeError(mess, expr)
-        
-
-class MvarCheck(t.ExprCheck):
-    """Check the type and generate constraints for
-    a term containing meta-variables
-    """
-    
-    def __init__(self):
-        t.ExprCheck.__init__(self)
-        self.infer = MvarInfer
-
-    def visit_mvar(self, expr, type, *args, **kwargs):
-        expr_ty = self.infer().visit(expr, *args, **kwargs)
-        if expr_ty.equals(type):
-            return True
-        else:
-            return False
 
 
 def mk_meta(name, type):
@@ -344,7 +47,7 @@ def mk_meta(name, type):
     - `type`: an expression denoting the type of the Mvar
     """
     fresh_name = meta_var_gen.get_name(name)
-    return Mvar(fresh_name, type)
+    return e.Mvar(fresh_name, type)
 
 
 def mvar_infer(expr, ctxt=None):
@@ -362,35 +65,9 @@ def mvar_infer(expr, ctxt=None):
         ty_ctxt = ctxt
     prf_obl_name = meta_var_gen.get_name('_unif_goals')
     prf_obl = goals.empty_goals(prf_obl_name, ty_ctxt)
-    ty = MvarInfer().visit(expr, prf_obl)
+    ty = t.ExprInfer().visit(expr, prf_obl)
     return (ty, prf_obl)
 
-
-class MvarParBeta(conv.ParBeta):
-    
-    def __init__(self):
-        """Take as argument the substitution function,
-        the opening and abstraction functions.
-        """
-        conv.ParBeta.__init__(self)
-        self.subst = subst_expr
-        self.open_expr = open_bound_fresh
-        self.open_tele = open_tele_fresh
-        self.abst = abstract_expr
-
-    def visit_mvar(self, expr, *args, **kwargs):
-        return expr
-
-
-def par_beta(expr):
-    return MvarParBeta().visit(expr)
-
-
-###############################################################################
-#
-# Utility functions for manipulating a term with mvars.
-#
-###############################################################################
 
 class SubMvar(e.ExprVisitor):
     """Replace all meta-variables by their
@@ -404,7 +81,7 @@ class SubMvar(e.ExprVisitor):
     def __init__(self, undef=None):
         e.ExprVisitor.__init__(self)
         self.undef = undef
-        
+
 # TODO (JDA): I had to modify the third line below by adding the value.
 # Is this right? What about the instances of Const with true and false below?
     def visit_const(self, expr):
@@ -575,20 +252,6 @@ def mvar_is_present(expr, mvar=None):
         return False
 
 
-class MvarFreeVars(e.FreeVars):
-    
-    def __init__(self):
-        e.FreeVars.__init__(self)
-
-    def visit_mvar(self, expr, *args, **kwargs):
-        return self.visit(expr.tele, *args, **kwargs)
-
-
-def free_vars(expr):
-    l = MvarFreeVars().visit(expr)
-    return [exp.name for exp in l]
-
-
 meta_var_gen = vargen.VarGen()
 
 
@@ -608,8 +271,8 @@ class Enrich(e.ExprVisitor):
         e.ExprVisitor.__init__(self)
         self.name = name
         self.prop = prop
-        self.abst = abstract_expr
-        self.open_fresh = open_bound_fresh
+        self.abst = e.abstract_expr
+        self.open_fresh = e.open_bound_fresh
         
     def visit_const(self, expr, *args, **kwargs):
         return expr
@@ -729,7 +392,7 @@ def app_expr(f, f_ty, cast, args):
             #the evidence term
             mcast = trivial()
             tm = t.App(mcast, tm, mvar)
-            rem_ty = subst_expr([mvar], rem_ty.body)
+            rem_ty = e.subst_expr([mvar], rem_ty.body)
     else:
         while len(rem_args) != 0:
             if rem_ty.is_pi()\
@@ -737,10 +400,10 @@ def app_expr(f, f_ty, cast, args):
                 mvar = mk_meta(rem_ty.binder.var, rem_ty.dom)
                 mcast = trivial()
                 tm = t.App(mcast, tm, mvar)
-                rem_ty = subst_expr([mvar], rem_ty.body)
+                rem_ty = e.subst_expr([mvar], rem_ty.body)
             elif rem_ty.is_pi():
                 tm = t.App(rem_cast[0], tm, rem_args[0])
-                rem_ty = subst_expr([rem_args[0]], rem_ty.body)
+                rem_ty = e.subst_expr([rem_args[0]], rem_ty.body)
                 rem_cast = rem_cast[1:]
                 rem_args = rem_args[1:]
             else:
@@ -762,7 +425,7 @@ def pi(var, codom, impl=None):
     - `codom`: an expression possibly containing var
     """
     if var.is_const():
-        codom_abs = abstract_expr([var.name], codom)
+        codom_abs = e.abstract_expr([var.name], codom)
         ret = e.Bound(e.Pi(var.name), var.type, codom_abs)
         if impl:
             ret.info['implicit'] = True
@@ -786,7 +449,7 @@ def abst(var, body):
             body = enrich(var.name, var.type, body)
         else:
             pass
-        body_abs = abstract_expr([var.name], body)
+        body_abs = e.abstract_expr([var.name], body)
         return e.Bound(e.Abst(var.name), var.type, body_abs)
     else:
         print var.__class__
@@ -803,7 +466,7 @@ def forall(var, prop):
     - `prop`: an expression possibly containing var
     """
     if var.is_const():
-        prop_abs = abstract_expr([var.name], prop)
+        prop_abs = e.abstract_expr([var.name], prop)
         return e.Bound(e.Forall(var.name), var.type, prop_abs)
     else:
         mess = "Expected {0!s} to be a constant".format(var)
@@ -819,7 +482,7 @@ def exists(var, prop):
     - `prop`: an expression possibly containing var
     """
     if var.is_const():
-        prop_abs = abstract_expr([var.name], prop)
+        prop_abs = e.abstract_expr([var.name], prop)
         return e.Bound(e.Exists(var.name), var.type, prop_abs)
     else:
         mess = "Expected {0!s} to be a constant".format(var)
@@ -835,20 +498,14 @@ def sig(var, codom):
     - `codom`: an expression possibly containing var
     """
     if var.is_const():
-        codom_abs = abstract_expr([var.name], codom)
+        codom_abs = e.abstract_expr([var.name], codom)
         return e.Bound(e.Sig(var.name), var.type, codom_abs)
     else:
         mess = "Expected {0!s} to be a constant".format(var)
         raise e.ExprError(mess, var)
 
 
-def nullctxt():
-    """The empty telescope
-    """
-    return e.Tele([], [])
-
-
 def trivial():
     """The empty evidence term
     """
-    return e.Ev(nullctxt())
+    return e.Ev(e.nullctxt())

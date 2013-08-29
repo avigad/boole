@@ -30,24 +30,20 @@ if __name__ == '__main__':
     definstance('One_int', One(Int, 1), triv())
 
     one_inst = defconst('one_inst', One(X, el))
-    
+
     one = defexpr('one', abst([X, el, one_inst], el), \
                   pi([X, el, one_inst], X, impl=True))
-
 
     op_mul = defconst('op_mul', Mul(X, op))
 
     el_one = defconst('el_one', One(X, el))
 
-
     Unit_left = defclass('Unit_left', [X, op, el, op_mul, el_one], \
                          forall(x, one() * x == x))
 
-
     Unit_right = defclass('Unit_right', [X, op, el, op_mul, el_one], \
                          forall(x, x * one() == x))
- 
- 
+
     G = deftype('G')
 
     G_mul = defconst('G_mul', G >> (G >> G))
@@ -68,25 +64,23 @@ if __name__ == '__main__':
 
     grp_carr = defexpr('grp_carr', abst(grp, cast(grp, grp_def)[0]), \
                        pi(grp, Type), \
-                       tactic=tac.par(tac.unfold('Grp')>>tac.trivial))
-
+                       tactic=tac.par(tac.unfold('Grp') >> tac.trivial))
 
     op_cast = cast(cast(grp, grp_def)[1][0], \
                    grp_carr(grp) >> (grp_carr(grp) >> grp_carr(grp)))
 
     grp_op = defexpr('grp_op', abst(grp, op_cast), \
-                       tactic=tac.par(tac.unfold('Grp', 'grp_carr')>>tac.auto))
+                       tactic=tac.par(tac.unfold('Grp', 'grp_carr') >> tac.auto))
+
 
     definstance('Mul_grp', forall(grp, Mul(grp_carr(grp), grp_op(grp))), triv())
-
 
     one_cast = cast(cast(grp, grp_def)[1][1][0], grp_carr(grp))
 
     grp_one = defexpr('grp_one', abst(grp, one_cast),
-                      tactic=tac.par(tac.unfold('Grp', 'grp_carr')>>tac.auto))
+                      tactic=tac.par(tac.unfold('Grp', 'grp_carr') >> tac.auto))
 
     definstance('One_grp', forall(grp, One(grp_carr(grp), grp_one(grp))), triv())
-    
 
     definstance('Unit_right_grp', \
                 forall(grp, Unit_right(grp_carr(grp),\
@@ -112,8 +106,7 @@ if __name__ == '__main__':
 
     goal.interact(unif.mvar_apply(goal[0]['G_unit_r']))
 
-    goal.interact(unif.unify>>tac.par(tac.trivial))
-
+    goal.interact(unif.unify >> tac.par(tac.trivial))
 
     g = defconst('g', grp_carr(grp))
     h = defconst('h', grp_carr(grp))

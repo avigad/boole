@@ -872,6 +872,133 @@ def open_tele_fresh(tele, checked=False):
     return open_tele(tele, fr_vars, checked=checked)
 
 
+##############################################################################
+#
+# We add a new constructor to the Expr class: it represents meta-variables
+# which can be given a value when determined to be equal to an expression
+# by unification.
+#
+##############################################################################
+
+
+class Mvar(Expr):
+    """Unification variables for implicit arguments
+    """
+    
+    def __init__(self, name, type):
+        """
+        Same definition as for Const, without info fields
+        and the additional information for:
+        - potential value,
+        - the conext in which it was created (to be used when finding
+        a value)
+        - the pending abstractions to be applied to the final value when found.
+        """
+        Expr.__init__(self)
+        self.name = name
+        self.type = type
+        self._value = None
+        self.tele = nullctxt()
+        self.pending = []
+
+    def accept(self, visitor, *args, **kwargs):
+        return visitor.visit_mvar(self, *args, **kwargs)
+
+    def set_val(self, val):
+        """Give a value to the meta-variable
+        
+        Arguments:
+        - `val`: an expression
+        """
+        #update the info field to correspond to that
+        #of the value: this makes mvar substitution
+        #behave correctly with respect to info
+        self.info = val.info
+        self._value = val
+
+    def to_string(self):
+        return "?{0!s}".format(self.name)
+
+    def equals(self, expr):
+        #There should only be one instance of
+        #each meta-variable, so we use pointer equality
+        return self is expr
+
+    def has_value(self):
+        """Returns True if the expression has a value
+        """
+        return not (self._value is None)
+
+    def clear(self):
+        """Clear the value and the information of the
+        meta-variable.
+        """
+        self.info = info.DefaultInfo()
+        self._value = None
+
+##############################################################################
+#
+# The type of Pending substitution and abstraction operations.
+# These are performed as the meta-variable is instantiated to a value
+#
+##############################################################################
+
+
+class Pending(object):
+    pass
+
+
+class PendAbs(Pending):
+    """A pending abstraction
+    """
+    
+    def __init__(self, names, depth):
+        """
+        
+        Arguments:
+        - `names`:
+        """
+        Pending.__init__(self)
+        self.names = names
+        self.depth = depth
+        
+    def now(self, expr):
+        """Evaluate the abstraction
+        
+        Arguments:
+        - `expr`:
+        """
+        return AbstractExpr(self.names).visit(expr, self.depth)
+
+    def __str__(self):
+        return "PendAbs({0!s}, {1!s})".format(self.names, self.depth)
+
+
+class PendSub(Pending):
+    """A pending Substitution
+    """
+    
+    def __init__(self, exprs, depth):
+        """
+        
+        Arguments:
+        - `names`:
+        """
+        Pending.__init__(self)
+        self.exprs = exprs
+        self.depth = depth
+
+    def now(self, expr):
+        """Evaluate the substitution
+        
+        Arguments:
+        - `expr`:
+        """
+        return SubstExpr(self.exprs).visit(expr, self.depth)
+
+    def __str__(self):
+        return "PendSub({0!s}, {1!s})".format(self.exprs, self.depth)
+
 ###############################################################################
 #
 # The visitor class for Expr and Tele
@@ -928,6 +1055,9 @@ class ExprVisitor(object):
         raise NotImplementedError()
 
     def visit_tele(self, expr, *args, **kwargs):
+        raise NotImplementedError()
+
+    def visit_mvar(self, expr, *args, **kwargs):
         raise NotImplementedError()
 
     def visit(self, expr, *args, **kwargs):
@@ -1033,6 +1163,17 @@ class AbstractExpr(ExprVisitor):
         expr_cast = self.visit(expr.expr, *args, **kwargs)
         type = self.visit(expr.type, *args, **kwargs)
         return Box(conv, expr_cast, type)
+
+    def visit_mvar(self, expr, depth):
+        expr.tele = self.visit(expr.tele, depth)
+
+        #This code should not be needed
+        # print "Abstracting over", self.names[0]
+        # expr.pending.append(e.PendAbs(self.names, depth))
+
+        # return the actual object here, as we want the value to
+        # be propagated at each instance of the meta-variable
+        return expr
 
     def visit_tele(self, expr, depth):
         types = []
@@ -1141,6 +1282,16 @@ class SubstExpr(ExprVisitor):
         type = self.visit(expr.type, *args, **kwargs)
         return Box(conv, expr_cast, type)
 
+    def visit_mvar(self, expr, depth):
+        expr.tele = self.visit(expr.tele, depth)
+        #We record the opens performed on an Mvar, and apply
+        #them in reverse as it is substituted by its value
+        if self.is_open:
+            names = [exp.name for exp in self.exprs]
+            expr.pending.append(PendAbs(names, depth))
+        # expr.pending.append(PendSub(self.exprs, depth))
+        return expr
+
     def visit_tele(self, expr, depth):
         types = []
         for i, e in enumerate(expr.types):
@@ -1246,6 +1397,11 @@ def open_bound_fresh_consts(expr):
 #
 ###############################################################################
 
+def nullctxt():
+    """The empty telescope
+    """
+    return Tele([], [])
+
 
 def root_app(expr):
     """Returns the pair (r, args)
@@ -1312,7 +1468,7 @@ def is_impl(expr):
     - `expr`:
     """
     root, args = root_app(expr)
-    # TODO: hardcoding the name of implication here is inelegant?
+    # TODO: hardcoding the name of implication here is inelegant
     return root.is_const() and root.name == 'implies' and \
            len(args) == 2
 
@@ -1405,7 +1561,7 @@ class FreeVars(ExprVisitor):
         ExprVisitor.__init__(self)
 
     def visit_const(self, expr, *args, **kwargs):
-        return self.visit(expr.type, *args, **kwargs)+\
+        return self.visit(expr.type, *args, **kwargs) + \
                [expr]
 
     def visit_db(self, expr, *args, **kwargs):
@@ -1421,17 +1577,17 @@ class FreeVars(ExprVisitor):
         return []
 
     def visit_bound(self, expr, *args, **kwargs):
-        return self.visit(expr.dom, *args, **kwargs)+\
+        return self.visit(expr.dom, *args, **kwargs) + \
                self.visit(expr.body, *args, **kwargs)
 
     def visit_app(self, expr, *args, **kwargs):
-        return self.visit(expr.conv, *args, **kwargs)+\
-               self.visit(expr.fun, *args, **kwargs)+\
+        return self.visit(expr.conv, *args, **kwargs) + \
+               self.visit(expr.fun, *args, **kwargs) + \
                self.visit(expr.arg, *args, **kwargs)
 
     def visit_pair(self, expr, *args, **kwargs):
-        return self.visit(expr.fst, *args, **kwargs)+\
-               self.visit(expr.snd, *args, **kwargs)+\
+        return self.visit(expr.fst, *args, **kwargs) + \
+               self.visit(expr.snd, *args, **kwargs) + \
                self.visit(expr.type, *args, **kwargs)
 
     def visit_fst(self, expr, *args, **kwargs):
@@ -1444,13 +1600,16 @@ class FreeVars(ExprVisitor):
         return self.visit(expr.tele, *args, **kwargs)
 
     def visit_sub(self, expr, *args, **kwargs):
-        return self.visit(expr.lhs, *args, **kwargs)+\
+        return self.visit(expr.lhs, *args, **kwargs) + \
                self.visit(expr.rhs, *args, **kwargs)
 
     def visit_box(self, expr, *args, **kwargs):
-        return self.visit(expr.conv, *args, **kwargs)+\
-               self.visit(expr.expr, *args, **kwargs)+\
+        return self.visit(expr.conv, *args, **kwargs) + \
+               self.visit(expr.expr, *args, **kwargs) + \
                self.visit(expr.type, *args, **kwargs)
+
+    def visit_mvar(self, expr, *args, **kwargs):
+        return self.visit(expr.tele, *args, **kwargs)
 
     def visit_tele(self, expr, *args, **kwargs):
         tele_vars = [v for ty in expr.types\

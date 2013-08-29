@@ -82,10 +82,6 @@ class ExprInfer(ExprVisitor):
     def __init__(self):
         ExprVisitor.__init__(self)
         self.check = ExprCheck
-        self.sub = subst_expr
-        self.abst = abstract_expr
-        self.open_fresh = open_bound_fresh
-        self.open_tele_fresh = open_tele_fresh
 
     def visit_const(self, expr, *args, **kwargs):
         if expr.info.checked:
@@ -123,10 +119,10 @@ class ExprInfer(ExprVisitor):
                    " or have as type a sort".format(expr.dom, dom_ty)
             raise ExprTypeError(mess, expr)
         #substitute a fresh constant in the body of the binder
-        var, open_expr = self.open_fresh(expr)
+        var, open_expr = open_bound_fresh(expr)
         #since the term may contain meta-variables, we close the open
         #expression to 'mark' the meta-variables with the closing operation
-        # self.abst([var], open_expr)
+        # abstract_expr([var], open_expr)
         #compute the type of the resulting expression
         expr_ty = self.visit(open_expr, *args, **kwargs)
         #Infer the type for each different binder
@@ -142,7 +138,7 @@ class ExprInfer(ExprVisitor):
             #Just need to check to see if the product is well-kinded:
             #for example: abs(x:Bool, Type) is not well-kinded
             self.visit(expr_ty, *args, **kwargs)
-            expr_ty = self.abst([var], expr_ty)
+            expr_ty = abstract_expr([var], expr_ty)
             return Bound(Pi(expr.binder.var), expr.dom, expr_ty)
         else:
             assert(expr.binder.is_forall() or expr.binder.is_exists())
@@ -161,7 +157,7 @@ class ExprInfer(ExprVisitor):
             #evidence.
             sub_dom = Sub(arg_ty, fun_ty.dom)
             self.check().visit(expr.conv, sub_dom, *args, **kwargs)
-            return self.sub([expr.arg], fun_ty.body)
+            return subst_expr([expr.arg], fun_ty.body)
         else:
             raise ExprTypeError("Non functional application in {0!s}"\
                                 .format(expr), expr)
@@ -169,7 +165,7 @@ class ExprInfer(ExprVisitor):
     def visit_pair(self, expr, *args, **kwargs):
         if expr.type.is_sig():
             self.check().visit(expr.fst, expr.type.dom, *args, **kwargs)
-            codom = self.sub([expr.fst], expr.type.body)
+            codom = subst_expr([expr.fst], expr.type.body)
             self.check().visit(expr.snd, codom, *args, **kwargs)
             return expr.type
         else:
@@ -190,7 +186,7 @@ class ExprInfer(ExprVisitor):
         arg_ty = self.visit(expr.expr, *args, **kwargs)
         if arg_ty.is_sig():
             fst_proj = Fst(expr.expr)
-            return self.sub([fst_proj], arg_ty.body)
+            return subst_expr([fst_proj], arg_ty.body)
         else:
             mess = "Expected a Sig type, got {0!s} instead"\
                    .format(arg_ty)
@@ -217,14 +213,32 @@ class ExprInfer(ExprVisitor):
         if is_sort(ty_sort):
             return expr.type
         else:
-            mess = "The type of {0!s} must be a sort.".format(expr.type)
+            mess = "The type of {0!s} is {1!s} "
+            "which should be Type, Kind or Bool"\
+                   .format(expr.type, ty_sort)
+            raise ExprTypeError(mess, expr)
+
+    def visit_mvar(self, expr, constrs, *args, **kwargs):
+        sort = self.visit(expr.type, constrs, *args, **kwargs)
+        if is_sort(sort):
+            #If the meta-variable stands as evidence for a proposition
+            #we add that proposition to the set of constraints, and
+            #set the value of the meta-variable to Ev.
+            if sort.is_bool():
+                expr.set_val(Ev(expr.tele))
+                constrs.append(goals.Goal(expr.tele, expr.type))
+            return expr.type
+        else:
+            mess = "The type of {0!s} is {1!s} "
+            "which should be Type, Kind or Bool"\
+                   .format(expr.type, sort)
             raise ExprTypeError(mess, expr)
 
     def visit_tele(self, expr, *args, **kwargs):
         #There is no need to check that the constants
         # are well-kinded as this will be done when
         # checking each type in the telescope.
-        open_tel = self.open_tele_fresh(expr, checked=True)[1]
+        open_tel = open_tele_fresh(expr, checked=True)[1]
         sorts = []
         for ty in open_tel:
             sorts.append(self.visit(ty, *args, **kwargs))
@@ -442,6 +456,13 @@ class ExprCheck(ExprVisitor):
         - `type`: a type
         - `**kwargs`:
         """
+        expr_ty = self.infer().visit(expr, *args, **kwargs)
+        if expr_ty.equals(type):
+            return True
+        else:
+            return False
+
+    def visit_mvar(self, expr, type, *args, **kwargs):
         expr_ty = self.infer().visit(expr, *args, **kwargs)
         if expr_ty.equals(type):
             return True
