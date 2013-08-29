@@ -189,7 +189,6 @@ class Destruct(Tactic):
     
     def __init__(self):
         Tactic.__init__(self, 'destruct')
-        self.open_expr = expr.open_expr
 
     #TODO: refactor this code
     def solve(self, goals, context):
@@ -209,10 +208,10 @@ class Destruct(Tactic):
                     lhs_dom = prop.lhs.dom
                     rhs_dom = prop.rhs.dom
                     fr_var = fresh_name.get_name(lhs.binder.var)
-                    lhs_codom = self.open_expr(fr_var, lhs_dom, lhs.body, None)
+                    lhs_codom = expr.open_expr(fr_var, lhs_dom, lhs.body, None)
                     #The lhs domain must be a subtype of the rhs domain
                     #for this expression to make sense
-                    rhs_codom = self.open_expr(fr_var, lhs_dom, rhs.body, None)
+                    rhs_codom = expr.open_expr(fr_var, lhs_dom, rhs.body, None)
                     dom_goal = sub_goal(tele, lhs_dom, rhs_dom)
                     codom_goal = sub_goal(tele, lhs_codom, rhs_codom)
                     return dom_goal + codom_goal + tail
@@ -222,10 +221,10 @@ class Destruct(Tactic):
                     # A <= C and C <= A and B(x) <= D(x)
                     # and similarly for lambda.
                     var = fresh_name.get_name(lhs.binder.var)
-                    codom_l = self.open_expr(var, lhs.dom, lhs.body, None)
+                    codom_l = expr.open_expr(var, lhs.dom, lhs.body, None)
                     #We use the same domain here, as they must be equal
                     # anyways
-                    codom_r = self.open_expr(var, lhs.dom, rhs.body, None)
+                    codom_r = expr.open_expr(var, lhs.dom, rhs.body, None)
                     dom_goals = eq_goal(tele, lhs.dom, rhs.dom)
                     codom_goal = sub_goal(tele, codom_l, codom_r)
                     return dom_goals + codom_goal + tail
@@ -266,13 +265,11 @@ class unpack(Tactic):
         Arguments:
         - `hyp_name`: the name of a hypothesis which has as type a sig
         type
-        - `names`: an optional list of names for the projections 
+        - `names`: an optional list of names for the projections
         """
         Tactic.__init__(self, 'unpack({0!s})'.format(hyp_name))
         self.hyp_name = hyp_name
         self.names = names
-        self.open_bound = expr.open_bound_fresh
-        self.sub_in = expr.sub_in
         
     def solve(self, goals, context):
         if len(goals) == 0:
@@ -289,7 +286,7 @@ class unpack(Tactic):
                 raise TacticFailure(mess, self, goals)
 
             h = tele.types[i]
-            sig_val = expr.unpack_sig(h, self.open_bound, self.names)
+            sig_val = expr.unpack_sig(h, self.names)
             new_tele = tele
             new_val = sig_val
             while new_val.is_pair():
@@ -298,7 +295,7 @@ class unpack(Tactic):
                 new_val = new_val.snd
             new_tele = new_tele.append(new_val.name, new_val.type)
             new_tele.pop(i)
-            new_prop = self.sub_in([sig_val], [self.hyp_name], prop)
+            new_prop = expr.sub_in([sig_val], [self.hyp_name], prop)
             return [Goal(new_tele, new_prop)] + tail
 
 
@@ -470,7 +467,6 @@ class unfold(Tactic):
         names_str = ','.join(names)
         Tactic.__init__(self, 'unfold({0!s})'.format(names_str))
         self.names = names
-        self.sub_in = expr.sub_in
         
     def solve(self, goals, context):
         if len(goals) == 0:
@@ -488,8 +484,8 @@ class unfold(Tactic):
                     mess = "{0!s} is not defined in context"
                     " {1!s}".format(k, context)
                     raise TacticFailure(mess, self, goal)
-            prop_sub = self.sub_in(exprs, self.names, prop)
-            tele_sub = self.sub_in(exprs, self.names, tele)
+            prop_sub = expr.sub_in(exprs, self.names, prop)
+            tele_sub = expr.sub_in(exprs, self.names, tele)
             return [Goal(tele_sub, prop_sub)] + tail
 
 

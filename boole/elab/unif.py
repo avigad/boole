@@ -13,10 +13,7 @@
 
 import boole.core.expr as e
 from boole.core.goals import *
-from boole.core.tactics import Tactic, TacticFailure, \
-     tac_from_fun, sub_goal, \
-     now, par, trytac, simpl, trivial, repeat
-import boole.core.tactics as tac
+from boole.core.tactics import *
 import elab
 import boole.core.conv as conv
 
@@ -84,23 +81,6 @@ def sub_fun(goal, context):
     return [Goal(tele, prop)]
 
 sub_mvar = tac_from_fun('sub_mvar', sub_fun)
-
-
-class unfold(tac.unfold):
-
-    def __init__(self, *names):
-        tac.unfold.__init__(self, *names)
-        self.sub_in = e.sub_in
-
-
-class DestructMvar(tac.Destruct):
-    
-    def __init__(self, ):
-        tac.Destruct.__init__(self)
-        self.open_expr = e.open_expr
-
-
-destruct = DestructMvar()
 
 
 def get_sub(goals):
@@ -210,7 +190,6 @@ def min_type(types, ctxt):
         if min_goal.is_solved():
             return t
     return None
-    
 
 
 class SolveMvars(Tactic):

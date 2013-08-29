@@ -12,7 +12,8 @@
 ##############################################################################
 
 from boole.elab.terms import *
-from boole.elab.elab import Mvar
+from boole.core.expr import Mvar
+import boole.elab.unif as unif
 
 
 if __name__ == '__main__':
@@ -58,4 +59,24 @@ if __name__ == '__main__':
 
     b = B('b')
     print
-    t, ty, g = elaborate(abst([A, a], a) == abst([B, b], b), None, None, None)
+    tm = abst([A, a], a) == abst([B, b], b)
+    ty, g = mvar_infer(tm, ctxt=local_ctxt)
+    print 'ty =', ty
+    print
+    print g
+    g.interact(unif.solve_mvar)
+    g.interact(unif.sub_mvar)
+    g.interact(unif.destruct >> unif.par(unif.trivial))
+    g.interact(unif.destruct)
+    g.interact(unif.solve_mvar >> unif.par(unif.sub_mvar) >> unif.par(unif.trivial))
+
+    tm = sub_mvar(tm, undef=True)
+
+    print tm.arg.body.to_string_raw()
+    print tm.fun.arg.body.to_string_raw()
+    print tm.arg.body.equals(tm.fun.arg.body)
+    print tm.fun.fun.arg.to_string()
+
+    # typing.infer(tm, ctxt=local_ctxt)
+
+    
