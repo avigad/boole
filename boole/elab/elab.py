@@ -423,6 +423,7 @@ def pi(var, codom, impl=None):
     Arguments:
     - `var`: a constant expr
     - `codom`: an expression possibly containing var
+    - `impl`: a flag which notes if the argument is implicit.
     """
     if var.is_const():
         codom_abs = e.abstract_expr([var.name], codom)

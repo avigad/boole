@@ -394,7 +394,13 @@ class Expr(object):
 
     def is_ev(self):
         """Tests whether the expression is an instance of
-        EV
+        Ev
+        """
+        return False
+
+    def is_mvar(self):
+        """Tests whether the expression is an instance of
+        Mvar
         """
         return False
 

@@ -919,6 +919,12 @@ class Mvar(Expr):
     def to_string(self):
         return "?{0!s}".format(self.name)
 
+    def is_mvar(self):
+        """Tests whether the expression is an instance of
+        Mvar
+        """
+        return True
+
     def equals(self, expr):
         #There should only be one instance of
         #each meta-variable, so we use pointer equality

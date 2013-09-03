@@ -72,15 +72,19 @@ mvar_stack = MvarStk()
 ###############################################################################
 
 
-def sub_fun(goal, context):
-    """Substitute all the meta-variables in the
-    goal and the telescope
+def sub_in_goal(goal):
+    """Substitute all the meta-variables in
+    a goal
+    
+    Arguments:
+    - `goal`:
     """
     tele = elab.sub_mvar(goal.tele)
     prop = elab.sub_mvar(goal.prop)
-    return [Goal(tele, prop)]
+    return Goal(tele, prop)
 
-sub_mvar = tac_from_fun('sub_mvar', sub_fun)
+
+sub_mvar = tac_from_fun('sub_mvar', lambda g, ctxt: [sub_in_goal(g)])
 
 
 def get_sub(goals):
@@ -163,7 +167,7 @@ def max_type(types, ctxt):
     - `ctxt`: a goal context
     """
     for t in types:
-        max_list = [Goals(e.nullctxt(), e.Sub(u, t))\
+        max_list = [Goal(e.nullctxt(), e.Sub(u, t))\
                     for u in types]
         max_goal = Goals('max_goal', ctxt, goals=max_list)
         max_goal.solve_with(par(trivial))
@@ -183,7 +187,7 @@ def min_type(types, ctxt):
     - `ctxt`: a goal context
     """
     for t in types:
-        min_list = [Goals(e.nullctxt(), e.Sub(t, u))\
+        min_list = [Goal(e.nullctxt(), e.Sub(t, u))\
                     for u in types]
         min_goal = Goals('min_goal', ctxt, goals=min_list)
         min_goal.solve_with(par(trivial))
@@ -199,24 +203,27 @@ class SolveMvars(Tactic):
     goals. The base inequalities come from the global context only!
     """
     
-    def __init__(self, ):
+    def __init__(self):
         Tactic.__init__(self, 'solve_mvars')
 
     def solve(self, goals, context):
         ineq_goals = Goals('sub', context, goals=get_sub(goals))
-        #TODO: is this enough?
-        ineq_goals.solve_with(par(repeat(par(destruct))) >> trivial)
+        ineq_goals.solve_with(\
+            par(trivial) >> \
+            repeat(destruct >> par(trivial)) >> \
+            par(trivial))
         if ineq_goals.is_solved():
             return []
         else:
             ineqs = ineq_goals.goals
-            c = ineqs[0]
+            c = ineqs[0].prop
             assert(c.is_sub())
+            #In this destruct>>trivial was unable to solve the constraint
             if not (c.lhs.is_mvar() or c.rhs.is_mvar()):
                 mess = "Unsolvable constraint {0!s}".format(c)
-                raise TacticFailure(self, mess)
+                raise TacticFailure(mess, self, goals)
             else:
-                if c.lhs.is_mvar:
+                if c.lhs.is_mvar():
                     m = c.lhs
                 else:
                     m = c.rhs
@@ -224,9 +231,37 @@ class SolveMvars(Tactic):
                 lt, gt, other = split(m, ineqs)
                 m_elim = cross(lt, gt) + other
                 self.solve(m_elim, context)
-                raise NotImplementedError()
-                
-                
+                lt = map(sub_in_goal, lt)
+                gt = map(sub_in_goal, gt)
+                if len(lt) != 0:
+                    lbs = [ineq.prop.lhs for ineq in lt]
+                    glb = max_type(lbs, context)
+                    if not (glb is None):
+                        m.set_val(glb)
+                        mvar_stack.push(m)
+                    else:
+                        #Try the first possible solution
+                        m.set_val(lbs[0])
+                        mvar_stack.push(m)
+                elif len(gt) != 0:
+                    ubs = [ineq.prop.rhs for ineq in gt]
+                    lub = min_type(ubs, context)
+                    if not (lub is None):
+                        m.set_val(lub)
+                        mvar_stack.push(m)
+                    else:
+                        #Try the first possible solution
+                        m.set_val(ubs[0])
+                        mvar_stack.push(m)
+                else:
+                    pass
+
+            sub_out = Goals('out', context, goals=goals)
+            sub_out.solve_with(par(sub_mvar) >> par(trivial))
+            return sub_out.goals
+
+solve_mvars = SolveMvars()
+
 
 class SolveMvar(Tactic):
     """If a goal is of the form X <= T
@@ -257,7 +292,8 @@ class SolveMvar(Tactic):
                     mvar = prop.rhs
                     tm = prop.lhs
                 else:
-                    mess = "No top-level meta-variable in {0!s}".format(goal.prop)
+                    mess = "No top-level meta-variable in {0!s}"\
+                           .format(goal.prop)
                     raise TacticFailure(mess, self, goals)
                 if not elab.mvar_is_present(tm, mvar):
                     mvar.set_val(tm)
@@ -359,13 +395,13 @@ class Instances(Tactic):
                     mvar_stack.new()
                     return now(par(sub_mvar)\
                                >> instance(inst)\
-                               >> par(unify)\
+                               >> unify\
                                >> par(trytac(self))\
-                               >> par(unify))\
+                               >> unify)\
                            .solve(goals, context)
                 except TacticFailure:
                     mvar_stack.free()
-            goal_str = map(str, goals)
+            goal_str = goals[0].prop
             mess = "No class instances for goal {0!s}".format(goal_str)
             raise TacticFailure(mess, self, goals)
 
@@ -378,7 +414,4 @@ instances = Instances()
 ###############################################################################
 
 
-unif_step = sub_mvar >> simpl(conv.par_beta) >> par(trivial) >> (solve_mvar | destruct)
-
-
-unify = repeat(unif_step)
+unify = sub_mvar >> simpl(conv.par_beta) >> par(trivial) >> solve_mvars

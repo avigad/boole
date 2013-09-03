@@ -675,7 +675,7 @@ def set_verbose(setting=True):
 #
 ###############################################################################
 
-elab_tac = tac.par(u.unify) >> tac.trytac(u.instances)
+elab_tac = u.unify >> tac.trytac(u.instances)
 type_tac = tac.auto >> tac.trytac(u.instances)
 
 
