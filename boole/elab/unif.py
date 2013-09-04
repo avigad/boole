@@ -218,10 +218,16 @@ class SolveMvars(Tactic):
             ineqs = ineq_goals.goals
             c = ineqs[0].prop
             assert(c.is_sub())
-            #In this destruct>>trivial was unable to solve the constraint
+            #destruct>>trivial was unable to solve the constraint
             if not (c.lhs.is_mvar() or c.rhs.is_mvar()):
-                mess = "Unsolvable constraint {0!s}".format(c)
-                raise TacticFailure(mess, self, goals)
+                #in this case, we have a higher-order unification problem, and
+                #we just give up in hopes of finding an instance later (e.g. using
+                #a type class)
+                if e.root_app(c.lhs)[0].is_mvar() or e.root_app(c.rhs)[0].is_mvar():
+                    pass
+                else:
+                    mess = "Unsolvable constraint {0!s}".format(c)
+                    raise TacticFailure(mess, self, goals)
             else:
                 if c.lhs.is_mvar():
                     m = c.lhs
@@ -414,4 +420,4 @@ instances = Instances()
 ###############################################################################
 
 
-unify = sub_mvar >> simpl(conv.par_beta) >> par(trivial) >> solve_mvars
+unify = sub_mvar >> par(simpl(conv.par_beta)) >> par(trivial) >> solve_mvars

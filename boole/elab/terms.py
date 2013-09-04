@@ -679,7 +679,7 @@ elab_tac = u.unify >> tac.trytac(u.instances)
 type_tac = tac.auto >> tac.trytac(u.instances)
 
 
-def elaborate(expr, type, elabtac, tactic):
+def elaborate(expr, type, unfold):
     """Elaborate an expression and (optionally) its type.
     Returns the elaborated expression and its type, and any
     remaining obligations.
@@ -691,12 +691,14 @@ def elaborate(expr, type, elabtac, tactic):
     - `elabtac`: a tactic to use in the elaboration
     - `tactic`: a tactic to use in the type-checking
     """
+    if unfold is None:
+        unfold_tac = tac.idtac
+    else:
+        unfold_tac = tac.par(tac.unfold(*unfold))
+    
     if expr.info.elaborated and type is None:
         ty, obl = typing.infer(expr, ctxt=local_ctxt)
-        if tactic is None:
-            obl.solve_with(type_tac)
-        else:
-            obl.solve_with(tactic)
+        obl.solve_with(unfold_tac >> type_tac)
         return (expr, ty, obl)
 
     _, obl = mvar_infer(expr, ctxt=local_ctxt)
@@ -704,10 +706,7 @@ def elaborate(expr, type, elabtac, tactic):
     u.mvar_stack.clear()
     u.mvar_stack.new()
 
-    if elabtac is None:
-        obl.solve_with(elab_tac)
-    else:
-        obl.solve_with(elabtac)
+    obl.solve_with(unfold_tac >> elab_tac)
 
     val = sub_mvar(expr, undef=True)
 
@@ -717,10 +716,7 @@ def elaborate(expr, type, elabtac, tactic):
         u.mvar_stack.clear()
         u.mvar_stack.new()
         
-        if elabtac is None:
-            obl.solve_with(elab_tac)
-        else:
-            obl.solve_with(elabtac)
+        obl.solve_with(unfold_tac >> elab_tac)
 
         ty = sub_mvar(type, undef=True)
 
@@ -728,11 +724,8 @@ def elaborate(expr, type, elabtac, tactic):
         ty, obl = typing.infer(val, ctxt=local_ctxt)
     else:
         ty, obl = typing.infer(val, type=ty, ctxt=local_ctxt)
-
-    if tactic is None:
-        obl.solve_with(type_tac)
-    else:
-        obl.solve_with(tactic)
+        
+    obl.solve_with(unfold_tac >> type_tac)
 
     val.info['elaborated'] = True
 
@@ -744,7 +737,7 @@ def elaborate(expr, type, elabtac, tactic):
     return (val, ty, obl)
 
 
-def check(expr, type=None, tactic=None):
+def check(expr, type=None, unfold=None):
     """Elaborates the expression if necessary, and shows the type. Returns
     the elaborated expression
     
@@ -754,7 +747,7 @@ def check(expr, type=None, tactic=None):
     - `tactic`: a tactic to use in the elaboration
     """
 
-    val, ty, obl = elaborate(expr, type, None, tactic)
+    val, ty, obl = elaborate(expr, type, unfold)
     if obl.is_solved():
         if verbose:
             print "{0!s} : {1!s}.\n".format(val, ty)
@@ -791,7 +784,7 @@ def deftype(name, **kwargs):
     return c
 
 
-def defconst(name, type, tactic=None, **kwargs):
+def defconst(name, type, unfold=None, **kwargs):
     """Define a constant, add it to
     local_ctxt and return it.
     
@@ -805,7 +798,7 @@ def defconst(name, type, tactic=None, **kwargs):
     """
     c = const(name, type, **kwargs)
 
-    c, _, obl = elaborate(c, type, None, tactic)
+    c, _, obl = elaborate(c, type, unfold)
 
     c.info['checked'] = True
     local_ctxt.add_const(c)
@@ -820,7 +813,7 @@ def defconst(name, type, tactic=None, **kwargs):
     return c
 
 
-def defexpr(name, value, type=None, tactic=None, **kwargs):
+def defexpr(name, value, type=None, unfold=None, **kwargs):
     """Define an expression with a given type and value.
     Checks that the type of value is correct, and adds the defining
     equation to the context.
@@ -830,7 +823,7 @@ def defexpr(name, value, type=None, tactic=None, **kwargs):
     - `type`: an expression
     - `value`: an expression
     """
-    val, ty, obl = elaborate(value, type, None, tactic)
+    val, ty, obl = elaborate(value, type, unfold)
 
     c = const(name, ty, **kwargs)
     c.info['defined'] = True
@@ -869,15 +862,12 @@ def defhyp(name, prop):
     return c
 
 
-def defthm(name, prop, tactic=None):
-    """Declare a theorem and call a tactic to attempt to solve it.
-    add it as a hypothesis regardless.
+def defthm(name, prop, unfold=None):
+    """Declare a theorem and call the default tactic to attempt to
+    solve it.  add it as a hypothesis regardless.
     
     """
-    if tactic:
-        c = defexpr(name, triv(), prop, tactic=tactic)
-    else:
-        c = defexpr(name, triv(), prop)
+    c = defexpr(name, triv(), prop, unfold=unfold)
     local_ctxt.add_to_field(name, c.type, 'hyps')
     return c
 
@@ -928,8 +918,7 @@ def definstance(name, ty, value):
     root, _ = root_app(root_clause(ty))
     if root.info.is_class:
         class_name = root.name
-        class_tac = tac.par(tac.unfold(class_name)) >> tac.auto
-        c = defexpr(name, value, type=ty, tactic=class_tac)
+        c = defexpr(name, value, type=ty, unfold=[class_name])
         local_ctxt.add_to_field(name, c.type, 'class_instances')
         local_ctxt.add_to_field(name, c.type, 'hyps')
         return c
