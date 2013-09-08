@@ -170,6 +170,7 @@ def max_type(types, ctxt):
         max_list = [Goal(e.nullctxt(), e.Sub(u, t))\
                     for u in types]
         max_goal = Goals('max_goal', ctxt, goals=max_list)
+        #TODO: use a special inequality tactic
         max_goal.solve_with(par(trivial))
         if max_goal.is_solved():
             return t
@@ -236,7 +237,9 @@ class SolveMvars(Tactic):
                 assert(m.is_mvar())
                 lt, gt, other = split(m, ineqs)
                 m_elim = cross(lt, gt) + other
+
                 self.solve(m_elim, context)
+
                 lt = map(sub_in_goal, lt)
                 gt = map(sub_in_goal, gt)
                 if len(lt) != 0:

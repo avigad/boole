@@ -22,11 +22,32 @@ if __name__ == '__main__':
 
 
     x = Real('x')
-    y = Real('y')
-    
-    z = defexpr('z', x)
 
-    defthm('false', x == z, unfold='z')
+    i = Int('i')
+
+    defexpr('t', i + x)
+    defexpr('u', x + i)
+    defexpr('v', i + i)
+    
+    Nat = deftype('Nat')
+    defsub('nat_sub_int', Nat <= Int)
+
+    #FIXME: this should be unnecessary
+    defsub('nat_sub_real', Nat <= Real)
+
+    n = Nat('n')
+
+    add_nat = defconst('add_nat', Nat >> (Nat >> Nat))
+
+    definstance('Add_nat', Add(Nat, add_nat), triv())
+
+    defexpr('w', n + n)
+
+    defexpr('ww', n + i)
+
+    defexpr('www', x + (i + n))
+
+    defexpr('www', (i + n) + x)
 
     # m1 = Mvar('m1', Type)
     # m2 = Mvar('m2', Type)
