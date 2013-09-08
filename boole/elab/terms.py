@@ -710,6 +710,7 @@ def elaborate(expr, type, unfold):
 
     val = sub_mvar(expr, undef=True)
 
+    #TODO: remove duplicatoin of work here
     if not (type is None):
         _, obl = mvar_infer(type, ctxt=local_ctxt)
 
@@ -724,7 +725,7 @@ def elaborate(expr, type, unfold):
         ty, obl = typing.infer(val, ctxt=local_ctxt)
     else:
         ty, obl = typing.infer(val, type=ty, ctxt=local_ctxt)
-        
+
     obl.solve_with(unfold_tac >> type_tac)
 
     val.info['elaborated'] = True
@@ -837,10 +838,12 @@ def defexpr(name, value, type=None, unfold=None, **kwargs):
     local_ctxt.add_to_field(name, val, 'defs')
 
     if obl.is_solved():
+        c.info['unsolved_tcc'] = False
         if verbose:
             print "{0!s} : {1!s} := {2!s} is defined.\n".format(c, ty, val)
     else:
         local_ctxt.add_to_field(obl.name, obl, 'goals')
+        c.info['unsolved_tcc'] = True
         print "In the definition\n"\
         " {0!s} = {1!s} : {2!s}".format(name, val, ty)
         print "remaining type-checking constraints!"
@@ -864,11 +867,12 @@ def defhyp(name, prop):
 
 def defthm(name, prop, unfold=None):
     """Declare a theorem and call the default tactic to attempt to
-    solve it.  add it as a hypothesis regardless.
+    solve it. Add it as a hypothesis if it is solved.
     
     """
     c = defexpr(name, triv(), prop, unfold=unfold)
-    local_ctxt.add_to_field(name, c.type, 'hyps')
+    if not c.info['unsolved_tcc']:
+        local_ctxt.add_to_field(name, c.type, 'hyps')
     return c
 
 

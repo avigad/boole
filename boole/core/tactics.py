@@ -481,8 +481,7 @@ class unfold(Tactic):
                     e = context.get_from_field(name, 'defs')
                     exprs.append(e)
                 except KeyError, k:
-                    mess = "{0!s} is not defined in context"
-                    " {1!s}".format(k, context)
+                    mess = "{0!s} is not defined in context {1!s}".format(k, context)
                     raise TacticFailure(mess, self, goal)
             prop_sub = expr.sub_in(exprs, self.names, prop)
             tele_sub = expr.sub_in(exprs, self.names, tele)

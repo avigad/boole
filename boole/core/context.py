@@ -150,3 +150,5 @@ class Context(object):
                    .format(field, self.name)
             raise ContextErr(mess, self)
         
+    def __str__(self):
+        return self.name

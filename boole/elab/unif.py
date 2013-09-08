@@ -213,7 +213,7 @@ class SolveMvars(Tactic):
             repeat(destruct >> par(trivial)) >> \
             par(trivial))
         if ineq_goals.is_solved():
-            return []
+            return filter(lambda g: not g.prop.is_sub(), goals)
         else:
             ineqs = ineq_goals.goals
             c = ineqs[0].prop

@@ -23,7 +23,7 @@ from boole.elab.terms import *
 
 if __name__ == '__main__':
 
-    set_verbose()
+    # set_verbose()
     
     el = defconst('el', X)
 
@@ -81,32 +81,33 @@ if __name__ == '__main__':
 
     definstance('One_grp', forall(grp, One(grp_carr(grp), grp_one(grp))), triv())
 
-    #FIXME: correctness bug here!
-    definstance('Unit_right_grp', \
-                forall(grp, Unit_right(grp_carr(grp),\
-                                       grp_op(grp),\
-                                       grp_one(grp),
-                                       triv(),
-                                       triv())),\
+
+    definstance('Unit_right_grp',
+                forall(grp, Unit_right(grp_carr(grp),
+                                  grp_op(grp),
+                                  grp_one(grp),
+                                  triv(),
+                                  triv())),
                 triv())
 
-    # goal = local_ctxt.next_goal()
 
-    # goal.interact(tac.par(tac.trytac(unif.instances)))
+    goal = local_ctxt.next_goal()
 
-    # goal.interact(tac.unfold('Grp'))
+    goal.interact(tac.par(tac.trytac(unif.instances)))
 
-    # goal.interact(tac.unpack('grp'))
+    goal.interact(tac.unfold('Grp'))
 
-    # #grp_carr is invisible!
-    # #it appears in an implicit argument.
-    # goal.interact(tac.unfold('*', 'one', 'grp_carr', 'grp_op', 'grp_one'))
+    goal.interact(tac.unpack('grp'))
 
-    # goal.interact(tac.simpl(conv.beta_norm))
+    #grp_carr is invisible!
+    #it appears in an implicit argument.
+    goal.interact(tac.unfold('*', 'one', 'grp_carr', 'grp_op', 'grp_one'))
 
-    # goal.interact(unif.mvar_apply(goal[0]['G_unit_r']))
+    goal.interact(tac.simpl(conv.beta_norm))
 
-    # goal.interact(unif.unify >> tac.par(tac.trivial))
+    goal.interact(unif.mvar_apply(goal[0]['G_unit_r']))
+
+    goal.interact(unif.unify >> tac.par(tac.trivial))
 
     g = defconst('g', grp_carr(grp))
     h = defconst('h', grp_carr(grp))
