@@ -108,8 +108,11 @@ class Tactic(object):
 
 class tac_from_fun(Tactic):
     """Creates a tactic using a function
-    which takes a goal, a context and returns
-    a list of goals
+    which takes a goal, a context, a tactic object
+    and returns a list of goals.
+
+    The tactic object is returned in the event of
+    a Tacticfailure exception.
     """
     
     def __init__(self, name, fun):
@@ -120,10 +123,10 @@ class tac_from_fun(Tactic):
         if len(goals) == 0:
             return []
         else:
-            return self.fun(goals[0], context) + goals[1:]
+            return self.fun(goals[0], context, self) + goals[1:]
 
 
-def triv_fun(goal, context):
+def triv_fun(goal, context, _):
     prop = goal.prop
     hyps = goal.tele
     if prop.is_const() and prop.name == 'true':
@@ -135,13 +138,10 @@ def triv_fun(goal, context):
         else:
             lhs = expr.arg_i(prop, 1)
             rhs = expr.arg_i(prop, 2)
-        #try for pointer equality first.
-        if lhs is rhs:
-            return []
-        elif lhs.equals(rhs):
+        if lhs.equals(rhs):
             return []
         elif lhs.is_const() and lhs.name == 'true':
-            return triv_fun(Goal(hyps, prop.rhs), context)
+            return triv_fun(Goal(hyps, prop.rhs), context, _)
 
     for h in hyps.types:
         if h.equals(prop):
@@ -156,6 +156,73 @@ def triv_fun(goal, context):
 
 
 trivial = tac_from_fun('trivial', triv_fun)
+
+
+def is_in(el, list):
+    """Decides whether an element is
+    in a list of elements.
+    
+    Arguments:
+    - `el`: an expression
+    - `a list of expressions`:
+    """
+    for e in list:
+        if el.equals(e):
+            return True
+
+    return False
+
+
+def reach(typs, typ2, subs):
+    """Determine whether typ2 is reachable
+    from typs using subs as nodes
+    
+    Arguments:
+    - `typs`: An expression list
+    - `typ2`: An expresion
+    - `subs`: A list of expressions of the form A <= B
+    """
+    reached = typs[:]
+    for e in subs:
+        if is_in(e.lhs, reached) and (not is_in(e.rhs, reached)):
+            reached += [e.rhs]
+        else:
+            pass
+    if is_in(typ2, reached):
+        return True
+    elif len(reached) > len(typs):
+        return reach(reached, typ2, subs)
+    else:
+        return False
+
+
+def decide_sub(sub, subs):
+    """Decide a subtype entailment given a list of hypotheses.
+    
+    Arguments:
+    - `sub`: a term of the form T <= U
+    - `subs`: a list of terms of the form T <= U
+    """
+    return reach([sub.lhs], sub.rhs, subs)
+
+
+def sub_fun(goal, context, tac):
+    """Solve a goal of the form T <= U
+    by looking in the context for subtype declarations.
+    """
+    prop = goal.prop
+    if prop.is_sub():
+        context_subs = [s for _, s in context.sub.iteritems()]
+        if decide_sub(prop, context_subs):
+            return []
+        else:
+            mess = "Cannot decide {0!s}".format(prop)
+            raise TacticFailure(mess, tac, goal)
+    else:
+        mess = "{0!s} is not a of the form A <= B".format(prop)
+        raise TacticFailure(mess, tac, goal)
+
+sub_tac = tac_from_fun('sub_tac', sub_fun)
 
 
 class simpl(Tactic):
@@ -488,7 +555,7 @@ class unfold(Tactic):
             return [Goal(tele_sub, prop_sub)] + tail
 
 
-def intro_fun(goal, context):
+def intro_fun(goal, context, _):
     """Introduces hypotheses into the context.
     """
     hyps = goal.tele
@@ -518,4 +585,4 @@ class par(Tactic):
         return [g for gs in new_goals for g in gs]
 
 
-auto = par(simpl(conv.par_beta) >> intros >> trivial)
+auto = par(simpl(conv.par_beta) >> intros >> trivial >> trytac(sub_tac))

@@ -34,7 +34,11 @@ class MvarStk(object):
     
     def __init__(self):
         self.stacks = []
-        
+
+    def __str__(self):
+        return "\n".join(
+            [", ".join(map(str, s)) for s in self.stacks])
+
     def new(self):
         """Add a stack to the list
         """
@@ -84,7 +88,7 @@ def sub_in_goal(goal):
     return Goal(tele, prop)
 
 
-sub_mvar = tac_from_fun('sub_mvar', lambda g, ctxt: [sub_in_goal(g)])
+sub_mvar = tac_from_fun('sub_mvar', lambda g, ctxt, tac: [sub_in_goal(g)])
 
 
 def get_sub(goals):
@@ -170,8 +174,7 @@ def max_type(types, ctxt):
         max_list = [Goal(e.nullctxt(), e.Sub(u, t))\
                     for u in types]
         max_goal = Goals('max_goal', ctxt, goals=max_list)
-        #TODO: use a special inequality tactic
-        max_goal.solve_with(par(trivial))
+        max_goal.solve_with(par(trytac(sub_tac)))
         if max_goal.is_solved():
             return t
     return None
@@ -423,4 +426,6 @@ instances = Instances()
 ###############################################################################
 
 
-unify = sub_mvar >> par(simpl(conv.par_beta)) >> par(trivial) >> solve_mvars
+unify = sub_mvar >> \
+        par(simpl(conv.par_beta)) >> par(trivial) >> par(trytac(sub_tac)) >> \
+        solve_mvars

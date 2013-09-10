@@ -78,7 +78,7 @@ class Const(Expr):
     def is_const(self):
         return True
 
-    def equals(self, expr):
+    def eq(self, expr):
         """Structural equality.
         
         Arguments:
@@ -135,7 +135,7 @@ class DB(Expr):
     def is_db(self):
         return True
 
-    def equals(self, expr):
+    def eq(self, expr):
         """Structural equality.
         
         Arguments:
@@ -172,7 +172,7 @@ class Type(Expr):
     def is_type(self):
         return True
 
-    def equals(self, expr):
+    def eq(self, expr):
         """Structural equality.
         
         Arguments:
@@ -206,7 +206,7 @@ class Kind(Expr):
     def is_kind(self):
         return True
 
-    def equals(self, expr):
+    def eq(self, expr):
         """Structural equality.
         
         Arguments:
@@ -240,7 +240,7 @@ class Bool(Expr):
     def is_bool(self):
         return True
 
-    def equals(self, expr):
+    def eq(self, expr):
         """Structural equality.
         
         Arguments:
@@ -294,7 +294,7 @@ class Bound(Expr):
     def is_bound(self):
         return True
 
-    def equals(self, expr):
+    def eq(self, expr):
         """Structural equality.
         
         Arguments:
@@ -345,7 +345,7 @@ class App(Expr):
     def is_app(self):
         return True
 
-    def equals(self, expr):
+    def eq(self, expr):
         """Structural equality.
         
         Arguments:
@@ -392,7 +392,7 @@ class Pair(Expr):
     def is_pair(self):
         return True
 
-    def equals(self, expr):
+    def eq(self, expr):
         """Structural equality.
         
         Arguments:
@@ -486,7 +486,7 @@ class Snd(Expr):
     def is_snd(self):
         return True
 
-    def equals(self, expr):
+    def eq(self, expr):
         """Structural equality.
         
         Arguments:
@@ -528,7 +528,7 @@ class Ev(Expr):
     def is_ev(self):
         return True
 
-    def equals(self, expr):
+    def eq(self, expr):
         """Structural equality. Does not compare telescopes!
         
         Arguments:
@@ -577,7 +577,7 @@ class Sub(Expr):
     def is_sub(self):
         return True
 
-    def equals(self, expr):
+    def eq(self, expr):
         """Structural equality.
         
         Arguments:
@@ -625,7 +625,7 @@ class Box(Expr):
     def is_box(self):
         return True
 
-    def equals(self, expr):
+    def eq(self, expr):
         """Structural equality.
         
         Arguments:
@@ -778,7 +778,7 @@ class Tele(Expr):
         ty_str = ', '.join(map(str, self.types))
         return "Tele([{0!s}], [{1!s}])".format(var_str, ty_str)
 
-    def equals(self, tele):
+    def eq(self, tele):
         """Structural equality.
         
         Arguments:
@@ -925,7 +925,7 @@ class Mvar(Expr):
         """
         return True
 
-    def equals(self, expr):
+    def eq(self, expr):
         #There should only be one instance of
         #each meta-variable, so we use pointer equality
         return self is expr

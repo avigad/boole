@@ -64,6 +64,19 @@ class Expr(object):
             mess = '`BaseExpr` object does not support lookup'
             raise TypeError(mess)
         
+    def equals(self, expr):
+        """Structural equality. Checks if
+        the terms are pointer-equal, and calls
+        the constructor specific method otherwise.
+        
+        Arguments:
+        - `expr`: an arbitrary expression
+        """
+        if self is expr:
+            return True
+        else:
+            return self.eq(expr)
+
     # equality and disequality
     
     def __eq__(self, arg):

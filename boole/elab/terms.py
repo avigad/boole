@@ -708,9 +708,13 @@ def elaborate(expr, type, unfold):
 
     obl.solve_with(unfold_tac >> elab_tac)
 
-    val = sub_mvar(expr, undef=True)
+    try:
+        val = sub_mvar(expr, undef=True)
+    except Exception:
+        print obl
+        raise
 
-    #TODO: remove duplicatoin of work here
+    #TODO: remove duplication of work here
     if not (type is None):
         _, obl = mvar_infer(type, ctxt=local_ctxt)
 
