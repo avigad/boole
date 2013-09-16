@@ -78,8 +78,8 @@ def test1():
 
     definstance('Mul_prod', \
                 forall([A, op_a, B, op_b], \
-                implies(Mul(A, op_a), \
-                        implies(Mul(B, op_b), Mul(A*B, op_pair)))), \
+                implies([Mul(A, op_a), Mul(B, op_b)],\
+                        Mul(A*B, op_pair))), \
                 triv())
 
 

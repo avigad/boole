@@ -63,12 +63,13 @@ class Const(Expr):
             self.info[k] = kwargs[k]
 
     def accept(self, visitor, *args, **kwargs):
-        """
+        """The accept method allows the definition of
+        recursive functions over objects of type expr.
         
         Arguments:
-        - `visitor`:
-        - `*args`:
-        - `**kwargs`:
+        - `visitor`: an object of class ExprVisitor
+        - `*args`: arguments to the visitor instance
+        - `**kwargs`: named arguments to the visitor instance
         """
         return visitor.visit_const(self, *args, **kwargs)
 
@@ -120,12 +121,13 @@ class DB(Expr):
             self.index -= 1
 
     def accept(self, visitor, *args, **kwargs):
-        """
+        """The accept method allows the definition of
+        recursive functions over objects of type expr.
         
         Arguments:
-        - `visitor`:
-        - `*args`:
-        - `**kwargs`:
+        - `visitor`: an object of class ExprVisitor
+        - `*args`: arguments to the visitor instance
+        - `**kwargs`: named arguments to the visitor instance
         """
         return visitor.visit_db(self, *args, **kwargs)
 
@@ -157,12 +159,13 @@ class Type(Expr):
         Expr.__init__(self)
 
     def accept(self, visitor, *args, **kwargs):
-        """
+        """The accept method allows the definition of
+        recursive functions over objects of type expr.
         
         Arguments:
-        - `visitor`:
-        - `*args`:
-        - `**kwargs`:
+        - `visitor`: an object of class ExprVisitor
+        - `*args`: arguments to the visitor instance
+        - `**kwargs`: named arguments to the visitor instance
         """
         return visitor.visit_type(self, *args, **kwargs)
 
@@ -191,12 +194,13 @@ class Kind(Expr):
         Expr.__init__(self)
 
     def accept(self, visitor, *args, **kwargs):
-        """
+        """The accept method allows the definition of
+        recursive functions over objects of type expr.
         
         Arguments:
-        - `visitor`:
-        - `*args`:
-        - `**kwargs`:
+        - `visitor`: an object of class ExprVisitor
+        - `*args`: arguments to the visitor instance
+        - `**kwargs`: named arguments to the visitor instance
         """
         return visitor.visit_kind(self, *args, **kwargs)
 
@@ -225,12 +229,13 @@ class Bool(Expr):
         Expr.__init__(self)
 
     def accept(self, visitor, *args, **kwargs):
-        """
+        """The accept method allows the definition of
+        recursive functions over objects of type expr.
         
         Arguments:
-        - `visitor`:
-        - `*args`:
-        - `**kwargs`:
+        - `visitor`: an object of class ExprVisitor
+        - `*args`: arguments to the visitor instance
+        - `**kwargs`: named arguments to the visitor instance
         """
         return visitor.visit_bool(self, *args, **kwargs)
 
@@ -269,12 +274,13 @@ class Bound(Expr):
         self.body = body
 
     def accept(self, visitor, *args, **kwargs):
-        """
+        """The accept method allows the definition of
+        recursive functions over objects of type expr.
         
         Arguments:
-        - `visitor`:
-        - `*args`:
-        - `**kwargs`:
+        - `visitor`: an object of class ExprVisitor
+        - `*args`: arguments to the visitor instance
+        - `**kwargs`: named arguments to the visitor instance
         """
         return visitor.visit_bound(self, *args, **kwargs)
 
@@ -325,12 +331,13 @@ class App(Expr):
         self.arg = arg
 
     def accept(self, visitor, *args, **kwargs):
-        """
+        """The accept method allows the definition of
+        recursive functions over objects of type expr.
         
         Arguments:
-        - `visitor`:
-        - `*args`:
-        - `**kwargs`:
+        - `visitor`: an object of class ExprVisitor
+        - `*args`: arguments to the visitor instance
+        - `**kwargs`: named arguments to the visitor instance
         """
         return visitor.visit_app(self, *args, **kwargs)
 
@@ -376,12 +383,13 @@ class Pair(Expr):
         self.type = type
 
     def accept(self, visitor, *args, **kwargs):
-        """
+        """The accept method allows the definition of
+        recursive functions over objects of type expr.
         
         Arguments:
-        - `visitor`:
-        - `*args`:
-        - `**kwargs`:
+        - `visitor`: an object of class ExprVisitor
+        - `*args`: arguments to the visitor instance
+        - `**kwargs`: named arguments to the visitor instance
         """
         return visitor.visit_pair(self, *args, **kwargs)
 
@@ -420,12 +428,13 @@ class Fst(Expr):
         self.expr = expr
 
     def accept(self, visitor, *args, **kwargs):
-        """
-    
+        """The accept method allows the definition of
+        recursive functions over objects of type expr.
+        
         Arguments:
-        - `visitor`:
-        - `*args`:
-        - `**kwargs`:
+        - `visitor`: an object of class ExprVisitor
+        - `*args`: arguments to the visitor instance
+        - `**kwargs`: named arguments to the visitor instance
         """
         return visitor.visit_fst(self, *args, **kwargs)
 
@@ -466,12 +475,13 @@ class Snd(Expr):
         self.expr = expr
 
     def accept(self, visitor, *args, **kwargs):
-        """
-    
+        """The accept method allows the definition of
+        recursive functions over objects of type expr.
+        
         Arguments:
-        - `visitor`:
-        - `*args`:
-        - `**kwargs`:
+        - `visitor`: an object of class ExprVisitor
+        - `*args`: arguments to the visitor instance
+        - `**kwargs`: named arguments to the visitor instance
         """
         return visitor.visit_snd(self, *args, **kwargs)
 
@@ -513,17 +523,18 @@ class Ev(Expr):
         self.tele = tele
         
     def accept(self, visitor, *args, **kwargs):
-        """
+        """The accept method allows the definition of
+        recursive functions over objects of type expr.
         
         Arguments:
-        - `visitor`:
-        - `*args`:
-        - `**kwargs`:
+        - `visitor`: an object of class ExprVisitor
+        - `*args`: arguments to the visitor instance
+        - `**kwargs`: named arguments to the visitor instance
         """
         return visitor.visit_ev(self, *args, **kwargs)
 
     def to_string(self):
-        return "Ev({0!s})".format(self.tele)
+        return "Ev({0!s})".format(self.tele.types)
 
     def is_ev(self):
         return True
@@ -557,12 +568,13 @@ class Sub(Expr):
         self.rhs = rhs
 
     def accept(self, visitor, *args, **kwargs):
-        """
+        """The accept method allows the definition of
+        recursive functions over objects of type expr.
         
         Arguments:
-        - `visitor`:
-        - `*args`:
-        - `**kwargs`:
+        - `visitor`: an object of class ExprVisitor
+        - `*args`: arguments to the visitor instance
+        - `**kwargs`: named arguments to the visitor instance
         """
         return visitor.visit_sub(self, *args, **kwargs)
 
@@ -591,8 +603,8 @@ class Sub(Expr):
 
 class Box(Expr):
     """Boxed epressions: a boxed expression
-    carries a type and a witness that the type of
-    the expression is a subtype of it.
+    carries a an expression, a type and a witness that the type of
+    the expression is a subtype of the given type.
     """
     
     def __init__(self, conv, expr, type):
@@ -610,12 +622,13 @@ class Box(Expr):
         self.type = type
         
     def accept(self, visitor, *args, **kwargs):
-        """
+        """The accept method allows the definition of
+        recursive functions over objects of type expr.
         
         Arguments:
-        - `visitor`:
-        - `*args`:
-        - `**kwargs`:
+        - `visitor`: an object of class ExprVisitor
+        - `*args`: arguments to the visitor instance
+        - `**kwargs`: named arguments to the visitor instance
         """
         return visitor.visit_box(self, *args, **kwargs)
 
@@ -682,6 +695,7 @@ class Pi(Binder):
         
     def is_pi(self):
         return True
+
 
 class Sig(Binder):
     """Dependent sum
@@ -759,12 +773,13 @@ class Tele(Expr):
         assert(len(self.vars) == self.len)
 
     def accept(self, visitor, *args, **kwargs):
-        """
+        """The accept method allows the definition of
+        recursive functions over objects of type expr.
         
         Arguments:
-        - `visitor`:
-        - `*args`:
-        - `**kwargs`:
+        - `visitor`: an object of class ExprVisitor
+        - `*args`: arguments to the visitor instance
+        - `**kwargs`: named arguments to the visitor instance
         """
         return visitor.visit_tele(self, *args, **kwargs)
 

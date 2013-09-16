@@ -75,7 +75,10 @@ def print_app(expr):
     Arguments:
     - `expr`: an expression
     """
-    root, args = dest_app_implicit(expr)
+    if p_implicit:
+        root, args = root_app(expr)
+    else:
+        root, args = root_app_implicit(expr)
     if root.is_const() and root.info.print_iterable_app:
         return print_iterable_app(expr, root)
     elif root.is_const() and root.info.print_implies:
@@ -118,7 +121,12 @@ def print_pair(expr):
     Arguments:
     - `expr`: a pair
     """
-    return "pair({0!s}, {1!s})".format(expr.fst, expr.snd)
+    if p_implicit:
+        pair_str = "pair({0!s}, {1!s}, {2!s})"\
+                   .format(expr.fst, expr.snd, expr.type)
+    else:
+        pair_str = "pair({0!s}, {1!s})".format(expr.fst, expr.snd)
+    return pair_str
 
 
 def print_fst(expr):
@@ -145,8 +153,13 @@ def print_box(expr):
     Arguments:
     - `expr`:
     """
-    return color.purple + "cast" + color.reset +\
+    if p_implicit:
+        box_str = "cast({0!s},{1!s},{2!s})"\
+                  .format(expr.conv, expr.expr, expr.type)
+    else:
+        box_str = color.purple + "cast" + color.reset +\
            "({0!s}, {1!s})".format(expr.expr, expr.type)
+    return box_str
 
 
 def print_pi(expr):
@@ -177,7 +190,7 @@ def print_sub(expr):
 
 
 def print_eq(expr):
-    return "{0!s} ≃ {1!s}".format(expr.lhs, expr.rhs)
+    return "{0!s} ⊆ {1!s}".format(expr.lhs, expr.rhs)
 
 
 def print_bool():
@@ -541,7 +554,7 @@ def cast(expr, ty):
 #
 ###############################################################################
 
-def dest_app_implicit(expr):
+def root_app_implicit(expr):
     """If a term is of the form (..(f a0).. an), return the pair
     (f, [ai,..., ak]) where the ai...ak are the non-implicit arguments of f.
     
@@ -580,13 +593,13 @@ def dest_binop_left(expr, op):
     if not expr.is_app():
         raise TermError('dest_binop_left: DEBUG')
 #        raise TermError('dest_binop_left: {0!s} is not {1!s}'.format(expr, op))
-    r, args = dest_app_implicit(expr)
+    r, args = root_app_implicit(expr)
     if not r.is_const() or r.name != op.name:
         raise TermError('dest_binop_left: {0!s} is not {1!s}'.format(expr, op))
     elist = [args[1]]
     expr = args[0]
     while r.is_const() and r.name == op.name and expr.is_app():
-        r, args = dest_app_implicit(expr)
+        r, args = root_app_implicit(expr)
         if r.is_const() and r.name == op.name:
             elist.append(args[1])
             expr = args[0]
@@ -595,20 +608,20 @@ def dest_binop_left(expr, op):
     return elist
 
 def dest_binop_right(expr, op):   
-    """Assuming 'op' is a binary operation, returns a list of expressions, 
-    elist, such that 
+    """Assuming 'op' is a binary operation, returns a list of expressions,
+    elist, such that
     expr = op(elist[0], op(elist[1], ... op(elist[n-1], elist[n])))
     that is, an iterated application of op associating to the right.
     """
     if not expr.is_app():
         raise TermError('dest_binop: {0!s} is not an {1!s}'.format(expr, op))
-    r, args = dest_app_implicit(expr)
+    r, args = root_app_implicit(expr)
     if not r.is_const() or r.name != op.name:
         raise TermError('dest_binop: {0!s} is not {1!s}'.format(expr, op))
     elist = [args[0]]
     expr = args[1]
     while r.is_const() and r.name == op.name and expr.is_app():
-        r, args = dest_app_implicit(expr)
+        r, args = root_app_implicit(expr)
         if r.is_const() and r.name == op.name:
             elist.append(args[0])
             expr = args[1]
@@ -653,8 +666,7 @@ def dest_implies(expr):
 
 ###############################################################################
 #
-# A global variable to determine whether to use verbose output when
-#   checking and elaborating terms, and defining objects
+# Global variables for printing purposes
 #
 ###############################################################################
 
@@ -662,9 +674,23 @@ verbose = False
 
 
 def set_verbose(setting=True):
+    """Sets the verbose flag:
+    This flag gives more information about the output of each command.
+    """
     global verbose
-
     verbose = setting
+
+p_implicit = False
+
+
+def print_implicit(setting=True):
+    """Sets the print implicit flag:
+    This flag makes the implicit arguments
+    visible upon printing.
+    """
+    global p_implicit
+    p_implicit = setting
+
 
 
 ###############################################################################
