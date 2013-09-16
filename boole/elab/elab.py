@@ -386,9 +386,9 @@ def app_expr(f, f_ty, cast, args):
         while rem_ty.is_pi()\
               and rem_ty.info.implicit:
             mvar = mk_meta(rem_ty.binder.var, rem_ty.dom)
-            #For now we generate the trivial evidence.
-            #If more information is needed, we need to go through the whole
-            #term to collect local information (variables), to add them
+            #At this point we give the trivial evidence.
+            #after the term is created, we go through the whole
+            #term to collect local information (variables) and to add them
             #the evidence term
             mcast = trivial()
             tm = t.App(mcast, tm, mvar)

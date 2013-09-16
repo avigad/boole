@@ -387,11 +387,11 @@ def _str_to_list(s):
 def typ_call(type, name_str):
     names = _str_to_list(name_str)
     if len(names) == 1:
-        return defconst(names[0], type)
+        return defvar(names[0], type)
     else:
         consts = ()
         for name in names:
-            consts += (defconst(name, type),)
+            consts += (defvar(name, type),)
         return consts
 
 
@@ -714,16 +714,17 @@ def elaborate(expr, type, unfold):
         print obl
         raise
 
-    #TODO: remove duplication of work here
+    #Only call infer if the substitution did not find values for
+    # the mvars in the type
     if not (type is None):
-        _, obl = mvar_infer(type, ctxt=local_ctxt)
-
-        u.mvar_stack.clear()
-        u.mvar_stack.new()
-        
-        obl.solve_with(unfold_tac >> elab_tac)
-
-        ty = sub_mvar(type, undef=True)
+        try:
+            ty = sub_mvar(type, undef=True)
+        except e.ExprError:
+            _, obl = mvar_infer(type, ctxt=local_ctxt)
+            u.mvar_stack.clear()
+            u.mvar_stack.new()
+            obl.solve_with(unfold_tac >> elab_tac)
+            ty = sub_mvar(type, undef=True)
 
     if type is None:
         ty, obl = typing.infer(val, ctxt=local_ctxt)
@@ -789,17 +790,36 @@ def deftype(name, **kwargs):
     return c
 
 
-def defconst(name, type, unfold=None, **kwargs):
-    """Define a constant, add it to
-    local_ctxt and return it.
+def defvar(name, type, unfold=None, **kwargs):
+    """Define a constant, check it is well-typed,
+    and return it.
     
     Arguments:
     - `name`: the name of the constant
     - `type`: the type of the constant
-    - `infix`: if the constant being defined is a function,
-    infix specifies that it needs to be printed in infix style
-    - `tactic`: specifies an optional tactic to solve the proof
-    obligations
+    - `unfold`: list of names to unfold when attempting to prove the TCCs
+    - `**kwargs`: extra values to be passed to the tag of the created constant.
+    """
+    c = const(name, type, **kwargs)
+
+    c, _, obl = elaborate(c, type, unfold)
+
+    c.info['checked'] = True
+
+    if obl.is_solved():
+        if verbose:
+            print "{0!s} : {1!s} is assumed.\n".format(c, c.type)
+    else:
+        local_ctxt.add_to_field(obl.name, obl, 'goals')
+        print "In the declaration:\n{0!s} : {1!s}".format(name, c.type)
+        print "remaining type-checking constraints!"
+        print obl
+    return c
+
+
+def defconst(name, type, unfold=None, **kwargs):
+    """Like defvar, but add the result to
+    local_ctxt before returning it.
     """
     c = const(name, type, **kwargs)
 

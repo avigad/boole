@@ -95,33 +95,6 @@ def test1():
     
     test4 = defexpr('test4', pair(3.0, pair(3.0, 3)) * pair(2.0, pair(2.0, 2)))
 
-    # obl = local_ctxt.next_goal()
-
-    # obl.interact(u.mvar_apply(local_ctxt.class_instances['Mul_prod']))
-
-    # obl.interact(tac.repeat(tac.destruct >> tac.par(tac.trivial)))
-    # obl.interact(u.solve_mvar >> tac.par(u.sub_mvar))
-    # obl.interact(u.solve_mvar >> tac.par(u.sub_mvar))
-
-    # obl.interact(tac.repeat(tac.destruct >> tac.par(tac.trivial)))
-
-    # obl.interact(u.solve_mvar >> tac.par(u.sub_mvar))
-
-    # obl.interact(tac.repeat(tac.destruct >> tac.par(tac.trivial)))
-    # obl.interact(tac.par(tac.trivial))
-
-    # obl.interact(tac.repeat(tac.destruct >> tac.par(tac.trivial)))
-    # obl.interact(tac.par(tac.trivial))
-
-    # obl.interact(tac.destruct)
-
-    # obl.interact(u.simpl(conv.par_beta))
-
-    # obl.interact(u.unify)
-
-    # obl.interact(u.instances)
-
-
     test4_def = local_ctxt.defs['test4']
 
     print
