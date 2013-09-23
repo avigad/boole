@@ -1,4 +1,4 @@
-################################################################################
+###############################################################################
 #
 # sage_interface.py
 #
@@ -18,9 +18,7 @@
 # TODO: 2 is parsed as Integer(2), rather than the constant value\
 # TODO: set domain when translating to Sage?
 #
-################################################################################
-
-import operator
+###############################################################################
 
 from boole.elab.terms import *
 from boole.core.expr import open_bound_fresh_consts, ExprVisitor
@@ -35,13 +33,13 @@ from sage.symbolic.function_factory import function_factory
 import operator as _operator
 
 
-################################################################################
+###############################################################################
 #
 # These dictionaries gives the Sage translations of the built-in symbols,
 # built-in sorts, and Sage functions for building constants of the built-in
 # sorts.
 #
-################################################################################
+###############################################################################
 
 _built_in_sage_funs = {
     eq.name: (lambda args: args[0] == args[1]),
@@ -56,7 +54,7 @@ _built_in_sage_funs = {
     lt.name: (lambda args: args[0] < args[1]),
     le.name: (lambda args: args[0] <= args[1])
 }
-                   
+
 # TODO: use these to set the domain
 #
 #_built_in_sage_sorts = {
@@ -73,29 +71,30 @@ _built_in_sage_sort_values = {
 }
 
 
-################################################################################
+###############################################################################
 #
 # Exceptions associated with the Sage interface
 #
-################################################################################
+###############################################################################
 
 class Sage_Interface_Error(Exception):
     """Class of all possible type errors
     """
     
-    def __init__(self, mess = ''):
+    def __init__(self, mess=''):
         """
         Arguments:
         -`mess`: a string that represents the error message
         """
         Exception.__init__(self, mess)
-        
+
+
 class Sage_Unexpected_Type(Sage_Interface_Error):
     """Raised when trying to translate an unexpected type
     """
     pass
 
-        
+
 class Sage_Unexpected_Expression(Sage_Interface_Error):
     """Raised when there is a problem translating an expression
     """
@@ -103,15 +102,15 @@ class Sage_Unexpected_Expression(Sage_Interface_Error):
     pass
 
 
-################################################################################
+###############################################################################
 #
 # Convert Sage expressions to Boole expressions
 #
-# for now, put symbolic expressions in the global name space; later, allow 
+###############################################################################
+
+# for now, put symbolic expressions in the global name space; later, allow
 # user to specify any ring
 # also, check global name space before creating these?
-#
-################################################################################
 
 class _Expr_Trans(ExprVisitor):
     """Visitor class for translating an expression from Boole
@@ -142,10 +141,35 @@ class _Expr_Trans(ExprVisitor):
     def visit_box(self, expr, *args, **kwargs):
         raise Sage_Unexpected_Expression(str(expr))
 
-    # TODO: catch all the other cases?
+    def visit_type(self, expr, *args, **kwargs):
+        raise Sage_Unexpected_Expression(str(expr))
+
+    def visit_kind(self, expr, *args, **kwargs):
+        raise Sage_Unexpected_Expression(str(expr))
+
+    def visit_bool(self, expr, *args, **kwargs):
+        raise Sage_Unexpected_Expression(str(expr))
+
+    def visit_pair(self, expr, *args, **kwargs):
+        raise Sage_Unexpected_Expression(str(expr))
+
+    def visit_fst(self, expr, *args, **kwargs):
+        raise Sage_Unexpected_Expression(str(expr))
+
+    def visit_snd(self, expr, *args, **kwargs):
+        raise Sage_Unexpected_Expression(str(expr))
+
+    def visit_ev(self, expr, *args, **kwargs):
+        raise Sage_Unexpected_Expression(str(expr))
+
+    def visit_sub(self, expr, *args, **kwargs):
+        raise Sage_Unexpected_Expression(str(expr))
+
+    def visit_mvar(self, expr, *args, **kwargs):
+        raise Sage_Unexpected_Expression(str(expr))
 
 
-class Boole_to_Sage():
+class Boole_to_Sage(object):
     """
     Translates Boole expressions to a Sage symbolic expression ring,
     creating symbols as necessary.
@@ -157,17 +181,19 @@ class Boole_to_Sage():
     print C(f(x))
     
     The call of C(x + y) creates Sage variables for x and y.
-    The call of C(f(x)) creates a Sage function variable for f, 
+    The call of C(f(x)) creates a Sage function variable for f,
     but uses the previous x.
     
     Note: do not use the same name for symbols of different type!
     """
-    
-    def __init__(self, target = None):
-        self.reset(target)
+    def __init__(self, target=None):
+        if target == None:
+            target = the_SymbolicRing()
+        self.target = target
+        self.symbol_dict = {}      # constant and function symbols
         self.expr_trans = _Expr_Trans(self).visit
         
-    def reset(self, target = None):
+    def reset(self, target=None):
         if target == None:
             target = the_SymbolicRing()
         self.target = target
@@ -178,7 +204,7 @@ class Boole_to_Sage():
         # TODO: use domain
         sage_var = self.target.var(name)
         self.symbol_dict[name] = sage_var
-        return sage_var 
+        return sage_var
         
     def get_sage_var(self, c):
         if c.name in self.symbol_dict.keys():
@@ -192,7 +218,8 @@ class Boole_to_Sage():
                 val_trans = _built_in_sage_sort_values[etype.name]
                 return val_trans(c.value)
             else:
-                raise Sage_Unexpected_Expression('Unrecognized value:' + str(c))                   
+                raise Sage_Unexpected_Expression(\
+                    'Unrecognized value:' + str(c))
         else:
             # new constant
             return self.make_sage_var(c.type, c.name)
@@ -201,7 +228,7 @@ class Boole_to_Sage():
         """
         fun: Boole function symbol to apply
         args: Sage expressions, already translated
-        """        
+        """
         if fun.name in self.symbol_dict.keys():
             # defined function symbol
             sage_fun = self.symbol_dict[fun.name]
@@ -220,16 +247,16 @@ class Boole_to_Sage():
         return self.expr_trans(expr)
 
 
-################################################################################
+###############################################################################
 #
 # Convert Sage expressions to Boole expressions
 #
-################################################################################
+###############################################################################
 
 # TODO: use the context
 class Sage_to_Boole(Converter):
     
-    def __init__(self, context = None, use_fake_div=False):
+    def __init__(self, context=None, use_fake_div=False):
 #        language = get_language(language)
         self.context = context
         self.use_fake_div = use_fake_div
@@ -240,9 +267,9 @@ class Sage_to_Boole(Converter):
         if ex.is_integer():
             return ii(obj)
         elif ex.is_real():
-            return rr(obj) 
+            return rr(obj)
         # TODO: what to do here?           
-        return const(repr(ex), type = None, value = Value(obj))
+        return const(repr(ex), type=None, value=Value(obj))
 
     def symbol(self, ex):
         # TODO: this is a hack!
@@ -252,7 +279,7 @@ class Sage_to_Boole(Converter):
             return Real(repr(ex))
         else:
             return Real(repr(ex))
-#             raise Sage_Unexpected_Expression('symbol: ' + str(ex))           
+#             raise Sage_Unexpected_Expression('symbol: ' + str(ex))
 #         if repr(ex) in self.language.const_dict.keys():
 #             return self.language.const_dict[repr(ex)]
 #         else:
