@@ -88,8 +88,6 @@ _built_in_z3_funs = {
     le.name: (lambda args, context: args[0] <= args[1])
 # these are not used
 #    ne.name: (lambda args, context: args[0] != args[1]),
-#    And.name: (lambda args, context: z3.And(args)),
-#    Or.name: (lambda args, context: z3.Or(args)),
 #    Sum.name: (lambda args, context: z3.Sum(args)),
 #    Product.name: (lambda args, context: z3.Product(args)),
 #    gt.name: (lambda args, context: args[0] > args[1]),
@@ -238,7 +236,7 @@ class Boole_to_Z3:
         if expr.is_const():
             return self.get_z3_const(expr)
         elif expr.is_app():
-            fun, args = dest_app_implicit(expr)
+            fun, args = root_app_implicit(expr)
             args = [self.__call__(a) for a in args]
             return self.handle_function(fun, args)
         elif expr.is_forall():
