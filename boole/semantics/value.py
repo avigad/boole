@@ -23,7 +23,7 @@ class Value(object):
       of the object in question
     """
 
-    def __init__(self, pyval = None, desc = None, is_num = False):
+    def __init__(self, pyval=None, desc=None, is_num=False):
         """Creats the object
         """
         self.pyval = pyval

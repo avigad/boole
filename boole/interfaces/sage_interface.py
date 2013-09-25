@@ -25,7 +25,7 @@ from boole.core.expr import open_bound_fresh_consts, ExprVisitor
 import boole.core.typing as ty
 import boole.core.tactics as tac
 
-import sage
+import sage.all
 
 from sage.symbolic.expression_conversions import Converter
 from sage.symbolic.ring import the_SymbolicRing
@@ -119,7 +119,7 @@ class _Expr_Trans(ExprVisitor):
 
     def __init__(self, translator):
         """
-        Initialize with calling instance of Boole_to_Z3.
+        Initialize with calling instance of Boole_to_Sage.
         """
         self.trans = translator
         
@@ -214,9 +214,9 @@ class Boole_to_Sage(object):
             # interpreted constant
             etype = c.type
             # TODO: this assumes that the type is a constant
-            if etype.name in _built_in_sage_sort_values.keys():
+            if etype.name in _built_in_sage_sort_values:
                 val_trans = _built_in_sage_sort_values[etype.name]
-                return val_trans(c.value)
+                return val_trans(c.value.pyval)
             else:
                 raise Sage_Unexpected_Expression(\
                     'Unrecognized value:' + str(c))
@@ -323,3 +323,18 @@ class Sage_to_Boole(Converter):
             return f(*args)
         else:
             raise Sage_Unexpected_Expression('composition: ' + str(ex))
+
+
+if __name__ == '__main__':
+
+    x = Real('x')
+
+    e = defexpr("e", x*x + x + 2)
+
+    e = x*x + x + 2
+
+    C = Boole_to_Sage()
+
+    C.make_sage_var(Real, "x")
+
+    e_prime = sage.all.diff(C(e), x)
