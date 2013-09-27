@@ -534,7 +534,7 @@ class Ev(Expr):
         return visitor.visit_ev(self, *args, **kwargs)
 
     def to_string(self):
-        return "Ev({0!s})".format(self.tele.types)
+        return "Ev({0!s})".format(self.tele)
 
     def is_ev(self):
         return True

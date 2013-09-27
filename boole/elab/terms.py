@@ -21,7 +21,7 @@ from boole.core.expr import Const, Sub, Pair, Fst, Snd, Box, root_app, \
 from boole.elab.color import *
 import boole.core.expr as e
 import boole.core.typing as typing
-import boole.elab.elab as elab
+import boole.elab.elab as elab_tools
 from boole.elab.elab import app_expr, mvar_infer, sub_mvar
 import boole.core.tactics as tac
 import boole.elab.unif as u
@@ -484,7 +484,7 @@ def fold_over(base_op, var, tm, **kwargs):
 #correctly at the type level.
 @with_info(st_term)
 def pi_base(var, codom, **kwargs):
-    return elab.pi(var, codom, **kwargs)
+    return elab_tools.pi(var, codom, **kwargs)
 
 
 def pi(var, codom, **kwargs):
@@ -493,7 +493,7 @@ def pi(var, codom, **kwargs):
 
 @with_info(st_term)
 def abst_base(var, body):
-    return elab.abst(var, body)
+    return elab_tools.abst(var, body)
 
 
 def abst(var, body):
@@ -502,7 +502,7 @@ def abst(var, body):
 
 @with_info(st_term)
 def forall_base(var, prop):
-    return elab.forall(var, prop)
+    return elab_tools.forall(var, prop)
 
 
 def forall(var, prop):
@@ -511,7 +511,7 @@ def forall(var, prop):
 
 @with_info(st_term)
 def exists_base(var, prop):
-    return elab.exists(var, prop)
+    return elab_tools.exists(var, prop)
 
 
 def exists(var, prop):
@@ -520,7 +520,7 @@ def exists(var, prop):
 
 @with_info(st_term)
 def sig_base(var, codom):
-    return elab.sig(var, codom)
+    return elab_tools.sig(var, codom)
 
 
 def sig(var, codom):
@@ -534,7 +534,7 @@ def nullctxt():
 
 @with_info(st_term)
 def triv():
-    return elab.trivial()
+    return elab_tools.trivial()
 
 
 @with_info(st_term)
@@ -714,8 +714,7 @@ def elaborate(expr, type, unfold):
     Arguments:
     - `expr`: the expression to be elaborated
     - `type`: it's putative type
-    - `elabtac`: a tactic to use in the elaboration
-    - `tactic`: a tactic to use in the type-checking
+    - `unfold`: a list of defined constant names to unfold when type-checking
     """
     if unfold is None:
         unfold_tac = tac.idtac
@@ -767,6 +766,24 @@ def elaborate(expr, type, unfold):
         ty.info.update(st_term)
 
     return (val, ty, obl)
+
+
+def elab(expr):
+    """Try to elaborate an expression with default arguments,
+    fail if there are remaining TCCs
+    
+    Arguments:
+    - `exp`: an expression.
+    """
+    val, _, obl = elaborate(expr, None, None)
+    if obl.is_solved():
+        return val
+    else:
+        print "while elaborating {0!s}".format(val)
+        print "remaining type checking constraints!"
+        print obl
+        return  None
+
 
 
 def check(expr, type=None, unfold=None):

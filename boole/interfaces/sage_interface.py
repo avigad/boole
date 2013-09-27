@@ -244,7 +244,7 @@ class Boole_to_Sage(object):
             return sage_fun(*args)
        
     def __call__(self, expr):
-        return self.expr_trans(expr)
+        return self.expr_trans(elab(expr))
 
 
 ###############################################################################
@@ -329,12 +329,12 @@ if __name__ == '__main__':
 
     x = Real('x')
 
-    e = defexpr("e", x*x + x + 2)
-
     e = x*x + x + 2
 
     C = Boole_to_Sage()
 
     C.make_sage_var(Real, "x")
 
-    e_prime = sage.all.diff(C(e), x)
+    print C(e)
+
+    # e_prime = sage.all.diff(C(e), x)

@@ -12,6 +12,7 @@ from boole.elab.terms import *
 from boole.core.expr import open_bound_fresh_consts
 import boole.core.typing as ty
 import boole.core.tactics as tac
+import boole.core.conv as conv
 import boole.interfaces.ineq_interface as ineq
 
 import z3
@@ -232,7 +233,7 @@ class Boole_to_Z3:
             return z3_fun(*args)
        
     def __call__(self, expr):
-        expr = elaborate(expr, None, None, None)[0]
+        expr = elab(expr)
         if expr.is_const():
             return self.get_z3_const(expr)
         elif expr.is_app():
@@ -279,7 +280,9 @@ class Z3_to_Boole(object):
         elif s == z3.BoolSort():
             return Bool
         else:   # inelegant!
-            return mktype(s.name())
+            print s
+            raise NotImplementedError()
+        ### return mktype(s.name())
         
     def mk_const(self, c):
         typ = self.mk_sort(c.sort())
@@ -293,7 +296,7 @@ class Z3_to_Boole(object):
         return const(f.name(), fun_type)
             
     def __call__(self, expr):
-        return elaborate(self.translate(expr), None, None, None)[0]
+        return elaborate(self.translate(expr), None, None)[0]
 
     def translate(self, expr, bound_variables=[]):
         if z3.is_const(expr):
@@ -429,3 +432,27 @@ class Z3_Solver(object):
     def model(self):
         raise NotImplementedError()
         # return self.z3_to_boole.model(self.z3_model())
+
+
+if __name__ == '__main__':
+
+    a, b, c = Int('a b c')
+
+    e = defexpr("e", a+b+c <= 0)
+
+    e = conv.unfold_once(e, local_ctxt)
+
+    #Puzzles taken from http://eclipseclp.org/examples/index.html
+
+    #xkcd waiter puzzle:
+
+    d, e, f = Int('d e f')
+
+    xkcd = defexpr('xkcd', a*215 + b*275 + c*335 + d*355 + e*420 + f*580 == 1505)
+
+    S = Z3_Solver()
+
+    S.add(xkcd)
+
+    print S.check()
+    print S.z3_model()

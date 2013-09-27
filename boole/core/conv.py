@@ -142,7 +142,52 @@ def beta_norm(expr):
     """
     unred = expr
     red = par_beta(expr)
-    while not (red.equals(unred)):
+    while not red.equals(unred):
         unred = red
         red = par_beta(unred)
+    return red
+
+
+def unfold(names, exp, context):
+    """Replace a set of constants designated by names
+    in expr, by looking up their definition in the context
+    
+    Arguments:
+    - `names`: A list of strings
+    - `exp`: An expression
+    - `context`: A context
+    """
+    exprs = []
+    for name in names:
+        e = context.get_from_field(name, 'defs')
+        exprs.append(e)
+    return sub_in(exprs, names, exp)
+
+
+def unfold_once(exp, context):
+    """Unfolds ALL defined constants in an expression,
+    NON recursive.
+    
+    Arguments:
+    - `exp`: an expression
+    - `context`: a context
+    """
+    all_names = [n for n in context.defs]
+    return unfold(all_names, exp, context)
+
+
+def unfold_all(exp, context):
+    """Unfolds ALL defined constants in an expression,
+    recursively.
+    
+    Arguments:
+    - `exp`: an expression
+    - `context`: a context
+    """
+    unred = exp
+    all_names = [n for n in context.defs]
+    red = unfold(all_names, exp, context)
+    while not red.equals(unred):
+        unred = red
+        red = unfold(all_names, unred, context)
     return red

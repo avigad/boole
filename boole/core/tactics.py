@@ -542,16 +542,12 @@ class unfold(Tactic):
             goal, tail = (goals[0], goals[1:])
             tele = goal.tele
             prop = goal.prop
-            exprs = []
-            for name in self.names:
-                try:
-                    e = context.get_from_field(name, 'defs')
-                    exprs.append(e)
-                except KeyError, k:
-                    mess = "{0!s} is not defined in context {1!s}".format(k, context)
-                    raise TacticFailure(mess, self, goal)
-            prop_sub = expr.sub_in(exprs, self.names, prop)
-            tele_sub = expr.sub_in(exprs, self.names, tele)
+            try:
+                prop_sub = conv.unfold(self.names, prop, context)
+                tele_sub = conv.unfold(self.names, tele, context)
+            except KeyError, k:
+                mess = "{0!s} is not defined in context {1!s}".format(k, context)
+                raise TacticFailure(mess, self, goal)
             return [Goal(tele_sub, prop_sub)] + tail
 
 

@@ -22,6 +22,8 @@ from boole.elab.terms import *
 
 def test1():
     
+    p, q = Bool('p q')
+
     el = defconst('el', X)
 
     One = defclass('One', [X, el], true)

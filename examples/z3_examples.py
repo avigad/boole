@@ -25,10 +25,10 @@ def test0():
     T2 = Z3_to_Boole()
     
     def test(expr):
-        e1 = T1(expr)
-        e2 = T2(e1)
         print 'Boole expression:', expr
+        e1 = T1(expr)
         print 'Translated to Z3:', e1
+        e2 = T2(e1)
         print 'Translated back:', e2
         print
         
