@@ -184,7 +184,7 @@ def test2():
     r = Bool('r')
     
     Beatles, (John, Paul, George, Ringo) = \
-        defenumtype('Beatles', ['John', 'Paul', 'George', 'Ringo'])
+        defenum('Beatles', ['John', 'Paul', 'George', 'Ringo'])
     
     check(x * y - y * x)
     check(i * j - (j % i) + j / k)

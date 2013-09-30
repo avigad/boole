@@ -1063,11 +1063,11 @@ enumtype_val = defconst('enumtype_val', value_description)
 enumelt_val = defconst('enum_val', value_description)
 
 
-def defenumtype(name, elts):
+def defenum(name, elts):
     """ Takes a name and list of strings, and builds an enumerated type
     
     For example: Beatles, (John, Paul, George, Ringo) =
-      defenumtype('Beatles', ['John', 'Paul', 'George', 'Ringo'])
+      defenum('Beatles', ['John', 'Paul', 'George', 'Ringo'])
     """
     enumtype = deftype(name)
     enumtype.value = Value(elts, enumtype_val)

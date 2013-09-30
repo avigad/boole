@@ -14,6 +14,7 @@ import boole.core.typing as ty
 import boole.core.tactics as tac
 import boole.core.conv as conv
 import boole.interfaces.ineq_interface as ineq
+import boole.semantics.value as value
 
 import z3
 
@@ -58,8 +59,10 @@ class Z3_Unexpected_Type(Z3_Interface_Error):
 class Z3_Unexpected_Expression(Z3_Interface_Error):
     """Raised when there is a problem translating an expression
     """
-    def __init__(self):
-        Z3_Interface_Error.__init__(self)
+    def __init__(self, expr):
+        mess = 'Unexpected expression: {0!s}'.format(expr)
+        Z3_Interface_Error.__init__(self, mess)
+
 
 
 
@@ -192,7 +195,7 @@ class Boole_to_Z3:
                 self.get_z3_sort(etype)  # creates the enum type if not there
                 return self.symbol_dict[c.value.pyval]
             else:
-                raise Z3_Unexpected_Expression('Unrecognized value: ' + str(c))
+                raise Z3_Unexpected_Expression(c)
         else:
             # new constant
             etype, _ = ty.infer(c)
@@ -251,7 +254,7 @@ class Boole_to_Z3:
             z3_body = self(body)
             return z3.Exists(z3_vars, z3_body)
         else:
-            raise Z3_Unexpected_Expression
+            raise Z3_Unexpected_Expression(expr)
 
 
 ###############################################################################
@@ -269,15 +272,15 @@ class Boole_to_Z3:
 # create constants anew.
 class Z3_to_Boole(object):
     
-    def __init__(self):
-        pass
+    def __init__(self, context=local_ctxt):
+        self.context = context
     
     def mk_sort(self, s):
-        if s == z3.IntSort():
+        if s.name() == 'Int':
             return Int
-        elif s == z3.RealSort():
+        elif s.name() == 'Real':
             return Real
-        elif s == z3.BoolSort():
+        elif s.name() == 'Bool':
             return Bool
         else:   # inelegant!
             print s
@@ -285,36 +288,83 @@ class Z3_to_Boole(object):
         ### return mktype(s.name())
         
     def mk_const(self, c):
-        typ = self.mk_sort(c.sort())
-        return const(str(c), typ)
+        if z3.is_rational_value(c):
+            # TODO: what should we convert a rational to?
+            return rr(Fraction(expr.numerator_as_long(), \
+                               expr.denominator_as_long()))
+        if z3.is_int_value(c):
+            # TODO: cast to int?
+            return ii(c.as_long())
+        #            elif str(expr) in language.const_dict.keys():
+        #                return language.const_dict[str(expr)]
+        elif z3.is_true(c):
+            return true
+        elif z3.is_false(c):
+            return false
+        else:
+            try:
+                return self.context.decls[str(c)]
+            except KeyError:
+                typ = self.mk_sort(c.sort())
+                return const(str(c), typ)
 
-    def mk_func(self, f):
-        dom_types = [self.mk_sort(f.domain(i)) for i in range(0, f.arity())]
+    def mk_fun(self, f):
+        dom_types = [self.mk_sort(f.domain(i))\
+                     for i in range(0, f.arity())]
         cod_type = self.mk_sort(f.range())
         dom_types.reverse()
-        fun_type = reduce((lambda X, Y: type_arrow(Y, X)), dom_types, cod_type)
+        fun_type = reduce((lambda X, Y: type_arrow(Y, X)), \
+                          dom_types, cod_type)
         return const(f.name(), fun_type)
-            
+
+    def mk_app(self, f, args):
+        if z3.is_eq(f):
+            return args[0] == args[1]
+        elif z3.is_and(f):
+            return And(*args)
+        elif z3.is_or(f):
+            return Or(*args)
+        elif z3.is_not(f):
+            return Not(*args)
+        elif z3.is_add(f):
+            return reduce(operator.add, args[1:], args[0])
+        elif z3.is_mul(f):
+            return reduce(operator.mul, args[1:], args[0])
+        elif z3.is_sub(f):
+            return args[0] - args[1]
+        elif z3.is_div(f):
+            return args[0] / args[1]
+        elif z3.is_lt(f):
+            return args[0] < args[1]
+        elif z3.is_le(f):
+            return args[0] <= args[1]
+        elif z3.is_gt(f):
+            return args[0] > args[1]
+        elif z3.is_ge(f):
+            return args[0] >= args[1]
+        elif z3.is_to_real(f):    # TODO: ignore coercions?
+            return args[0]
+        elif z3.is_to_int(f):
+            return args[0]
+        elif f.name() == '=>':
+            return implies(args[0], args[1])
+        else:
+            dom_types = [self.mk_sort(f.domain(i))\
+                         for i in range(0, f.arity())]
+            cod_type = self.mk_sort(f.range())
+            dom_types.reverse()
+            fun_type = reduce((lambda X, Y: type_arrow(Y, X)), \
+                              dom_types, cod_type)
+            func = self.mk_fun(f)
+            return func(*args)
+
     def __call__(self, expr):
         return elaborate(self.translate(expr), None, None)[0]
 
+    #TODO: remove mutable default value
     def translate(self, expr, bound_variables=[]):
         if z3.is_const(expr):
-            if z3.is_rational_value(expr):
-                # TODO: what should we convert a rational to?
-                return rr(Fraction(expr.numerator_as_long(), \
-                                   expr.denominator_as_long()))
-            if z3.is_int_value(expr):
-                # TODO: cast to int?
-                return ii(expr.as_long())
-#            elif str(expr) in language.const_dict.keys():
-#                return language.const_dict[str(expr)]
-            elif z3.is_true(expr):
-                return true
-            elif z3.is_false(expr):
-                return false
-            else:
-                return self.mk_const(expr)
+            return self.mk_const(expr)
 #                raise Z3_Unexpected_Expression('Unrecognized constant')
         elif z3.is_var(expr):    # a de Bruijn indexed bound variable
             bv_length = len(bound_variables)
@@ -322,45 +372,10 @@ class Z3_to_Boole(object):
         elif z3.is_app(expr):
             args = [self.translate(expr.arg(i), bound_variables)
                 for i in range(expr.num_args())]
-#            if expr.decl().name() in language.const_dict.keys():
-#                func = language.const_dict[expr.decl().name()]
-#                return apply(func, args)
-            if z3.is_eq(expr):
-                return args[0] == args[1]
-            elif z3.is_and(expr):
-                return And(*args)
-            elif z3.is_or(expr):
-                return Or(*args)
-            elif z3.is_not(expr):
-                return Not(*args)
-            elif z3.is_add(expr):
-                return reduce(operator.add, args[1:], args[0])
-            elif z3.is_mul(expr):
-                return reduce(operator.mul, args[1:], args[0])
-            elif z3.is_sub(expr):
-                return args[0] - args[1]
-            elif z3.is_div(expr):
-                return args[0] / args[1]
-            elif z3.is_lt(expr):
-                return args[0] < args[1]
-            elif z3.is_le(expr):
-                return args[0] <= args[1]
-            elif z3.is_gt(expr):
-                return args[0] > args[1]
-            elif z3.is_ge(expr):
-                return args[0] >= args[1]
-            elif z3.is_to_real(expr):    # TODO: ignore coercions?
-                return args[0]
-            elif z3.is_to_int(expr):
-                return args[0]
-            elif expr.decl().name() == '=>':
-                return implies(args[0], args[1])
-            else:
-                func = self.mk_func(expr.decl())
-                return func(*args)
+            return self.mk_func(expr.decl(), args)
+
 #            else:
-#                raise Z3_Unexpected_Expression('Unrecognized application: ' + \
-#                                               str(expr))
+#                raise Z3_Unexpected_Expression(expr)
         elif z3.is_quantifier(expr):
             num_vars = expr.num_vars()
 #            vars = [language.const_dict[expr.var_name(i)]
@@ -373,9 +388,49 @@ class Z3_to_Boole(object):
                 return forall(vars, body)
             else:
                 return exists(vars, body)
-            
+
+        elif z3.is_func_decl(expr):
+            return self.mk_fun(expr)
         else:
-            raise Z3_Unexpected_Expression         
+            print expr.kind
+            raise Z3_Unexpected_Expression(expr)
+
+    def model(self, m):
+        """Takes a Z3 model and returns the corresponding
+        Boole model.
+        
+        Arguments:
+        - `m`: an instance of z3.ModelRef
+        """
+        eqs = {}
+        vals = {}
+        for d in m:
+            if isinstance(m[d], z3.FuncInterp):
+                interp = m[d].as_list()[:-1]
+                interp = [[self.translate(p) for p in r] for r in interp]
+                d_eqs = interp_to_eqns(self.translate(d), interp)
+                for i, e in enumerate(d_eqs):
+                    eqs[str(d) + 'def' + str(i)] = e
+                vals[self.translate(d)] = m[d]
+            else:
+                eqs[str(d) + 'def'] = \
+                             self.translate(d()) == self.translate(m[d])
+        return value.Model(eqs, vals)
+            
+
+def interp_to_eqns(f, vals):
+    """
+    
+    Arguments:
+    - `f`: a function constant
+    - `vals`: a list of lists of length `arity of f` + 1
+    """
+    eqns = []
+    for v in vals:
+        res = v.pop()
+        eqns.append(f(*v) == res)
+    return eqns
+
 
 #    def value(self, z3_val):
 #        if z3.is_true(z3_val):
@@ -402,11 +457,11 @@ class Z3_to_Boole(object):
 #        return M
 
 
-################################################################################
+###############################################################################
 #
 # A class interface to the Z3 solver
 #
-################################################################################
+###############################################################################
 
 # TODO: relativize this to a Boole context?
 
@@ -438,21 +493,41 @@ if __name__ == '__main__':
 
     a, b, c = Int('a b c')
 
-    e = defexpr("e", a+b+c <= 0)
-
-    e = conv.unfold_once(e, local_ctxt)
+    e = elab(a + b + c <= 0)
 
     #Puzzles taken from http://eclipseclp.org/examples/index.html
 
     #xkcd waiter puzzle:
 
-    d, e, f = Int('d e f')
+    d, e = Int('d e')
 
-    xkcd = defexpr('xkcd', a*215 + b*275 + c*335 + d*355 + e*420 + f*580 == 1505)
+    f = (Int >> Int)('f')
+
+    xkcd = elab(a*215 + b*275 + c*335 + d*355 + e*420 + f(a)*580 == 1505)
 
     S = Z3_Solver()
 
     S.add(xkcd)
 
     print S.check()
-    print S.z3_model()
+
+    m = S.z3_model()
+
+    print m
+
+    f_val =  m[m[5]]
+
+    print f_val.entry(0).arg_value(0)
+
+    print f_val.as_list()
+
+    # Causes segfault!
+    # print m.eval(m[2])
+
+    # print dir(m.eval(f_val))
+
+    # print m.eval(f_val).decl()
+
+    B = Z3_to_Boole()
+
+    print B.model(m)

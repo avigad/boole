@@ -50,3 +50,4 @@ def test_infer():
     
     ty, obl = infer(super_beta)
     assert(ty.equals(Real))
+
