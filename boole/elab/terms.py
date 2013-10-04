@@ -592,7 +592,6 @@ def dest_binop_left(expr, op):
     """
     if not expr.is_app():
         raise TermError('dest_binop_left: DEBUG')
-#        raise TermError('dest_binop_left: {0!s} is not {1!s}'.format(expr, op))
     r, args = root_app_implicit(expr)
     if not r.is_const() or r.name != op.name:
         raise TermError('dest_binop_left: {0!s} is not {1!s}'.format(expr, op))
@@ -690,7 +689,6 @@ def print_implicit(setting=True):
     """
     global p_implicit
     p_implicit = setting
-
 
 
 ###############################################################################
@@ -1043,24 +1041,16 @@ def mktype(name, **kwargs):
 #
 ###############################################################################
 
-value_description = deftype('value_description')
-int_val = defconst('int_val', value_description)
-float_val = defconst('float_val', value_description)
-
-
 def ii(n):
-    val = Value(n, desc=int_val, is_num=True)
-    return const(str(n), Int, val, \
+    val = Value(n, desc='int_val', is_num=True)
+    return const(str(n), Int, value=val, \
                  unicode=color.orange + str(n) + color.reset)
 
 
 def rr(n):
-    val = Value(n, desc=float_val, is_num=True)
-    return const(str(n), Real, val, \
+    val = Value(n, desc='float_val', is_num=True)
+    return const(str(n), Real, value=val, \
                  unicode=color.orange + str(n) + color.reset)
-
-enumtype_val = defconst('enumtype_val', value_description)
-enumelt_val = defconst('enum_val', value_description)
 
 
 def defenum(name, elts):
@@ -1070,11 +1060,11 @@ def defenum(name, elts):
       defenum('Beatles', ['John', 'Paul', 'George', 'Ringo'])
     """
     enumtype = deftype(name)
-    enumtype.value = Value(elts, enumtype_val)
+    enumtype.value = Value(elts, 'enumtype_val')
     consts = ()
     for e in elts:
         c = defconst(e, enumtype)
-        c.value = Value(e, enumelt_val)
+        c.value = Value(e, 'enumelt_val')
         consts += (c,)
     return enumtype, consts
 
@@ -1176,6 +1166,7 @@ le_int = defconst('le_int', Int >> (Int >> Bool))
 #
 ###############################################################################
 
+#TODO: remove this from the local context, and give a way to declare type variables.
 X = deftype('X')
 
 x = X('x')

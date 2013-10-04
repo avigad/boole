@@ -62,10 +62,10 @@ class Model(object):
         
         Arguments:
         - `eqns`: a map from names to equations defining the model
-        - `val_dict`: a dictionary mapping constants to their value
+        - `val_dict`: a dictionary mapping constant names to their value
         """
         self.eqns = eqns
-        self.val_dict = val_dict
+        self.vals = val_dict
         
     def __str__(self):
         """Print the equational definitions
@@ -83,33 +83,51 @@ class Model(object):
         context.hyps.update(self.eqns)
 
 
+BoolVal = Value([True, False], 'Bool')
+
+
 class ExprValue(e.ExprVisitor):
     """Return the value of an expression.
     """
     
-    def __init__(self):
+    def __init__(self, strict=False):
         e.ExprVisitor.__init__(self)
+        self.strict = strict
 
-    def visit_const(self, expr, model=None):
+    def visit_const(self, expr, model=None, bindings=None):
         if expr.value:
-            return expr.value
+            return expr.value.pyval
         else:
             try:
-                return model.vals[expr.name]
+                v = model.vals[expr.name]
+                return v.pyval
             except KeyError:
-                raise NoValue(expr)
+                if self.strict:
+                    raise NoValue(expr)
+                else:
+                    return None
 
     def visit_db(self, expr, model=None):
-        raise NoValue(expr)
+        if self.strict:
+            raise NoValue(expr)
+        else:
+            return None
+
 
     def visit_type(self, expr, model=None):
-        raise NoValue(expr)
+        if self.strict:
+            raise NoValue(expr)
+        else:
+            return None
 
     def visit_kind(self, expr, model=None):
-        raise NoValue(expr)
+        if self.strict:
+            raise NoValue(expr)
+        else:
+            return None
 
     def visit_bool(self, expr, model=None):
-        return [True, False]
+        return BoolVal
 
     def visit_bound(self, expr, model=None):
         raise NotImplementedError()
@@ -139,8 +157,8 @@ class ExprValue(e.ExprVisitor):
         return ()
 
     def visit_sub(self, expr, model=None):
-        def sub_val(v1, v2):
-            if isinstance(v1, v2):
+        def sub_val(v1, v2): 
+            if isinstance(v1, bool) and isinstance(v2, bool):
                 return (not v1) or v2
             else:
                 return v1 == v2
@@ -150,7 +168,124 @@ class ExprValue(e.ExprVisitor):
         return self.visit(expr.expr, model)
 
     def visit_tele(self, expr, model=None):
-        raise NoValue(expr)
+        raise NotImplementedError()
 
     def visit_mvar(self, expr, model=None):
-        raise NoValue(expr)
+        if self.strict:
+            raise NoValue(expr)
+        else:
+            return None
+
+
+###############################################################################
+#
+# Semantics of built-in operations
+#
+###############################################################################
+
+def add_real_fun(x, y):
+    return x + y
+
+
+def mul_real_fun(x, y):
+    return x * y
+
+
+def minus_real_fun(x, y):
+    return x - y
+
+
+def divide_real_fun(x, y):
+    return float(x) / y
+
+
+def power_fun(x, y):
+    return x ** y
+
+
+def uminus_real_fun(x):
+    return -x
+
+
+def abs_real_fun(x):
+    return abs(x)
+
+
+def lt_real_fun(x, y):
+    return x < y
+
+
+def le_real_fun(x, y):
+    return x <= y
+
+
+def add_int_fun(x, y):
+    return x + y
+
+
+def mul_int_fun(x, y):
+    return x * y
+
+
+def minus_int_fun(x, y):
+    return x - y
+
+
+def divide_int_fun(x, y):
+    return x / y
+
+
+def uminus_int_fun(x):
+    return -x
+
+
+def abs_int_fun(x):
+    return abs(x)
+
+
+def lt_int_fun(x, y):
+    return x < y
+
+
+def le_int_fun(x, y):
+    return x <= y
+
+
+def mod_fun(x, y):
+    return x % y
+
+
+def eq_fun(_, x, y):
+    return x == y
+
+
+def mul_fun(_, op, _1, x, y):
+    return op(x, y)
+
+
+def add_fun(_, op, _1, x, y):
+    return op(x, y)
+
+
+def minus_fun(_, op, _1, x, y):
+    return op(x, y)
+
+
+def div_fun(_, op, _1, x, y):
+    return op(x, y)
+
+
+def uminus_fun(_, op, _1, x):
+    return op(x)
+
+
+def abs_fun(_, op, _1, x):
+    return op(x)
+
+
+def lt_fun(_, op, _1, x, y):
+    return op(x, y)
+
+
+def le_fun(_, op, _1, x, y):
+    return op(x, y)
