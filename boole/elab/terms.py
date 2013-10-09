@@ -25,6 +25,7 @@ import boole.elab.elab as elab_tools
 from boole.elab.elab import app_expr, mvar_infer, sub_mvar
 import boole.core.tactics as tac
 import boole.elab.unif as u
+import boole.semantics.value as v
 from boole.semantics.value import Value
 
 
@@ -326,7 +327,7 @@ def tm_call(fun, *args):
 
 
 @with_info(st_term)
-def const(name, type, value = None, **kwargs):
+def const(name, type, value=None, **kwargs):
     return Const(name, type, value)
 
 # Special call methods for 'And', 'Or', and 'implies'. Allosw e.g.
@@ -858,11 +859,11 @@ def defvar(name, type, unfold=None, **kwargs):
     return c
 
 
-def defconst(name, type, unfold=None, **kwargs):
+def defconst(name, type, value=None, unfold=None, **kwargs):
     """Like defvar, but add the result to
     local_ctxt before returning it.
     """
-    c = const(name, type, **kwargs)
+    c = const(name, type, value=value, **kwargs)
 
     c, _, obl = elaborate(c, type, unfold)
 
@@ -879,7 +880,7 @@ def defconst(name, type, unfold=None, **kwargs):
     return c
 
 
-def defexpr(name, value, type=None, unfold=None, **kwargs):
+def defexpr(name, expr, type=None, unfold=None, **kwargs):
     """Define an expression with a given type and value.
     Checks that the type of value is correct, and adds the defining
     equation to the context.
@@ -887,9 +888,9 @@ def defexpr(name, value, type=None, unfold=None, **kwargs):
     Arguments:
     - `name`: a string
     - `type`: an expression
-    - `value`: an expression
+    - `expr`: an expression
     """
-    val, ty, obl = elaborate(value, type, unfold)
+    val, ty, obl = elaborate(expr, type, unfold)
 
     c = const(name, ty, **kwargs)
     c.info['defined'] = True
@@ -977,7 +978,7 @@ def defclass(name, params, defn):
     return c
 
 
-def definstance(name, ty, value):
+def definstance(name, ty, expr):
     """
     
     Arguments:
@@ -987,7 +988,7 @@ def definstance(name, ty, value):
     root, _ = root_app(root_clause(ty))
     if root.info.is_class:
         class_name = root.name
-        c = defexpr(name, value, type=ty, unfold=[class_name])
+        c = defexpr(name, expr, type=ty, unfold=[class_name])
         local_ctxt.add_to_field(name, c.type, 'class_instances')
         local_ctxt.add_to_field(name, c.type, 'hyps')
         return c
@@ -1076,18 +1077,19 @@ def defenum(name, elts):
 ###############################################################################
 
 # allow input and output syntax And(e1, e2, ..., en)
-And = defconst('And', Bool >> (Bool >> Bool), \
+And = defconst('And', Bool >> (Bool >> Bool), value=v.and_val, \
                unicode=color.purple + 'And' + color.reset)
 And.info['__call__'] = iterative_app_call
 And.info['print_iterable_app'] = True
 
 # allow input and output syntax Or(e1, e2, ..., en)
-Or = defconst('Or', Bool >> (Bool >> Bool), \
+Or = defconst('Or', Bool >> (Bool >> Bool), value=v.or_val, \
               unicode=color.purple + 'Or' + color.reset)
 Or.info['__call__'] = iterative_app_call
 Or.info['print_iterable_app'] = True
 
-Not = defconst('Not', Bool >> Bool, unicode=color.purple + '¬' + color.reset)
+Not = defconst('Not', Bool >> Bool, value=v.not_val, \
+             unicode=color.purple + '¬' + color.reset)
 
 p = Bool('p')
 q = Bool('q')
@@ -1100,10 +1102,10 @@ implies.info['print_implies'] = True
 #This is equivalent to the constant given as type to terms
 # of the form Ev(tele), as constants are only compared
 # by name. As a result, it is proven using the auto tactic
-true = defconst('true', Bool, \
+true = defconst('true', Bool, value=v.true_val, \
                 unicode=color.cyan + 'true' + color.reset)
 
-false = defconst('false', Bool, \
+false = defconst('false', Bool, value=v.false_val, \
                 unicode=color.cyan + 'false' + color.reset)
 
 
@@ -1119,22 +1121,24 @@ Real = deftype('Real', unicode=color.green + 'Real' + color.reset)
 
 # binary operations on the reals
 
-add_real = defconst('add_real', Real >> (Real >> Real))
-mul_real = defconst('mul_real', Real >> (Real >> Real))
-minus_real = defconst('minus_real', Real >> (Real >> Real))
-divide_real = defconst('divide_real', Real >> (Real >> Real))
-power = defconst('**', Real >> (Real >> Real), infix=True)
+add_real = defconst('add_real', Real >> (Real >> Real), value=v.add_real_val)
+mul_real = defconst('mul_real', Real >> (Real >> Real), value=v.mul_real_val)
+minus_real = defconst('minus_real', Real >> (Real >> Real), \
+                      value=v.minus_real_val)
+divide_real = defconst('divide_real', Real >> (Real >> Real), \
+                       value=v.divide_real_val)
+power = defconst('**', Real >> (Real >> Real), value=v.power_val, infix=True)
 # TODO: not overloaded for now
 
 # unary operations on the reals
 
-uminus_real = defconst('uminus_real', Real >> Real)
-abs_real = defconst('abs_real', Real >> Real)
+uminus_real = defconst('uminus_real', Real >> Real, value=v.uminus_real_val)
+abs_real = defconst('abs_real', Real >> Real, value=v.abs_real_val)
 
 # binary predicates on the reals
 
-lt_real = defconst('lt_real', Real >> (Real >> Bool))
-le_real = defconst('le_real', Real >> (Real >> Bool))
+lt_real = defconst('lt_real', Real >> (Real >> Bool), value=v.lt_real_val)
+le_real = defconst('le_real', Real >> (Real >> Bool), value=v.le_real_val)
 
 # integers
 
@@ -1143,21 +1147,22 @@ int_sub_real = defsub('int_sub_real', Int <= Real)
 
 # binary operations on the integers
 
-add_int = defconst('add_int', Int >> (Int >> Int))
-mul_int = defconst('mul_int', Int >> (Int >> Int))
-minus_int = defconst('minus_int', Int >> (Int >> Int))
-divide_int = defconst('divide_int', Int >> (Int >> Int))
-mod = defconst('%', Int >> (Int >> Int), infix=True)
+add_int = defconst('add_int', Int >> (Int >> Int), value=v.add_int_val)
+mul_int = defconst('mul_int', Int >> (Int >> Int), value=v.mul_int_val)
+minus_int = defconst('minus_int', Int >> (Int >> Int), value=v.minus_int_val)
+divide_int = defconst('divide_int', Int >> (Int >> Int), \
+                      value=v.divide_int_val)
+mod = defconst('%', Int >> (Int >> Int), value=v.mod_val, infix=True)
 
 # unary operations on the integers
 
-uminus_int = defconst('uminus_int', Int >> Int)
-abs_int = defconst('abs_int', Int >> Int)
+uminus_int = defconst('uminus_int', Int >> Int, value=v.uminus_int_val)
+abs_int = defconst('abs_int', Int >> Int, value=v.abs_int_val)
 
 # binary predicates on the integers
 
-lt_int = defconst('lt_int', Int >> (Int >> Bool))
-le_int = defconst('le_int', Int >> (Int >> Bool))
+lt_int = defconst('lt_int', Int >> (Int >> Bool), value=v.lt_int_val)
+le_int = defconst('le_int', Int >> (Int >> Bool), value=v.le_int_val)
 
 
 ###############################################################################
@@ -1175,8 +1180,8 @@ y = X('y')
 eq = defexpr('==', abst([X, x, y], And(Sub(x, y), Sub(y, x))), \
              pi(X, X >> (X >> Bool), impl=True), infix=True, unicode='≃')
 
-op = defconst('op', X >> (X >> X))
-uop = defconst('uop', X >> X)
+op = defvar('op', X >> (X >> X))
+uop = defvar('uop', X >> X)
 
 # allow input syntax mul(e1, e2, ..., en)
 Mul = defclass('Mul', [X, op], true)
@@ -1233,7 +1238,7 @@ absf = defexpr('abs', abst([X, uop, abs_ev], uop), \
 definstance('Abs_real', Abs(Real, abs_real), triv())
 definstance('Abs_int', Abs(Int, abs_int), triv())
 
-pred = defconst('pred', X >> (X >> Bool))
+pred = defvar('pred', X >> (X >> Bool))
 
 Lt = defclass('Lt', [X, pred], true)
 lt_ev = Const('lt_ev', Lt(X, pred))

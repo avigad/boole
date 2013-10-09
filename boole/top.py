@@ -14,12 +14,25 @@
 from boole.elab.terms import *
 from boole.core.expr import Mvar
 import boole.elab.unif as unif
+from boole.semantics.value import eval_expr
 
 
 if __name__ == '__main__':
 
     set_verbose()
 
+
+    b, c = Bool('b c')
+
+    formula1 = exists(b, And(Not(b), b))
+    formula2 = forall(b, Or(Not(b), b))
+    formula3 = abst([b, c], And(b, c))
+
+    print eval_expr(formula1)
+    print eval_expr(formula2)
+    print eval_expr(formula3(true, true))
+    print eval_expr(formula3(true, false))
+    print
 
     x = Real('x')
 
@@ -122,6 +135,6 @@ if __name__ == '__main__':
     print tm.arg.body.equals(tm.fun.arg.body)
     print tm.fun.fun.arg.to_string()
 
-    typing.infer(tm, ctxt=local_ctxt)
+    # typing.infer(tm, ctxt=local_ctxt)
 
     

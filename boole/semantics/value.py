@@ -84,8 +84,6 @@ class Model(object):
 
 EmptyMod = Model({}, {})
 
-BoolVal = Value([True, False], 'Bool')
-
 
 class ExprValue(e.ExprVisitor):
     """Return the value of an expression.
@@ -129,7 +127,7 @@ class ExprValue(e.ExprVisitor):
             return None
 
     def visit_bool(self, expr, model, bindings):
-        return BoolVal
+        return [True, False]
 
     def visit_bound(self, expr, model, bindings):
         if expr.is_abst():
@@ -148,7 +146,7 @@ class ExprValue(e.ExprVisitor):
                            .format(len(args), n_args)
                     raise TypeError(mess)
                 else:
-                    return self.visit(e, model, bindings + args)
+                    return self.visit(e, model, bindings + list(args))
                 
             return nameless
 
@@ -239,6 +237,32 @@ def eval_expr(expr, model=None, strict=False):
 # Semantics of built-in operations
 #
 ###############################################################################
+
+def and_fun(x, y):
+    return x and y
+and_val = Value(and_fun)
+
+
+def or_fun(x, y):
+    return x or y
+or_val = Value(or_fun)
+
+
+def implies_fun(x, y):
+    return (not x) or y
+implies_val = Value(implies_fun)
+
+
+def not_fun(x):
+    return not x
+
+not_val = Value(not_fun)
+
+
+true_val = Value(True)
+
+false_val = Value(False)
+
 
 def add_real_fun(x, y):
     return x + y

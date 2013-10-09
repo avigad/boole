@@ -24,7 +24,7 @@ def test1():
     
     p, q = Bool('p q')
 
-    el = defconst('el', X)
+    el = defvar('el', X)
 
     One = defclass('One', [X, el], true)
 
@@ -59,7 +59,7 @@ def test1():
     
     int_ops = defexpr('int_ops', 3 * i < j * 2)
 
-    poly = defconst('poly', pi(X, X >> (X >> X), impl=True))
+    poly = defvar('poly', pi(X, X >> (X >> X), impl=True))
 
     poly_z = defexpr('poly_z', poly(z))
 
@@ -72,8 +72,8 @@ def test1():
     op_a = defconst('op_a', A >> (A >> A))
     op_b = defconst('op_b', B >> (B >> B))
 
-    p1 = defconst('p1', A*B)
-    p2 = defconst('p2', A*B)
+    p1 = defvar('p1', A*B)
+    p2 = defvar('p2', A*B)
 
     op_pair = \
             abst([p1, p2], pair(op_a(p1[0], p2[0]), op_b(p1[1], p2[1])))
@@ -125,13 +125,13 @@ def test1():
 
     add_nil = defhyp('add_nil', sum_vec(nil, nil) == nil)
 
-    v1 = defconst('v1', Vec(n))
+    v1 = defvar('v1', Vec(n))
 
-    v2 = defconst('v2', Vec(n))
+    v2 = defvar('v2', Vec(n))
 
-    a = defconst('a', Real)
+    a = defvar('a', Real)
 
-    b = defconst('b', Real)
+    b = defvar('b', Real)
 
     add_cons_eq = sum_vec(cons(a, v1), cons(b, v2)) == cons(a+b, sum_vec(v1, v2))
 
@@ -139,7 +139,7 @@ def test1():
 
     rev = defconst('rev', pi(n, Vec(n) >> Vec(n), impl=True))
 
-    v3 = defconst('v3', Vec(3))
+    v3 = defvar('v3', Vec(3))
 
     rev_3 = defexpr('rev_3', rev(v3))
 
