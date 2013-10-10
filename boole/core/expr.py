@@ -157,6 +157,7 @@ class Type(Expr):
         """
         """
         Expr.__init__(self)
+        self.name = 'Type'
 
     def accept(self, visitor, *args, **kwargs):
         """The accept method allows the definition of
@@ -227,6 +228,7 @@ class Bool(Expr):
         """
         """
         Expr.__init__(self)
+        self.name = 'Bool'
 
     def accept(self, visitor, *args, **kwargs):
         """The accept method allows the definition of
