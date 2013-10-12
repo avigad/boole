@@ -10,7 +10,7 @@
 # Authors:
 # Cody Roux
 #
-#
+# WARNING: execution of this file is very slow!
 #
 ##############################################################################
 
@@ -23,7 +23,7 @@ from boole.elab.terms import *
 
 if __name__ == '__main__':
 
-    # set_verbose()
+    set_verbose()
     
     el = defconst('el', X)
 
@@ -46,6 +46,9 @@ if __name__ == '__main__':
     Unit_right = defclass('Unit_right', [X, op, el, op_mul, el_one], \
                          forall(x, x * one() == x))
 
+    Assoc = defclass('Assoc', [X, op, op_mul], \
+                     forall([x, y, z], (x * y) * z == x * (y * z)))
+
     G = deftype('G')
 
     G_mul = defconst('G_mul', G >> (G >> G))
@@ -58,7 +61,12 @@ if __name__ == '__main__':
 
     G_unit_r = defconst('G_unit_r', forall(g, G_mul(g, G_one) == g))
 
-    grp_def = sig([G, G_mul, G_one, G_unit_l, G_unit_r], true)
+    g1, g2, g3 = G('g1 g2 g3')
+
+    G_assoc = defconst('G_assoc',
+                       forall([g1, g2, g3], G_mul(G_mul(g1, g2), g3) == G_mul(g1, G_mul(g2, g3))))
+
+    grp_def = sig([G, G_mul, G_one, G_unit_l, G_unit_r, G_assoc], true)
 
     Grp = defexpr('Grp', grp_def)
 
@@ -81,6 +89,31 @@ if __name__ == '__main__':
 
     definstance('One_grp', forall(grp, One(grp_carr(grp), grp_one(grp))), triv())
 
+    definstance('Unit_left_grp',
+                forall(grp, Unit_left(grp_carr(grp),
+                                  grp_op(grp),
+                                  grp_one(grp),
+                                  triv(),
+                                  triv())),
+                triv())
+
+
+    goal = local_ctxt.next_goal()
+
+    goal.interact(tac.par(tac.trytac(unif.instances)))
+
+    goal.interact(tac.unfold('Grp'))
+
+    goal.interact(tac.unpack('grp'))
+
+    #grp_carr is invisible!
+    #it appears in an implicit argument.
+    goal.interact(tac.unfold('*', 'one', 'grp_carr', 'grp_op', 'grp_one')
+                  >> tac.simpl(conv.beta_norm))
+
+    goal.interact(unif.mvar_apply(goal[0]['G_unit_l']))
+
+    goal.interact(unif.unify >> tac.par(tac.trivial))
 
     definstance('Unit_right_grp',
                 forall(grp, Unit_right(grp_carr(grp),
@@ -108,7 +141,28 @@ if __name__ == '__main__':
 
     goal.interact(unif.unify >> tac.par(tac.trivial))
 
-    g = defconst('g', grp_carr(grp))
-    h = defconst('h', grp_carr(grp))
+    definstance('Assoc_grp',
+                forall(grp, Assoc(grp_carr(grp),
+                             grp_op(grp),
+                             triv())),
+                triv())
+    
+    goal = local_ctxt.next_goal()
 
-    defhyp('toto', g * h == one() * h * g)
+    goal.interact(tac.par(tac.trytac(unif.instances)))
+
+    goal.interact(tac.unfold('Grp'))
+
+    goal.interact(tac.unpack('grp'))
+
+    goal.interact(tac.unfold('*', 'one', 'grp_carr', 'grp_op', 'grp_one')
+                  >> tac.simpl(conv.beta_norm))
+
+    goal.interact(unif.mvar_apply(goal[0]['G_assoc']))
+
+    goal.interact(unif.unify >> tac.par(tac.trivial))
+
+    # g = defconst('g', grp_carr(grp))
+    # h = defconst('h', grp_carr(grp))
+
+    # defhyp('toto', g * h == (one() * g) * h)

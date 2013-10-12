@@ -1171,11 +1171,13 @@ le_int = defconst('le_int', Int >> (Int >> Bool), value=v.le_int_val)
 #
 ###############################################################################
 
-#TODO: remove this from the local context, and give a way to declare type variables.
+#TODO: remove these variables from the python context
+#and give a way to declare type variables.
 X = deftype('X')
 
 x = X('x')
 y = X('y')
+z = X('z')
 
 eq = defexpr('==', abst([X, x, y], And(Sub(x, y), Sub(y, x))), \
              pi(X, X >> (X >> Bool), impl=True), infix=True, unicode='≃')
