@@ -18,11 +18,11 @@ def test0():
     p, q, r = Bool('p, q, r')
     f = (Real >> Real)('f')
     Beatles, (John, Paul, George, Ringo) = \
-        defenumtype('Beatles', ['John', 'Paul', 'George', 'Ringo'])
+        defenum('Beatles', ['John', 'Paul', 'George', 'Ringo'])
     Likes = (Beatles >> (Beatles >> Bool))('Likes')
     
     T1 = Boole_to_Z3()
-    T2 = Z3_to_Boole()
+    T2 = Z3_to_Boole(local_ctxt)
     
     def test(expr):
         print 'Boole expression:', expr
@@ -70,7 +70,7 @@ def test1():
     
 def test2():
     
-    Men, (Alex, Bill, Charles)= defenumtype('Men', ('Alex', 'Bill', 'Charles'))
+    Men, (Alex, Bill, Charles)= defenum('Men', ('Alex', 'Bill', 'Charles'))
          
     Likes = (Men >> (Men >> Bool))('Likes')
     x, y, z = Men('x y z')
@@ -99,7 +99,7 @@ def test3():
 def test4():
     
     Men, (Alec, Bill, Carl, Dave) = \
-        defenumtype('Men', ('Alec', 'Bill', 'Carl', 'Dave'))
+        defenum('Men', ('Alec', 'Bill', 'Carl', 'Dave'))
     tall, dark, handsome = (Men >> Int)('tall, dark, handsome')
     ideal = Men('ideal')
     x = Men('x')
@@ -110,8 +110,7 @@ def test4():
     s.add(forall(x, Or(handsome(x) == 0, handsome(x) == 1)))
     s.add(tall(Alec) + tall(Bill) + tall(Carl) + tall(Dave) == 3)
     s.add(dark(Alec) + dark(Bill) + dark(Carl) + dark(Dave) == 2)
-    s.add(handsome(Alec) + handsome(Bill) + handsome(Carl) + handsome(Dave) == \
-          1)
+    s.add(handsome(Alec) + handsome(Bill) + handsome(Carl) + handsome(Dave) == 1)
     s.add(forall(x, Or(tall(x) == 1, dark(x) == 1, handsome(x) == 1)))
     s.add(dark(Alec) == dark(Dave))   
     s.add(tall(Bill) == tall(Carl))

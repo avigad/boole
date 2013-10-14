@@ -1,10 +1,10 @@
-################################################################################
+###############################################################################
 #
 # z3_interface.py
 #
 # description: interface between Boole and Z3
 #
-################################################################################
+###############################################################################
 
 import operator
 
@@ -170,7 +170,7 @@ class Boole_to_Z3:
             return self.sort_dict[s.name]
         elif s.name in _built_in_z3_sorts.keys():
             return _built_in_z3_sorts[s.name](self.context)
-        elif s.value and s.value.desc == enumtype_val:
+        elif s.value and s.value.desc == "enumtype_val":
             # s is an enumerated type
             return self.make_z3_enumerated_sort(s.name, s.value.pyval)
         else:
@@ -191,7 +191,7 @@ class Boole_to_Z3:
             if etype.name in _built_in_z3_sort_values.keys():
                 val_trans = _built_in_z3_sort_values[etype.name]
                 return val_trans(c.value.pyval, self.context)
-            elif etype.value and etype.value.desc == enumtype_val:
+            elif etype.value and etype.value.desc == "enumtype_val":
                 self.get_z3_sort(etype)  # creates the enum type if not there
                 return self.symbol_dict[c.value.pyval]
             else:
@@ -282,16 +282,15 @@ class Z3_to_Boole(object):
             return Real
         elif s.name() == 'Bool':
             return Bool
-        else:   # inelegant!
-            print s
-            raise NotImplementedError()
+        else:
+            return self.context.decls[str(s)]
         ### return mktype(s.name())
         
     def mk_const(self, c):
         if z3.is_rational_value(c):
             # TODO: what should we convert a rational to?
-            return rr(Fraction(expr.numerator_as_long(), \
-                               expr.denominator_as_long()))
+            return rr(Fraction(c.numerator_as_long(), \
+                               c.denominator_as_long()))
         if z3.is_int_value(c):
             # TODO: cast to int?
             return ii(c.as_long())
@@ -305,17 +304,23 @@ class Z3_to_Boole(object):
             try:
                 return self.context.decls[str(c)]
             except KeyError:
+                print "constant {0!s} not found!".format(c)
                 typ = self.mk_sort(c.sort())
                 return const(str(c), typ)
 
+    # WARNING: f.name() and str(f) are not identical!
     def mk_fun(self, f):
-        dom_types = [self.mk_sort(f.domain(i))\
-                     for i in range(0, f.arity())]
-        cod_type = self.mk_sort(f.range())
-        dom_types.reverse()
-        fun_type = reduce((lambda X, Y: type_arrow(Y, X)), \
-                          dom_types, cod_type)
-        return const(f.name(), fun_type)
+        try:
+            return self.context.decls[str(f)]
+        except KeyError:
+            print "function {0!s} not defined!".format(str(f))
+            dom_types = [self.mk_sort(f.domain(i))\
+                         for i in range(0, f.arity())]
+            cod_type = self.mk_sort(f.range())
+            dom_types.reverse()
+            fun_type = reduce((lambda X, Y: type_arrow(Y, X)), \
+                              dom_types, cod_type)
+            return const(str(f), fun_type)
 
     def mk_app(self, f, args):
         if z3.is_eq(f):
@@ -372,7 +377,7 @@ class Z3_to_Boole(object):
         elif z3.is_app(expr):
             args = [self.translate(expr.arg(i), bound_variables)
                 for i in range(expr.num_args())]
-            return self.mk_func(expr.decl(), args)
+            return self.mk_fun(expr.decl())(*args)
 
 #            else:
 #                raise Z3_Unexpected_Expression(expr)

@@ -150,6 +150,28 @@ class Context(object):
             mess = "Field {0!s} not found in context {1!s}"\
                    .format(field, self.name)
             raise ContextErr(mess, self)
+
+    def show(self, dicts=None):
+        """Show various definitions in the context.
         
+        Arguments:
+        - `dicts`: a list of context fields
+        """
+        if dicts == None:
+            d = ['decls', 'defs', 'hyps']
+        else:
+            d = dicts
+
+        for f in d:
+            field = self._context[f]
+            print f + ':'
+            print
+            for k in field:
+                if f == 'decls':
+                    print "  " + k + " : " + str(field[k].type)
+                else:
+                    print "  " + k + " : " + str(field[k])
+            print
+
     def __str__(self):
         return self.name

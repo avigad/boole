@@ -307,6 +307,7 @@ class SolveMvar(Tactic):
                     mess = "No top-level meta-variable in {0!s}"\
                            .format(goal.prop)
                     raise TacticFailure(mess, self, goals)
+                
                 if not elab.mvar_is_present(tm, mvar):
                     mvar.set_val(tm)
                     mvar_stack.push(mvar)
@@ -427,5 +428,7 @@ instances = Instances()
 
 
 unify = sub_mvar >> \
-        par(simpl(conv.par_beta)) >> par(trivial) >> par(trytac(sub_tac)) >> \
+        par(simpl(conv.par_beta)) >> \
+        par(trivial) >> \
+        par(trytac(sub_tac)) >> \
         solve_mvars

@@ -897,10 +897,11 @@ def defexpr(name, expr, type=None, unfold=None, **kwargs):
     c.info['checked'] = True
     local_ctxt.add_const(c)
 
-    eq_c = equals(c, val)
-    def_name = "{0!s}_def".format(name)
-    c_def = const(def_name, eq_c)
-    local_ctxt.add_const(c_def)
+    # TODO: add the equality to the context?
+    # eq_c = equals(c, val)
+    # def_name = "{0!s}_def".format(name)
+    # c_def = const(def_name, eq_c)
+    # local_ctxt.add_const(c_def)
     local_ctxt.add_to_field(name, val, 'defs')
 
     if obl.is_solved():

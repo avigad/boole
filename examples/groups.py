@@ -162,7 +162,7 @@ if __name__ == '__main__':
 
     goal.interact(unif.unify >> tac.par(tac.trivial))
 
-    # g = defconst('g', grp_carr(grp))
-    # h = defconst('h', grp_carr(grp))
+    g = defconst('g', grp_carr(grp))
+    h = defconst('h', grp_carr(grp))
 
-    # defhyp('toto', g * h == (one() * g) * h)
+    defhyp('toto', g * h == (one() * g) * h)

@@ -137,4 +137,4 @@ if __name__ == '__main__':
 
     # typing.infer(tm, ctxt=local_ctxt)
 
-    
+    local_ctxt.show()
