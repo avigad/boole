@@ -1,6 +1,8 @@
 The Boole Interactive Reasoning Assistant
 =========================================
 
+Note: The branch "deptypes" now implements a dependent type theory that is robust enough to handle subtypes and type classes, but it is not yet stable.
+
 Directories:
 
 - boole: the Boole python library
