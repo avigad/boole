@@ -90,5 +90,22 @@
                           ("\\<\\(Type\\|Bool\\|Kind\\|Real\\|Int\\)\\>" 0 'font-lock-type-face)
                           ("\\<[\\+-]?[0-9]+\\(.[0-9]+\\)?\\>" 0 'font-lock-constant-face)
                           ("\\<\\(true\\|false\\)\\>" 0 'font-lock-constant-face)
-                          ("\\<\\(deftype\\|defconst\\|defexpr\\|defhyp\\|defthm\\|defsub\\|defclass\\|definstance\\|defenum\\)\\>" 0 'font-lock-function-name-face)
+                          ("\\<\\(deftype\\|defconst\\|defexpr\\|defhyp\\|defthm\\|defsub\\|defclass\\|definstance\\|defenum\\|defvar\\)\\>" 0 'font-lock-function-name-face)
                           ))
+
+
+
+(defun boole-eval-statement ()
+  (interactive)
+  (save-excursion
+    ;; (move-beginning-of-line nil)
+    ;; (py-goto-block-up nil)
+    (py-mark-block)
+    (py-execute-region (region-beginning) (region-end))))
+
+
+(add-hook 'python-mode-hook
+          '(lambda () (local-set-key (kbd "C-c l") 'boole-eval-statement)))
+
+(add-hook 'python-mode-hook
+          '(lambda () (setq py-shell-switch-buffers-on-execute nil)))

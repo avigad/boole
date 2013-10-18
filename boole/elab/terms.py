@@ -1178,7 +1178,6 @@ X = deftype('X')
 
 x = X('x')
 y = X('y')
-z = X('z')
 
 eq = defexpr('==', abst([X, x, y], And(Sub(x, y), Sub(y, x))), \
              pi(X, X >> (X >> Bool), impl=True), infix=True, unicode='≃')
@@ -1258,3 +1257,9 @@ le = defexpr('<=', abst([X, pred, le_ev], pred), \
              infix=True, unicode='≤')
 definstance('Le_real', Le(Real, lt_real), triv())
 definstance('Le_int', Le(Int, le_int), triv())
+
+del X
+del x
+del y
+del op
+del uop

@@ -24,8 +24,14 @@ from boole.elab.terms import *
 if __name__ == '__main__':
 
     set_verbose()
+
+    X = deftype('X')
     
     el = defconst('el', X)
+
+    op = defconst('op', X >> (X >> X))
+
+    x, y, z = X('x y z')
 
     One = defclass('One', [X, el], true)
 
@@ -72,11 +78,9 @@ if __name__ == '__main__':
 
     grp = defconst('grp', Grp)
 
-    grp_carr = defexpr('grp_carr', abst(grp, cast(grp, grp_def)[0]), pi(grp, Type),\
-                       unfold=['Grp'])
+    grp_carr = defexpr('grp_carr', abst(grp, cast(grp, grp_def)[0]), pi(grp, Type), unfold=['Grp'])
 
-    op_cast = cast(cast(grp, grp_def)[1][0], \
-                   grp_carr(grp) >> (grp_carr(grp) >> grp_carr(grp)))
+    op_cast = cast(cast(grp, grp_def)[1][0], grp_carr(grp) >> (grp_carr(grp) >> grp_carr(grp)))
 
     grp_op = defexpr('grp_op', abst(grp, op_cast), unfold=['Grp', 'grp_carr'])
 
@@ -108,8 +112,7 @@ if __name__ == '__main__':
 
     #grp_carr is invisible!
     #it appears in an implicit argument.
-    goal.interact(tac.unfold('*', 'one', 'grp_carr', 'grp_op', 'grp_one')
-                  >> tac.simpl(conv.beta_norm))
+    goal.interact(tac.unfold('*', 'one', 'grp_carr', 'grp_op', 'grp_one') >> tac.simpl(conv.beta_norm))
 
     goal.interact(unif.mvar_apply(goal[0]['G_unit_l']))
 
@@ -134,8 +137,7 @@ if __name__ == '__main__':
 
     #grp_carr is invisible!
     #it appears in an implicit argument.
-    goal.interact(tac.unfold('*', 'one', 'grp_carr', 'grp_op', 'grp_one')
-                  >> tac.simpl(conv.beta_norm))
+    goal.interact(tac.unfold('*', 'one', 'grp_carr', 'grp_op', 'grp_one') >> tac.simpl(conv.beta_norm))
 
     goal.interact(unif.mvar_apply(goal[0]['G_unit_r']))
 
@@ -166,3 +168,4 @@ if __name__ == '__main__':
     h = defconst('h', grp_carr(grp))
 
     defhyp('toto', g * h == (one() * g) * h)
+
