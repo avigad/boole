@@ -168,6 +168,8 @@ def test1():
 
     goal = local_ctxt.next_goal()
 
+    print goal
+
     goal.interact(tac.unpack('p', names=['x', 'y']))
 
     goal.interact(tac.simpl(conv.par_beta))

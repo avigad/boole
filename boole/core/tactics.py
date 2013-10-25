@@ -49,6 +49,7 @@ def eq_goal(tele, lhs, rhs):
     return sub_goal(tele, lhs, rhs) + sub_goal(tele, rhs, lhs)
 
 
+#TODO: put tactic before the message.
 class TacticFailure(Exception):
     """Raised when a tactic fails
     """
@@ -126,6 +127,21 @@ class tac_from_fun(Tactic):
             return self.fun(goals[0], context, self) + goals[1:]
 
 
+class par_tac_from_fun(Tactic):
+    """Like above, but applies to all goals simultaneously
+    """
+    
+    def __init__(self, name, fun):
+        Tactic.__init__(self, name)
+        self.fun = fun
+        
+    def solve(self, goals, context):
+        new_goals = []
+        for g in goals:
+            new_goals += self.fun(g, context, self)
+        return new_goals
+
+
 def triv_fun(goal, context, _):
     prop = goal.prop
     hyps = goal.tele
@@ -155,7 +171,7 @@ def triv_fun(goal, context, _):
     return [goal]
 
 
-trivial = tac_from_fun('trivial', triv_fun)
+trivial = par_tac_from_fun('trivial', triv_fun)
 
 
 def is_in(el, list):
@@ -348,8 +364,8 @@ class unpack(Tactic):
             try:
                 i = tele.vars.index(self.hyp_name)
             except ValueError:
-                mess = "name {0!s} not found in hypotheses".\
-                       format(self.hyp_name)
+                mess = "name {0!s} not found in hypotheses {1!s}".\
+                       format(self.hyp_name, tele)
                 raise TacticFailure(mess, self, goals)
 
             h = tele.types[i]

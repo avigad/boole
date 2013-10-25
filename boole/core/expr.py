@@ -80,7 +80,7 @@ class Const(Expr):
         return True
 
     def eq(self, expr):
-        """Structural equality.
+        """Structural equality. Simply compares names.
         
         Arguments:
         - `expr`: an expression

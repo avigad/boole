@@ -146,7 +146,7 @@ class SubMvar(e.ExprVisitor):
             sub_val = self.visit(expr._value)
             if self.undef is None:
                 #we are in this case if we are still solving
-                #constraints: the instantiations should not be applied
+                #constraints: the abstractions should not be applied
                 #yet.
                 pass
             else:
