@@ -20,7 +20,7 @@
 #
 ###############################################################################
 
-from boole.elab.terms import *
+from boole.elab.prelude import *
 from boole.core.expr import open_bound_fresh_consts, ExprVisitor
 import boole.core.typing as ty
 import boole.core.tactics as tac

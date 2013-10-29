@@ -7,7 +7,7 @@
 #
 ################################################################################
 
-from boole.elab.terms import *
+from boole.elab.prelude import *
 from boole.interfaces.z3_interface import *
 
 

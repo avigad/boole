@@ -18,7 +18,7 @@ import boole.core.expr as expr
 import boole.core.tactics as tac
 import boole.core.conv as conv
 import boole.elab.unif as unif
-from boole.elab.terms import *
+from boole.elab.prelude import *
 
 
 if __name__ == '__main__':
@@ -114,9 +114,9 @@ if __name__ == '__main__':
     #it appears in an implicit argument.
     goal.interact(tac.unfold('*', 'one', 'grp_carr', 'grp_op', 'grp_one') >> tac.simpl(conv.beta_norm))
 
-    goal.interact(unif.mvar_apply(goal[0]['G_unit_l']))
+    goal.interact(unif.fast_apply(goal[0]['G_unit_l']))
 
-    goal.interact(unif.unify >> tac.par(tac.trivial))
+    # goal.interact(unif.unify >> tac.par(tac.trivial))
 
     definstance('Unit_right_grp',
                 forall(grp, Unit_right(grp_carr(grp),
@@ -139,9 +139,9 @@ if __name__ == '__main__':
     #it appears in an implicit argument.
     goal.interact(tac.unfold('*', 'one', 'grp_carr', 'grp_op', 'grp_one') >> tac.simpl(conv.beta_norm))
 
-    goal.interact(unif.mvar_apply(goal[0]['G_unit_r']))
+    goal.interact(unif.fast_apply(goal[0]['G_unit_r']))
 
-    goal.interact(unif.unify >> tac.par(tac.trivial))
+    # goal.interact(unif.unify >> tac.par(tac.trivial))
 
     definstance('Assoc_grp',
                 forall(grp, Assoc(grp_carr(grp),
@@ -160,9 +160,9 @@ if __name__ == '__main__':
     goal.interact(tac.unfold('*', 'one', 'grp_carr', 'grp_op', 'grp_one')
                   >> tac.simpl(conv.beta_norm))
 
-    goal.interact(unif.mvar_apply(goal[0]['G_assoc']))
+    goal.interact(unif.fast_apply(goal[0]['G_assoc']))
 
-    goal.interact(unif.unify >> tac.par(tac.trivial))
+    # goal.interact(unif.unify >> tac.par(tac.trivial))
 
     g = defconst('g', grp_carr(grp))
     h = defconst('h', grp_carr(grp))

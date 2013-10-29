@@ -1,1 +1,1 @@
-from boole.elab.terms import *
+from boole.elab.prelude import *

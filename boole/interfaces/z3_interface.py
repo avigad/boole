@@ -8,7 +8,7 @@
 
 import operator
 
-from boole.elab.terms import *
+from boole.elab.prelude import *
 from boole.core.expr import open_bound_fresh_consts
 import boole.core.typing as ty
 import boole.core.tactics as tac
@@ -304,7 +304,7 @@ class Z3_to_Boole(object):
             try:
                 return self.context.decls[str(c)]
             except KeyError:
-                print "constant {0!s} not found!".format(c)
+                #Constant is not found in the context
                 typ = self.mk_sort(c.sort())
                 return const(str(c), typ)
 

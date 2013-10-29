@@ -16,8 +16,8 @@
 
 import boole.core.expr as expr
 import boole.core.conv as conv
-import boole.elab.terms
-from boole.elab.terms import *
+
+from boole.elab.prelude import *
 
 
 def test1():

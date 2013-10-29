@@ -11,7 +11,7 @@
 #
 ##############################################################################
 
-from boole.elab.terms import *
+from boole.elab.prelude import *
 from boole.core.expr import Mvar
 import boole.elab.unif as unif
 from boole.semantics.value import eval_expr

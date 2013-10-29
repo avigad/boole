@@ -6,7 +6,7 @@
 #
 ###############################################################################
 
-from boole.elab.terms import *
+from boole.elab.prelude import *
 import boole.core.typing as ty
 import boole.core.tactics as tac
 import boole.interfaces.ineqs.classes as ineq
@@ -141,7 +141,7 @@ def cast_const(cst):
             # return lambda: ineq.Const(name)
             return lambda: float(name)
         except ValueError:
-            if cst.type is Real:
+            if cst.type.equals(Real):
                 return lambda: ineq.Var(name)
             else:
                 raise UndefinedConstant("Undefined constant {0!s}"\

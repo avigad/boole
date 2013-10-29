@@ -4,7 +4,7 @@
 #
 # terms.py
 #
-# description: an info type describing how to build terms and types at the
+# description: a module with functions to build terms and types at the
 # top level.
 #
 #
@@ -1100,9 +1100,7 @@ implies = defexpr('implies', abst([p, q], Sub(p, q)), Bool >> (Bool >> Bool), \
 implies.info['__call__'] = implies_call
 implies.info['print_implies'] = True
 
-#This is equivalent to the constant given as type to terms
-# of the form Ev(tele), as constants are only compared
-# by name. As a result, it is proven using the auto tactic
+#true can be proven using the auto tactic
 true = defconst('true', Bool, value=v.true_val, \
                 unicode=color.cyan + 'true' + color.reset)
 
@@ -1120,50 +1118,15 @@ false = defconst('false', Bool, value=v.false_val, \
 
 Real = deftype('Real', unicode=color.green + 'Real' + color.reset)
 
-# binary operations on the reals
-
-add_real = defconst('add_real', Real >> (Real >> Real), value=v.add_real_val)
-mul_real = defconst('mul_real', Real >> (Real >> Real), value=v.mul_real_val)
-minus_real = defconst('minus_real', Real >> (Real >> Real), \
-                      value=v.minus_real_val)
-divide_real = defconst('divide_real', Real >> (Real >> Real), \
-                       value=v.divide_real_val)
-power = defconst('**', Real >> (Real >> Real), value=v.power_val, infix=True)
 # TODO: not overloaded for now
+power = defconst('**', Real >> (Real >> Real), value=v.power_val, infix=True)
 
-# unary operations on the reals
-
-uminus_real = defconst('uminus_real', Real >> Real, value=v.uminus_real_val)
-abs_real = defconst('abs_real', Real >> Real, value=v.abs_real_val)
-
-# binary predicates on the reals
-
-lt_real = defconst('lt_real', Real >> (Real >> Bool), value=v.lt_real_val)
-le_real = defconst('le_real', Real >> (Real >> Bool), value=v.le_real_val)
 
 # integers
 
 Int = deftype('Int', unicode=color.green + 'Int' + color.reset)
-int_sub_real = defsub('int_sub_real', Int <= Real)
 
-# binary operations on the integers
-
-add_int = defconst('add_int', Int >> (Int >> Int), value=v.add_int_val)
-mul_int = defconst('mul_int', Int >> (Int >> Int), value=v.mul_int_val)
-minus_int = defconst('minus_int', Int >> (Int >> Int), value=v.minus_int_val)
-divide_int = defconst('divide_int', Int >> (Int >> Int), \
-                      value=v.divide_int_val)
 mod = defconst('%', Int >> (Int >> Int), value=v.mod_val, infix=True)
-
-# unary operations on the integers
-
-uminus_int = defconst('uminus_int', Int >> Int, value=v.uminus_int_val)
-abs_int = defconst('abs_int', Int >> Int, value=v.abs_int_val)
-
-# binary predicates on the integers
-
-lt_int = defconst('lt_int', Int >> (Int >> Bool), value=v.lt_int_val)
-le_int = defconst('le_int', Int >> (Int >> Bool), value=v.le_int_val)
 
 
 ###############################################################################
@@ -1172,8 +1135,6 @@ le_int = defconst('le_int', Int >> (Int >> Bool), value=v.le_int_val)
 #
 ###############################################################################
 
-#TODO: remove these variables from the python context
-#and give a way to declare type variables.
 X = deftype('X')
 
 x = X('x')
@@ -1193,8 +1154,6 @@ mul = defexpr('*', abst([X, op, mul_ev], op), \
               infix=True, unicode='×')
 mul.info['__call__'] = iterative_app_call
 mul.info['print_iterable_app'] = True
-definstance('Mul_real', Mul(Real, mul_real), triv())
-definstance('Mul_int', Mul(Int, mul_int), triv())
 
 # allow input synatx add(e1, e2, ..., en)
 Add = defclass('Add', [X, op], true)
@@ -1204,32 +1163,24 @@ add = defexpr('+', abst([X, op, add_ev], op), \
               infix=True)
 add.info['__call__'] = iterative_app_call
 add.info['print_iterable_app'] = True
-definstance('Add_real', Add(Real, add_real), triv())
-definstance('Add_int', Add(Int, add_int), triv())
 
 Minus = defclass('Minus', [X, op], true)
 minus_ev = Const('minus_ev', Minus(X, op))
 minus = defexpr('-', abst([X, op, minus_ev], op), \
               pi([X, op, minus_ev], X >> (X >> X), impl=True), \
               infix=True)
-definstance('Minus_real', Minus(Real, minus_real), triv())
-definstance('Minus_int', Minus(Int, minus_int), triv())
 
 Div = defclass('Div', [X, op], true)
 div_ev = Const('div_ev', Div(X, op))
 div = defexpr('/', abst([X, op, div_ev], op), \
               pi([X, op, div_ev], X >> (X >> X), impl=True), \
               infix=True)
-definstance('Div_real', Div(Real, divide_real), triv())
-definstance('Div_int', Div(Int, divide_int), triv())
 
 Uminus = defclass('Uminus', [X, uop], true)
 uminus_ev = Const('uminus_ev', Uminus(X, uop))
 #TODO: can we use '-' for this as well?
 uminus = defexpr('uminus', abst([X, uop, uminus_ev], uop), \
               pi([X, uop, uminus_ev], X >> X, impl=True))
-definstance('Uminus_real', Uminus(Real, uminus_real), triv())
-definstance('Uminus_int', Uminus(Int, uminus_int), triv())
 
 Abs = defclass('Abs', [X, uop], true)
 abs_ev = Const('abs_ev', Abs(X, uop))
@@ -1237,8 +1188,6 @@ abs_ev = Const('abs_ev', Abs(X, uop))
 absf = defexpr('abs', abst([X, uop, abs_ev], uop), \
               pi([X, uop, abs_ev], X >> X, impl=True), \
               infix=True)
-definstance('Abs_real', Abs(Real, abs_real), triv())
-definstance('Abs_int', Abs(Int, abs_int), triv())
 
 pred = defvar('pred', X >> (X >> Bool))
 
@@ -1247,16 +1196,14 @@ lt_ev = Const('lt_ev', Lt(X, pred))
 lt = defexpr('<', abst([X, pred, lt_ev], pred), \
              pi([X, pred, lt_ev], X >> (X >> Bool), impl=True), \
              infix=True)
-definstance('Lt_real', Lt(Real, lt_real), triv())
-definstance('Lt_int', Lt(Int, lt_int), triv())
 
 Le = defclass('Le', [X, pred], true)
 le_ev = Const('le_ev', Le(X, pred))
 le = defexpr('<=', abst([X, pred, le_ev], pred), \
              pi([X, pred, le_ev], X >> (X >> Bool), impl=True), \
              infix=True, unicode='≤')
-definstance('Le_real', Le(Real, lt_real), triv())
-definstance('Le_int', Le(Int, le_int), triv())
+
+
 
 del X
 del x
