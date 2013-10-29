@@ -16,6 +16,7 @@ import boole.core.conv as conv
 import boole.interfaces.ineq_interface as ineq
 import boole.semantics.value as value
 from boole.semantics.value import Value, eval_expr
+import boole.elab.elab as elabm
 
 import z3
 
@@ -134,8 +135,6 @@ def z3_to_fun(z3_expr):
     fun_list_val = [(z3_to_val(p[0]), z3_to_val(p[1]))\
                     for p in fun_list]
     fun_dict = dict(fun_list_val)
-    print 'other_val:', other_val
-    print 'fun_dict:', fun_dict
     def fun(a):
         try:
             return fun_dict[a]
@@ -168,8 +167,7 @@ def z3_to_val(z3_expr):
         return z3_expr
 
 
-
-class Boole_to_Z3:
+class Boole_to_Z3(object):
     """
     Creates a Z3 context, and translates Boole expressions to that
     context, creating symbols as necessary.
@@ -222,7 +220,6 @@ class Boole_to_Z3:
         elif s.name in _built_in_z3_sorts.keys():
             return _built_in_z3_sorts[s.name](self.context)
         elif s.value and s.value.desc == "enumtype_val":
-            # s is an enumerated type
             return self.make_z3_enumerated_sort(s.name, s.value.pyval)
         else:
             return self.make_z3_sort(s.name)
@@ -287,25 +284,25 @@ class Boole_to_Z3:
             return z3_fun(*args)
        
     def __call__(self, expr):
-        expr = elab(expr)
-        if expr.is_const():
-            return self.get_z3_const(expr)
-        elif expr.is_app():
-            fun, args = root_app_implicit(expr)
+        val = elab(expr)
+        if val.is_const():
+            return self.get_z3_const(val)
+        elif val.is_app():
+            fun, args = root_app_implicit(val)
             args = [self.__call__(a) for a in args]
             return self.handle_function(fun, args)
-        elif expr.is_forall():
-            vlist, body = open_bound_fresh_consts(expr)
+        elif val.is_forall():
+            vlist, body = open_bound_fresh_consts(val)
             z3_vars = [self(v) for v in vlist]
             z3_body = self(body)
             return z3.ForAll(z3_vars, z3_body)
-        elif expr.is_exists():
-            vlist, body = open_bound_fresh_consts(expr)
+        elif val.is_exists():
+            vlist, body = open_bound_fresh_consts(val)
             z3_vars = [self(v) for v in vlist]
             z3_body = self(body)
             return z3.Exists(z3_vars, z3_body)
         else:
-            raise Z3_Unexpected_Expression(expr)
+            raise Z3_Unexpected_Expression(val)
 
 
 ###############################################################################
@@ -339,10 +336,7 @@ class Z3_to_Boole(object):
         
     def mk_const(self, c):
         if z3.is_int_value(c):
-            # TODO: cast to int?
             return ii(c.as_long())
-        #            elif str(expr) in language.const_dict.keys():
-        #                return language.const_dict[str(expr)]
         if z3.is_rational_value(c):
             # TODO: what should we convert a rational to?
             return rr(Fraction(c.numerator_as_long(), \
@@ -364,7 +358,6 @@ class Z3_to_Boole(object):
         try:
             return self.context.decls[str(f)]
         except KeyError:
-            print "function {0!s} not defined!".format(str(f))
             dom_types = [self.mk_sort(f.domain(i))\
                          for i in range(0, f.arity())]
             cod_type = self.mk_sort(f.range())
@@ -415,7 +408,7 @@ class Z3_to_Boole(object):
             return func(*args)
 
     def __call__(self, expr):
-        return elaborate(self.translate(expr), None, None)[0]
+        return elab(self.translate(expr))
 
     #TODO: remove mutable default value
     def translate(self, expr, bound_variables=[]):
@@ -489,31 +482,6 @@ def interp_to_eqns(f, vals):
     return eqns
 
 
-#    def value(self, z3_val):
-#        if z3.is_true(z3_val):
-#            return True
-#        elif z3.is_false(z3_val):
-#            return False
-#        elif z3.is_int_value(z3_val):
-#            return z3_val.as_long()
-#        elif z3.is_rational_value(z3_val):
-#            return Fraction(z3_val.numerator().as_long(),
-#                            z3_val.denominator().as_long())
-#        elif z3.is_expr(z3_val):
-#            return str(z3_val)
-#        else:
-#            print "Error: unrecognized z3 value", z3_val
-#
-#    def model(self, z3_model):
-#        M = Model()
-#        M.show()
-#        for symbol in z3_model.decls():
-#            if symbol.name() in self.language.const_dict.keys():
-#                c = self.language.const_dict[symbol.name()]
-#                M[c] = self.value(z3_model[symbol])
-#        return M
-
-
 ###############################################################################
 #
 # A class interface to the Z3 solver
@@ -526,11 +494,11 @@ class Z3_Solver(object):
     
     def __init__(self):
         self.boole_to_z3 = Boole_to_Z3()
-#        self.z3_to_boole = Z3_to_Boole(get_language(language))
+        # self.z3_to_boole = Z3_to_Boole(get_language(language))
         self.solver = z3.Solver(ctx=self.boole_to_z3.context)
         
     def add(self, formula):
-        z3_formula = self.boole_to_z3(formula)
+        z3_formula = self.boole_to_z3(elab(formula))
         return self.solver.add(z3_formula)
         
     def check(self):
@@ -540,17 +508,16 @@ class Z3_Solver(object):
     def z3_model(self):
         return self.solver.model()
         
-    # converts it to a python dictionary
+    # converts it to a Boole model
     def model(self):
         raise NotImplementedError()
         # return self.z3_to_boole.model(self.z3_model())
-
+        
 
 if __name__ == '__main__':
 
-    a, b, c = Int('a b c')
 
-    e = elab(a + b + c <= 0)
+    a, b, c = Int('a b c')
 
     #Puzzles taken from http://eclipseclp.org/examples/index.html
 
@@ -565,6 +532,10 @@ if __name__ == '__main__':
     S = Z3_Solver()
 
     S.add(xkcd)
+
+    positive = (And(a >= 0, b >= 0, c >= 0, d >= 0, e >= 0, f(a) >= 0))
+
+    S.add(positive)
 
     print S.check()
 
@@ -581,16 +552,16 @@ if __name__ == '__main__':
     # Causes segfault!
     # print m.eval(m[2])
 
-    # print dir(m.eval(f_val))
-
-    # print m.eval(f_val).decl()
-
     B = Z3_to_Boole()
 
     b_mod = B.model(m)
 
+    # print b_mod.vals
 
     print eval_expr(a == d, b_mod)
     print eval_expr(a == b, b_mod)
     print eval_expr(elab(a*215 + b*275 + c*335 + d*355 + e*420 + f(a)*580), b_mod)
-    print eval_expr(xkcd, b_mod)
+    print eval_expr(elab(xkcd), b_mod)
+
+
+    print eval_expr(elab(positive), b_mod)

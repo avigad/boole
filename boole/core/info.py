@@ -153,6 +153,6 @@ def same_info(f):
         if expr.is_db():
             pass
         else:
-            e.info = expr.info
+            e.info.update(expr.info)
         return e
     return call_f

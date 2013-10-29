@@ -719,7 +719,7 @@ def elaborate(expr, type, unfold):
         unfold_tac = tac.idtac
     else:
         unfold_tac = tac.par(tac.unfold(*unfold))
-    
+
     if expr.info.elaborated and type is None:
         ty, obl = typing.infer(expr, ctxt=local_ctxt)
         obl.solve_with(unfold_tac >> type_tac)
@@ -760,7 +760,7 @@ def elaborate(expr, type, unfold):
     val.info['elaborated'] = True
 
     if type is None and ty.info.name == "default":
-        #TODO: this should be st_typ, but arrows are not printed
+        #TODO: this should be st_typ, but pis are not printed
         #correctly at the type level.
         ty.info.update(st_term)
 
