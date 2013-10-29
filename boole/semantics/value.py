@@ -114,11 +114,9 @@ class ExprValue(e.ExprVisitor):
         else:
             return None
 
+    #return the type of all python types
     def visit_type(self, expr, model, bindings):
-        if self.strict:
-            raise NoValue(expr)
-        else:
-            return None
+        return object
 
     def visit_kind(self, expr, model, bindings):
         if self.strict:
@@ -179,7 +177,16 @@ class ExprValue(e.ExprVisitor):
         f, args = e.root_app(expr)
         f_val = self.visit(f, model, bindings)
         args_val = [self.visit(a, model, bindings) for a in args]
-        return f_val(*args_val)
+        if (f_val is None):
+            if self.strict:
+                raise NoValue(expr)
+            else:
+                return None
+        else:
+            #call f "strictly" on the arguments
+            #this is better performance-wise, but bad for
+            #lazy evaluation
+            return f_val(*args_val)
 
     def visit_pair(self, expr, model, bindings):
         fst_val = self.visit(expr.fst, model, bindings)

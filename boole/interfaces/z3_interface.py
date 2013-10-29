@@ -15,6 +15,7 @@ import boole.core.tactics as tac
 import boole.core.conv as conv
 import boole.interfaces.ineq_interface as ineq
 import boole.semantics.value as value
+from boole.semantics.value import Value, eval_expr
 
 import z3
 
@@ -116,6 +117,56 @@ _built_in_z3_sort_values = {
 # Convert Boole expressions to Z3 expressions
 #
 ###############################################################################
+
+def z3_to_fun(z3_expr):
+    """Takes a FuncInterp instance, and returns
+    the function which takes as input the value of
+    a z3 expression and returns the value of the
+    corresponding expression.
+
+    Mutually recursive with z3_to_val
+    
+    Arguments:
+    - `z3_expr`: an instance of FuncInterp
+    """
+    fun_list = z3_expr.as_list()
+    other_val = z3_to_val(fun_list.pop())
+    fun_list_val = [(z3_to_val(p[0]), z3_to_val(p[1]))\
+                    for p in fun_list]
+    fun_dict = dict(fun_list_val)
+    print 'other_val:', other_val
+    print 'fun_dict:', fun_dict
+    def fun(a):
+        try:
+            return fun_dict[a]
+        except KeyError:
+            return other_val
+
+    return fun
+
+
+def z3_to_val(z3_expr):
+    """Send a z3 expression to it's value
+    as a python expression, if it has one,
+    otherwise return the expresson itself.
+    
+    Arguments:
+    - `z3_expr`: a z3 AST
+    """
+    if z3.is_int_value(z3_expr):
+        return z3_expr.as_long()
+    if z3.is_rational_value(z3_expr):
+        return Fraction(z3_expr.numerator_as_long(), \
+                        z3_expr.denominator_as_long())
+    elif z3.is_true(z3_expr):
+        return True
+    elif z3.is_false(z3_expr):
+        return False
+    elif isinstance(z3_expr, z3.FuncInterp):
+        return z3_to_fun(z3_expr)
+    else:
+        return z3_expr
+
 
 
 class Boole_to_Z3:
@@ -287,15 +338,15 @@ class Z3_to_Boole(object):
         ### return mktype(s.name())
         
     def mk_const(self, c):
-        if z3.is_rational_value(c):
-            # TODO: what should we convert a rational to?
-            return rr(Fraction(c.numerator_as_long(), \
-                               c.denominator_as_long()))
         if z3.is_int_value(c):
             # TODO: cast to int?
             return ii(c.as_long())
         #            elif str(expr) in language.const_dict.keys():
         #                return language.const_dict[str(expr)]
+        if z3.is_rational_value(c):
+            # TODO: what should we convert a rational to?
+            return rr(Fraction(c.numerator_as_long(), \
+                               c.denominator_as_long()))
         elif z3.is_true(c):
             return true
         elif z3.is_false(c):
@@ -416,10 +467,11 @@ class Z3_to_Boole(object):
                 d_eqs = interp_to_eqns(self.translate(d), interp)
                 for i, e in enumerate(d_eqs):
                     eqs[str(d) + 'def' + str(i)] = e
-                vals[self.translate(d)] = m[d]
+                vals[str(d)] = Value(z3_to_val(m[d]))
             else:
                 eqs[str(d) + 'def'] = \
                              self.translate(d()) == self.translate(m[d])
+                vals[str(d)] = Value(z3_to_val(m[d]))
         return value.Model(eqs, vals)
             
 
@@ -535,4 +587,10 @@ if __name__ == '__main__':
 
     B = Z3_to_Boole()
 
-    print B.model(m)
+    b_mod = B.model(m)
+
+
+    print eval_expr(a == d, b_mod)
+    print eval_expr(a == b, b_mod)
+    print eval_expr(elab(a*215 + b*275 + c*335 + d*355 + e*420 + f(a)*580), b_mod)
+    print eval_expr(xkcd, b_mod)

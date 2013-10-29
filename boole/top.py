@@ -143,8 +143,7 @@ if __name__ == '__main__':
 
     defthm('a_or_not_a', forall(a, Or(f(A, a), Not(f(A, a)))))
 
-    eval_expr(forall(a, Or(f(A, a), Not(f(A, a)))))
+    # eval_expr(forall(a, Or(f(A, a), Not(f(A, a)))))
 
-    b = Bool('b')
-
-    eval_expr(forall(b, Or(f(Bool, b), Not(f(Bool, b)))))
+    # b = Bool('b')
+    # eval_expr(forall(b, Or(f(Bool, b), Not(f(Bool, b)))))

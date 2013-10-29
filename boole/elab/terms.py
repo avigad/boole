@@ -880,19 +880,22 @@ def defconst(name, type, value=None, unfold=None, **kwargs):
     return c
 
 
-def defexpr(name, expr, type=None, unfold=None, **kwargs):
+def defexpr(name, expr, type=None, value=None, unfold=None, **kwargs):
     """Define an expression with a given type and value.
     Checks that the type of value is correct, and adds the defining
     equation to the context.
     
     Arguments:
     - `name`: a string
-    - `type`: an expression
     - `expr`: an expression
+    - `type`: an expression designating the type of expr
+    - `value` : a value, which should agree with that of the
+    body of the definition
+    - `unfold` : a list of names to unfold in the type-inference process
     """
     val, ty, obl = elaborate(expr, type, unfold)
 
-    c = const(name, ty, **kwargs)
+    c = const(name, ty, value=value, **kwargs)
     c.info['defined'] = True
     c.info['checked'] = True
     local_ctxt.add_const(c)
@@ -1141,7 +1144,8 @@ x = X('x')
 y = X('y')
 
 eq = defexpr('==', abst([X, x, y], And(Sub(x, y), Sub(y, x))), \
-             pi(X, X >> (X >> Bool), impl=True), infix=True, unicode='≃')
+             pi(X, X >> (X >> Bool), impl=True), \
+             value=v.eq_val, infix=True, unicode='≃')
 
 op = defvar('op', X >> (X >> X))
 uop = defvar('uop', X >> X)
@@ -1151,7 +1155,7 @@ Mul = defclass('Mul', [X, op], true)
 mul_ev = Const('mul_ev', Mul(X, op))
 mul = defexpr('*', abst([X, op, mul_ev], op), \
               pi([X, op, mul_ev], X >> (X >> X), impl=True), \
-              infix=True, unicode='×')
+              value=v.mul_val, infix=True, unicode='×')
 mul.info['__call__'] = iterative_app_call
 mul.info['print_iterable_app'] = True
 
@@ -1160,7 +1164,7 @@ Add = defclass('Add', [X, op], true)
 add_ev = Const('add_ev', Add(X, op))
 add = defexpr('+', abst([X, op, add_ev], op), \
               pi([X, op, add_ev], X >> (X >> X), impl=True), \
-              infix=True)
+              value=v.add_val, infix=True)
 add.info['__call__'] = iterative_app_call
 add.info['print_iterable_app'] = True
 
@@ -1168,26 +1172,27 @@ Minus = defclass('Minus', [X, op], true)
 minus_ev = Const('minus_ev', Minus(X, op))
 minus = defexpr('-', abst([X, op, minus_ev], op), \
               pi([X, op, minus_ev], X >> (X >> X), impl=True), \
-              infix=True)
+              value=v.minus_val, infix=True)
 
 Div = defclass('Div', [X, op], true)
 div_ev = Const('div_ev', Div(X, op))
 div = defexpr('/', abst([X, op, div_ev], op), \
               pi([X, op, div_ev], X >> (X >> X), impl=True), \
-              infix=True)
+              value=v.div_val, infix=True)
 
 Uminus = defclass('Uminus', [X, uop], true)
 uminus_ev = Const('uminus_ev', Uminus(X, uop))
 #TODO: can we use '-' for this as well?
 uminus = defexpr('uminus', abst([X, uop, uminus_ev], uop), \
-              pi([X, uop, uminus_ev], X >> X, impl=True))
+              pi([X, uop, uminus_ev], X >> X, impl=True),\
+                 value=v.uminus_val)
 
 Abs = defclass('Abs', [X, uop], true)
 abs_ev = Const('abs_ev', Abs(X, uop))
 # note: 'abs' is a built-in reserved symbol
 absf = defexpr('abs', abst([X, uop, abs_ev], uop), \
               pi([X, uop, abs_ev], X >> X, impl=True), \
-              infix=True)
+              value=v.abs_val, infix=True)
 
 pred = defvar('pred', X >> (X >> Bool))
 
@@ -1195,14 +1200,13 @@ Lt = defclass('Lt', [X, pred], true)
 lt_ev = Const('lt_ev', Lt(X, pred))
 lt = defexpr('<', abst([X, pred, lt_ev], pred), \
              pi([X, pred, lt_ev], X >> (X >> Bool), impl=True), \
-             infix=True)
+             value=v.lt_val, infix=True)
 
 Le = defclass('Le', [X, pred], true)
 le_ev = Const('le_ev', Le(X, pred))
 le = defexpr('<=', abst([X, pred, le_ev], pred), \
              pi([X, pred, le_ev], X >> (X >> Bool), impl=True), \
-             infix=True, unicode='≤')
-
+             value=v.le_val, infix=True, unicode='≤')
 
 
 del X
