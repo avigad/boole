@@ -520,9 +520,12 @@ class Ev(Expr):
         
         Arguments:
         - `tele`: a telescope of evidence for a proposition
+        - `goals`: None, or a pointer to a set of goals,
+        which may be solved by tactic applications.
         """
         Expr.__init__(self)
         self.tele = tele
+        self.goals = None
         
     def accept(self, visitor, *args, **kwargs):
         """The accept method allows the definition of

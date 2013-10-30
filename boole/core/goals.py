@@ -31,7 +31,6 @@ class Goal(object):
         Arguments:
         - `tele`: a telescope
         - `prop`: a proposition
-        - `context`: a context potentially containing additional information
         """
         self.tele = tele
         self.prop = prop
@@ -74,7 +73,8 @@ class Goals(object):
     
     def __init__(self, name, context, goals=None):
         """a Goals object has a name, a context
-        and a list of goals. prev allows to make one step back.
+        and a list of goals.
+        history is the list of pairs of previous goals and tactics.
         """
         self.name = name
         if goals is None:
@@ -82,7 +82,8 @@ class Goals(object):
         else:
             self.goals = goals
         self.context = context
-        self.prev = None
+        #TODO: use LIFO Queues?
+        self.history = []
 
     def append(self, goal):
         """Add a goal to the proof obligations
@@ -121,6 +122,7 @@ class Goals(object):
         Arguments:
         - `tactic`: an instance of Tactic
         """
+        self.history.append((self.goals, tactic))
         self.goals = tactic.solve(self.goals, self.context)
 
     def interact(self, tactic):
@@ -129,20 +131,17 @@ class Goals(object):
         Arguments:
         - `tactic`:
         """
-        self.prev = self.goals
         self.solve_with(tactic)
         print self
 
     def undo(self):
         """Revert to the previous goal state.
-        can be called only once!
         """
-        if not (self.prev is None):
-            self.goals = self.prev
-            self.prev = None
-        else:
+        if not self.history:
             raise ValueError('No undo state!')
-
+        else:
+            g, _ = self.history.pop()
+            self.goals = g
 
 def empty_goals(name, context):
     """The empty proof obligation.

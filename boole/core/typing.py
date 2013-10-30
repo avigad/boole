@@ -288,6 +288,7 @@ class ExprCheck(ExprVisitor):
                 pass
             else:
                 constrs.append(goals.Goal(expr.tele, prop))
+                expr.goals = constrs
             return True
         else:
             return False
