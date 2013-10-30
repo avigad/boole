@@ -156,6 +156,8 @@ def test1():
 
     proj_x_y_0 = defthm('proj_x_y_0', p[0] == x)
 
+    local_ctxt.defs[proj_x_y_0.name].show_proof()
+
     prop = defexpr('prop', And(true, Or(true, false)))
     
     p = (Real * Real)('p')
