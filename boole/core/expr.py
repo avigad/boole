@@ -1588,7 +1588,6 @@ def unpack_sig(expr, names):
         return ret
 
 
-#TODO: use sets and optimize
 class FreeVars(ExprVisitor):
     """Returns the list of free variables of
     an expression.

@@ -19,9 +19,6 @@ def inc_name(name, counts):
         counts[name] = 0
 
 
-#TODO: make names fresh with respect to a set of free variables,
-# typically those in the sub-expression that we are opening.
-# Pass those variables when calling open_bound_fresh
 class VarGen(object):
     """Generate a fresh name according to a dictionary
     sending names to a counter. These should never be reset.

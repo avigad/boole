@@ -49,7 +49,6 @@ def eq_goal(tele, lhs, rhs):
     return sub_goal(tele, lhs, rhs) + sub_goal(tele, rhs, lhs)
 
 
-#TODO: put tactic before the message.
 class TacticFailure(Exception):
     """Raised when a tactic fails
     """
