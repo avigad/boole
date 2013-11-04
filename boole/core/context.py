@@ -17,12 +17,12 @@ def init_context():
     """Return a dictionary with initial context information.
 
     - `decls`: declarations, a name corresponds to a constant.
-    - `hyps`:  declerations of constants of type Bool
+    - `hyps`:  declarations of constants of type Bool
     - `defs`: sends the name of a defined constant to its definition.
     - `defs`: declarations of inequalities to be treated as subtype assertions
     - `rew_rules`: declarations of equalities to be treated as reduction
     rules.
-    - `classes`: declarations of constants of type Type -> Type, represening
+    - `classes`: declarations of constants of type Type -> Type, representing
     type classes, paired with a list of constants representing the methods
     to those classes.
     - `class_def`: the definitions of the classes in terms of sigma-types,
