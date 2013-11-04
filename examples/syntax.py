@@ -15,9 +15,8 @@
 ##############################################################################
 
 import boole.core.expr as expr
-import boole.core.conv as conv
 
-from boole.elab.prelude import *
+from boole import *
 
 
 def test1():
@@ -172,9 +171,9 @@ def test1():
 
     print goal
 
-    goal.interact(tac.unpack('p', names=['x', 'y']))
+    goal.interact(tactics.unpack('p', names=['x', 'y']))
 
-    goal.interact(tac.simpl(conv.par_beta))
+    goal.interact(tactics.simpl(conv.par_beta))
 
 
 def test2():

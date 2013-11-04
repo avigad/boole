@@ -14,11 +14,8 @@
 #
 ##############################################################################
 
-import boole.core.expr as expr
 import boole.core.tactics as tac
-import boole.core.conv as conv
-import boole.elab.unif as unif
-from boole.elab.prelude import *
+from boole import *
 
 
 if __name__ == '__main__':

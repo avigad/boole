@@ -11,10 +11,9 @@
 #
 ##############################################################################
 
-from boole.elab.prelude import *
+from boole import *
 from boole.core.expr import Mvar
-import boole.elab.unif as unif
-from boole.semantics.value import eval_expr
+from boole.elab.terms import const, elaborate, mvar_infer, sub_mvar
 
 
 if __name__ == '__main__':
@@ -24,6 +23,7 @@ if __name__ == '__main__':
 
     b, c = Bool('b c')
 
+    
     formula1 = exists(b, And(Not(b), b))
     formula2 = forall(b, Or(Not(b), b))
     formula3 = abst([b, c], And(b, c))

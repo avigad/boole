@@ -14,7 +14,14 @@
 #
 ###############################################################################
 
-from terms import *
+import boole.semantics.value as v
+from terms import pi, abst, forall, exists, sig, cast, pair,\
+     And, Or, Not, implies, true, false, triv,\
+     Bool, Type, Real, power, Int, mod,\
+     deftype, defvar, defconst, defexpr, defhyp, elab, check,\
+     defthm, defsub, defclass, definstance, defenum,\
+     Add, Mul, Minus, Div, Uminus, Abs, Lt, Le,\
+     set_verbose, print_implicit, local_ctxt
 
 ###############################################################################
 #
