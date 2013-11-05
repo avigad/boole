@@ -21,7 +21,13 @@ and then run Sage as usual. If you plan to call Z3, make sure the Z3 Python bind
 
 The files in the examples directory can be executing by typing, e.g.:
 
-  python expr_examples.py
+  python example.py
+
+The files with extension ipynb are ipython notebooks. With ipython installed, type
+
+  ipython notebook
+
+and then open the corresponding notebook from the browser.
 
 To try the Sage examples, run Sage in the examples directory, and enter:
 
