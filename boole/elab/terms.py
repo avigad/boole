@@ -44,6 +44,22 @@ class TermError(Exception):
 
 ###############################################################################
 #
+# Modifications for use within Sage
+#
+###############################################################################
+
+within_sage = False
+
+def sage_boole_init():
+    global within_sage
+
+    within_sage = True
+    # this is ugly; changing the name after it is initialized
+    power.name = '^'
+
+
+###############################################################################
+#
 # String methods for terms
 #
 ###############################################################################
@@ -290,6 +306,11 @@ def to_expr(expr):
         return ii(expr)
     elif isinstance(expr, float):
         return rr(expr)
+    # handle Sage literals
+    elif type(expr).__name__ == 'Integer':
+        return ii(int(expr))
+    elif type(expr).__name__ == 'RealLiteral':
+        return rr(float(expr))
     else:
         return expr
 
@@ -1123,7 +1144,6 @@ Real = deftype('Real', unicode=color.green + 'Real' + color.reset)
 
 # TODO: not overloaded for now
 power = defconst('**', Real >> (Real >> Real), value=v.power_val, infix=True)
-
 
 # integers
 

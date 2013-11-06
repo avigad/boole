@@ -49,7 +49,9 @@ _built_in_sage_funs = {
     mul.name: (lambda args: args[0] * args[1]),
     minus.name: (lambda args: args[0] - args[1]),
     div.name: (lambda args: args[0] / args[1]),
-    power.name: (lambda args: pow(args[0], args[1])),
+    '^': (lambda args: pow(args[0], args[1])),
+# nasty bug: sage_boole_init changes the name after this is initialized
+#    power.name: (lambda args: pow(args[0], args[1])),
     uminus.name: (lambda args: -args[0]),
     absf.name: (lambda args: abs(args[0])),
     lt.name: (lambda args: args[0] < args[1]),
@@ -230,14 +232,14 @@ class Boole_to_Sage(object):
         fun: Boole function symbol to apply
         args: Sage expressions, already translated
         """
-        if fun.name in self.symbol_dict.keys():
-            # defined function symbol
-            sage_fun = self.symbol_dict[fun.name]
-            return sage_fun(*args)
-        elif fun.name in _built_in_sage_funs.keys():
+        if fun.name in _built_in_sage_funs.keys():
             # built-in function symbol
             sage_fun = _built_in_sage_funs[fun.name]
             return sage_fun(args)
+        elif fun.name in self.symbol_dict.keys():
+            # defined function symbol
+            sage_fun = self.symbol_dict[fun.name]
+            return sage_fun(*args)
         else:
             # new function symbol
             sage_fun = function_factory(fun.name)
