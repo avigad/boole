@@ -69,10 +69,12 @@ def print_const(expr):
     """Pretty prints constants: if there is a unicode name
     in the info field, return that, otherwise return the ascii name.
     """
-    if expr.info.unicode is None:
-        return expr.name
-    else:
+    if not (expr.info.unicode is None):
         return expr.info.unicode
+    elif not (expr.info.sage_name is None):
+        return expr.info.sage_name
+    else:
+        return expr.name
 
 # TODO: wouldn't it be clearer to inline most of these in the definitions
 # of term_str and typ_str?
@@ -1116,7 +1118,8 @@ false = defconst('false', Bool, value=v.false_val, \
 Real = deftype('Real', unicode=color.green + 'Real' + color.reset)
 
 # TODO: not overloaded for now
-power = defconst('**', Real >> (Real >> Real), value=v.power_val, infix=True)
+power = defconst('**', Real >> (Real >> Real), value=v.power_val,\
+                 infix=True, sage_name="^")
 
 # integers
 
