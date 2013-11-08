@@ -21,12 +21,13 @@ from boole.core.expr import Const, Sub, Pair, Fst, Snd, Box, root_app, \
 from boole.elab.color import *
 import boole.core.expr as e
 import boole.core.typing as typing
-import boole.elab.elab as elab_tools
+import elab as elab_tools
 from boole.elab.elab import app_expr, mvar_infer, sub_mvar
 import boole.core.tactics as tac
-import boole.elab.unif as u
+import unif as u
 import boole.semantics.value as v
 from boole.semantics.value import Value
+import config as conf
 
 
 ###############################################################################
@@ -92,7 +93,7 @@ def print_app(expr):
     Arguments:
     - `expr`: an expression
     """
-    if p_implicit:
+    if conf.p_implicit:
         root, args = root_app(expr)
     else:
         root, args = root_app_implicit(expr)
@@ -138,7 +139,7 @@ def print_pair(expr):
     Arguments:
     - `expr`: a pair
     """
-    if p_implicit:
+    if conf.p_implicit:
         pair_str = "pair({0!s}, {1!s}, {2!s})"\
                    .format(expr.fst, expr.snd, expr.type)
     else:
@@ -170,7 +171,7 @@ def print_box(expr):
     Arguments:
     - `expr`:
     """
-    if p_implicit:
+    if conf.p_implicit:
         box_str = "cast({0!s},{1!s},{2!s})"\
                   .format(expr.conv, expr.expr, expr.type)
     else:
@@ -687,34 +688,6 @@ def dest_implies(expr):
 
 ###############################################################################
 #
-# Global variables for printing purposes
-#
-###############################################################################
-
-verbose = False
-
-
-def set_verbose(setting=True):
-    """Sets the verbose flag:
-    This flag gives more information about the output of each command.
-    """
-    global verbose
-    verbose = setting
-
-p_implicit = False
-
-
-def print_implicit(setting=True):
-    """Sets the print implicit flag:
-    This flag makes the implicit arguments
-    visible upon printing.
-    """
-    global p_implicit
-    p_implicit = setting
-
-
-###############################################################################
-#
 # Term checking and elaboration.
 #
 # TODO: right now these just use the default local context. 
@@ -818,7 +791,7 @@ def check(expr, type=None, unfold=None):
 
     val, ty, obl = elaborate(expr, type, unfold)
     if obl.is_solved():
-        if verbose:
+        if conf.verbose:
             print "{0!s} : {1!s}.\n".format(val, ty)
     else:
         local_ctxt.add_to_field(obl.name, obl, 'goals')
@@ -848,7 +821,7 @@ def deftype(name, **kwargs):
     """
     c = mktype(name, **kwargs)
     local_ctxt.add_const(c)
-    if verbose:
+    if conf.verbose:
         print "{0!s} : {1!s} is assumed.\n".format(c, c.type)
     return c
 
@@ -870,7 +843,7 @@ def defvar(name, type, unfold=None, **kwargs):
     c.info['checked'] = True
 
     if obl.is_solved():
-        if verbose:
+        if conf.verbose:
             print "{0!s} : {1!s} is assumed.\n".format(c, c.type)
     else:
         local_ctxt.add_to_field(obl.name, obl, 'goals')
@@ -891,7 +864,7 @@ def defconst(name, type, value=None, unfold=None, **kwargs):
     c.info['checked'] = True
     local_ctxt.add_const(c)
     if obl.is_solved():
-        if verbose:
+        if conf.verbose:
             print "{0!s} : {1!s} is assumed.\n".format(c, c.type)
     else:
         local_ctxt.add_to_field(obl.name, obl, 'goals')
@@ -930,7 +903,7 @@ def defexpr(name, expr, type=None, value=None, unfold=None, **kwargs):
 
     if obl.is_solved():
         c.info['unsolved_tcc'] = False
-        if verbose:
+        if conf.verbose:
             print "{0!s} : {1!s} := {2!s} is defined.\n".format(c, ty, val)
     else:
         local_ctxt.add_to_field(obl.name, obl, 'goals')
