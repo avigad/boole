@@ -148,9 +148,8 @@ class Boole_to_LADR:
         else:
             etype, _ = ty.infer(fun)
             codom, doms = root_pi(etype)
-            # For now, we just state that the output of the function
-            # satisfies the codomain predicate.
-            # *TODO: Should update with domain hypotheses.
+            # We state that the output of the function satisfies the
+            # codomain predicate.
             codom_pred = self.ladr_sort_pred(codom)
             d_n = len(doms)
             v_block = self.ladr_var_block(d_n)
@@ -406,14 +405,14 @@ def model_of_group(g):
 
 if __name__ == '__main__':
 
-    x,y,z = Real('x y z')
-    e = Real('e')
+    G = deftype('G')
+    x,y,z = G('x y z')
+    e = G('e')
     p = Bool('p')
     q = Bool('q')
-    r = Bool('r')
-    i = (Real >> Real)('i')
-    f = (Real >> (Real >> Real))('f')
-    P = (Real >> Bool)('P')
+    i = (G >> G)('i')
+    f = (G >> (G >> G))('f')
+    P = (G >> Bool)('P')
 
     T = Boole_to_LADR()
     S = LADR_Solver()
