@@ -44,7 +44,7 @@ def init_context():
         'class_def'       :{},\
         'class_instances' :{},\
         'goals'           :{},\
-        'parent_contexts' :{}
+        'parent'          :{}
         }
     return ctxt
 
