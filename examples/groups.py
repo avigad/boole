@@ -99,7 +99,7 @@ if __name__ == '__main__':
                 triv())
 
 
-    goal = local_ctxt.next_goal()
+    goal = current_ctxt.next_goal()
 
     goal.interact(tac.par(tac.trytac(unif.instances)))
 
@@ -124,7 +124,7 @@ if __name__ == '__main__':
                 triv())
 
 
-    goal = local_ctxt.next_goal()
+    goal = current_ctxt.next_goal()
 
     goal.interact(tac.par(tac.trytac(unif.instances)))
 
@@ -146,7 +146,7 @@ if __name__ == '__main__':
                              triv())),
                 triv())
     
-    goal = local_ctxt.next_goal()
+    goal = current_ctxt.next_goal()
 
     goal.interact(tac.par(tac.trytac(unif.instances)))
 

@@ -21,9 +21,9 @@ from terms import pi, abst, forall, exists, sig, cast, pair,\
      deftype, defvar, defconst, defexpr, defhyp, elab, check,\
      defthm, defsub, defclass, definstance, defenum,\
      Add, Mul, Minus, Div, Uminus, Abs, Lt, Le,\
-     local_ctxt
+     current_ctxt
 
-from config import set_verbose, print_implicit
+from config import set_verbose, set_implicit
 
 
 ###############################################################################

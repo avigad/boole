@@ -143,7 +143,7 @@ if __name__ == '__main__':
 
     a = A('a')
 
-    # defthm('a_or_not_a', forall(a, Or(f(A, a), Not(f(A, a)))))
+    defthm('a_or_not_a', forall(a, Or(f(A, a), Not(f(A, a)))))
 
     # eval_expr(forall(a, Or(f(A, a), Not(f(A, a)))))
 

@@ -320,7 +320,7 @@ class Boole_to_Z3(object):
 # create constants anew.
 class Z3_to_Boole(object):
     
-    def __init__(self, context=local_ctxt):
+    def __init__(self, context=current_ctxt):
         self.context = context
     
     def mk_sort(self, s):

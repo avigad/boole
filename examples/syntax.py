@@ -39,11 +39,11 @@ def test1():
 
     test = defexpr('test', 3 + one())
 
-    test_def = local_ctxt.defs['test']
+    test_def = current_ctxt.defs['test']
     
-    plus_def = local_ctxt.defs['+']
+    plus_def = current_ctxt.defs['+']
 
-    one_def = local_ctxt.defs['one']
+    one_def = current_ctxt.defs['one']
 
     print conv.beta_norm(expr.sub_in([plus_def, one_def], ['+', 'one'], test_def))
     print
@@ -88,9 +88,9 @@ def test1():
 
     test3 = defexpr('test3', pair(3, 3.0) * pair(2, 2.0))
 
-    test3_def = local_ctxt.defs['test3']
+    test3_def = current_ctxt.defs['test3']
 
-    mul_def = local_ctxt.defs['*']
+    mul_def = current_ctxt.defs['*']
 
     print
     print conv.beta_norm(expr.sub_in([mul_def], ['*'], test3_def))
@@ -98,7 +98,7 @@ def test1():
     
     test4 = defexpr('test4', pair(3.0, pair(3.0, 3)) * pair(2.0, pair(2.0, 2)))
 
-    test4_def = local_ctxt.defs['test4']
+    test4_def = current_ctxt.defs['test4']
 
     print
     print conv.beta_norm(expr.sub_in([mul_def], ['*'], test4_def))
@@ -106,7 +106,7 @@ def test1():
 
     test5 = defexpr('test5', pair(pair(3.0, 3), pair(3, 3)) * pair(pair(2.0, 2), pair(2, 2)))
 
-    test5_def = local_ctxt.defs['test5']
+    test5_def = current_ctxt.defs['test5']
 
     print
     print conv.beta_norm(expr.sub_in([mul_def], ['*'], test5_def))
@@ -155,7 +155,7 @@ def test1():
 
     proj_x_y_0 = defthm('proj_x_y_0', p[0] == x)
 
-    local_ctxt.defs[proj_x_y_0.name].show_proof()
+    current_ctxt.defs[proj_x_y_0.name].show_proof()
 
     prop = defexpr('prop', And(true, Or(true, false)))
     
@@ -167,7 +167,7 @@ def test1():
     
     plus_commut = defexpr('plus_commut', triv(), fa)
 
-    goal = local_ctxt.next_goal()
+    goal = current_ctxt.next_goal()
 
     print goal
 

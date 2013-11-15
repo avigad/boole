@@ -17,7 +17,7 @@
 from boole.core.info import *
 from boole.core.context import *
 from boole.core.expr import Const, Sub, Pair, Fst, Snd, Box, root_app, \
-  root_clause, root_pi, open_expr, subst_expr
+  root_clause, root_pi, subst_expr
 from boole.elab.color import *
 import boole.core.expr as e
 import boole.core.typing as typing
@@ -28,6 +28,7 @@ import unif as u
 import boole.semantics.value as v
 from boole.semantics.value import Value
 import config as conf
+from config import current_ctxt
 
 
 ###############################################################################
@@ -45,22 +46,6 @@ class TermError(Exception):
 
 ###############################################################################
 #
-# Modifications for use within Sage
-#
-###############################################################################
-
-within_sage = False
-
-def sage_boole_init():
-    global within_sage
-
-    within_sage = True
-    # this is ugly; changing the name after it is initialized
-    power.name = '^'
-
-
-###############################################################################
-#
 # String methods for terms
 #
 ###############################################################################
@@ -69,9 +54,9 @@ def print_const(expr):
     """Pretty prints constants: if there is a unicode name
     in the info field, return that, otherwise return the ascii name.
     """
-    if not (expr.info.unicode is None):
+    if not (expr.info.unicode is None) and conf.print_unicode:
         return expr.info.unicode
-    elif not (expr.info.sage_name is None):
+    elif not (expr.info.sage_name is None) and conf.in_sage:
         return expr.info.sage_name
     else:
         return expr.name
@@ -95,7 +80,7 @@ def print_app(expr):
     Arguments:
     - `expr`: an expression
     """
-    if conf.p_implicit:
+    if conf.implicit:
         root, args = root_app(expr)
     else:
         root, args = root_app_implicit(expr)
@@ -141,7 +126,7 @@ def print_pair(expr):
     Arguments:
     - `expr`: a pair
     """
-    if conf.p_implicit:
+    if conf.implicit:
         pair_str = "pair({0!s}, {1!s}, {2!s})"\
                    .format(expr.fst, expr.snd, expr.type)
     else:
@@ -173,7 +158,7 @@ def print_box(expr):
     Arguments:
     - `expr`:
     """
-    if conf.p_implicit:
+    if conf.implicit:
         box_str = "cast({0!s},{1!s},{2!s})"\
                   .format(expr.conv, expr.expr, expr.type)
     else:
@@ -329,8 +314,8 @@ def pair(expr1, expr2):
     """
     e1 = to_expr(expr1)
     e2 = to_expr(expr2)
-    ty1, _ = typing.infer(e1, ctxt=local_ctxt)
-    ty2, _ = typing.infer(e2, ctxt=local_ctxt)
+    ty1, _ = typing.infer(e1, ctxt=current_ctxt)
+    ty2, _ = typing.infer(e2, ctxt=current_ctxt)
     return Pair(e1, e2, typ_mul(ty1, ty2))
 
 
@@ -344,7 +329,7 @@ def tm_call(fun, *args):
     - `fun`: an expression
     - `arg`: a list of expresstions
     """
-    fun_typ, _ = typing.infer(fun, ctxt=local_ctxt)
+    fun_typ, _ = typing.infer(fun, ctxt=current_ctxt)
     conv = [triv()] * len(args)
     cast_args = map(to_expr, args)
     return app_expr(fun, fun_typ, conv, cast_args)
@@ -588,7 +573,7 @@ def root_app_implicit(expr):
     """
     r, args = root_app(expr)
 
-    ty, _ = mvar_infer(r, ctxt=local_ctxt)
+    ty, _ = mvar_infer(r, ctxt=current_ctxt)
 
     non_implicit = []
     i = 0
@@ -631,7 +616,8 @@ def dest_binop_left(expr, op):
     elist.reverse()
     return elist
 
-def dest_binop_right(expr, op):   
+
+def dest_binop_right(expr, op):
     """Assuming 'op' is a binary operation, returns a list of expressions,
     elist, such that
     expr = op(elist[0], op(elist[1], ... op(elist[n-1], elist[n])))
@@ -717,11 +703,11 @@ def elaborate(expr, type, unfold):
         unfold_tac = tac.par(tac.unfold(*unfold))
 
     if expr.info.elaborated and type is None:
-        ty, obl = typing.infer(expr, ctxt=local_ctxt)
+        ty, obl = typing.infer(expr, ctxt=current_ctxt)
         obl.solve_with(unfold_tac >> type_tac)
         return (expr, ty, obl)
 
-    _, obl = mvar_infer(expr, ctxt=local_ctxt)
+    _, obl = mvar_infer(expr, ctxt=current_ctxt)
 
     u.mvar_stack.clear()
     u.mvar_stack.new()
@@ -740,16 +726,16 @@ def elaborate(expr, type, unfold):
         try:
             ty = sub_mvar(type, undef=True)
         except e.ExprError:
-            _, obl = mvar_infer(type, ctxt=local_ctxt)
+            _, obl = mvar_infer(type, ctxt=current_ctxt)
             u.mvar_stack.clear()
             u.mvar_stack.new()
             obl.solve_with(unfold_tac >> elab_tac)
             ty = sub_mvar(type, undef=True)
 
     if type is None:
-        ty, obl = typing.infer(val, ctxt=local_ctxt)
+        ty, obl = typing.infer(val, ctxt=current_ctxt)
     else:
-        ty, obl = typing.infer(val, type=ty, ctxt=local_ctxt)
+        ty, obl = typing.infer(val, type=ty, ctxt=current_ctxt)
 
     obl.solve_with(unfold_tac >> type_tac)
 
@@ -796,7 +782,7 @@ def check(expr, type=None, unfold=None):
         if conf.verbose:
             print "{0!s} : {1!s}.\n".format(val, ty)
     else:
-        local_ctxt.add_to_field(obl.name, obl, 'goals')
+        current_ctxt.add_to_field(obl.name, obl, 'goals')
         print "In checking the expression\n"\
         "{0!s} : {1!s}".format(val, ty)
         print "remaining type-checking constraints!"
@@ -816,13 +802,13 @@ def check(expr, type=None, unfold=None):
 
 def deftype(name, **kwargs):
     """Define a type constant, and add it
-    to local_ctxt.
+    to current_ctxt.
     
     Arguments:
     - `name`:
     """
     c = mktype(name, **kwargs)
-    local_ctxt.add_const(c)
+    current_ctxt.add_const(c)
     if conf.verbose:
         print "{0!s} : {1!s} is assumed.\n".format(c, c.type)
     return c
@@ -848,7 +834,7 @@ def defvar(name, type, unfold=None, **kwargs):
         if conf.verbose:
             print "{0!s} : {1!s} is assumed.\n".format(c, c.type)
     else:
-        local_ctxt.add_to_field(obl.name, obl, 'goals')
+        current_ctxt.add_to_field(obl.name, obl, 'goals')
         print "In the declaration:\n{0!s} : {1!s}".format(name, c.type)
         print "remaining type-checking constraints!"
         print obl
@@ -857,19 +843,19 @@ def defvar(name, type, unfold=None, **kwargs):
 
 def defconst(name, type, value=None, unfold=None, **kwargs):
     """Like defvar, but add the result to
-    local_ctxt before returning it.
+    current_ctxt before returning it.
     """
     c = const(name, type, value=value, **kwargs)
 
     c, _, obl = elaborate(c, type, unfold)
 
     c.info['checked'] = True
-    local_ctxt.add_const(c)
+    current_ctxt.add_const(c)
     if obl.is_solved():
         if conf.verbose:
             print "{0!s} : {1!s} is assumed.\n".format(c, c.type)
     else:
-        local_ctxt.add_to_field(obl.name, obl, 'goals')
+        current_ctxt.add_to_field(obl.name, obl, 'goals')
         print "In the declaration:\n{0!s} : {1!s}".format(name, c.type)
         print "remaining type-checking constraints!"
         print obl
@@ -894,21 +880,21 @@ def defexpr(name, expr, type=None, value=None, unfold=None, **kwargs):
     c = const(name, ty, value=value, **kwargs)
     c.info['defined'] = True
     c.info['checked'] = True
-    local_ctxt.add_const(c)
+    current_ctxt.add_const(c)
 
     # TODO: add the equality to the context?
     # eq_c = equals(c, val)
     # def_name = "{0!s}_def".format(name)
     # c_def = const(def_name, eq_c)
-    # local_ctxt.add_const(c_def)
-    local_ctxt.add_to_field(name, val, 'defs')
+    # current_ctxt.add_const(c_def)
+    current_ctxt.add_to_field(name, val, 'defs')
 
     if obl.is_solved():
         c.info['unsolved_tcc'] = False
         if conf.verbose:
             print "{0!s} : {1!s} := {2!s} is defined.\n".format(c, ty, val)
     else:
-        local_ctxt.add_to_field(obl.name, obl, 'goals')
+        current_ctxt.add_to_field(obl.name, obl, 'goals')
         c.info['unsolved_tcc'] = True
         print "In the definition\n"\
         " {0!s} = {1!s} : {2!s}".format(name, val, ty)
@@ -926,8 +912,8 @@ def defhyp(name, prop):
     - `prop`: the proposition
     """
     c = defconst(name, prop)
-    typing.infer(c.type, type=e.Bool(), ctxt=local_ctxt)
-    local_ctxt.add_to_field(name, c.type, 'hyps')
+    typing.infer(c.type, type=e.Bool(), ctxt=current_ctxt)
+    current_ctxt.add_to_field(name, c.type, 'hyps')
     return c
 
 
@@ -938,7 +924,7 @@ def defthm(name, prop, unfold=None):
     """
     c = defexpr(name, triv(), prop, unfold=unfold)
     if not c.info['unsolved_tcc']:
-        local_ctxt.add_to_field(name, c.type, 'hyps')
+        current_ctxt.add_to_field(name, c.type, 'hyps')
     return c
 
 
@@ -951,7 +937,7 @@ def defsub(name, prop):
     """
     if prop.is_sub():
         c = defhyp(name, prop)
-        local_ctxt.add_to_field(name, c.type, 'sub')
+        current_ctxt.add_to_field(name, c.type, 'sub')
         return c
     else:
         raise Exception("Error in definition {0!s}:"\
@@ -972,9 +958,9 @@ def defclass(name, params, defn):
     
     c = defexpr(name, class_def, type=class_ty)
     c.info['is_class'] = True
-    local_ctxt.add_to_field(name, c.type, 'classes')
-    c_def = local_ctxt.defs[name]
-    local_ctxt.add_to_field(name, c_def, 'class_def')
+    current_ctxt.add_to_field(name, c.type, 'classes')
+    c_def = current_ctxt.defs[name]
+    current_ctxt.add_to_field(name, c_def, 'class_def')
     return c
 
 
@@ -989,22 +975,14 @@ def definstance(name, ty, expr):
     if root.info.is_class:
         class_name = root.name
         c = defexpr(name, expr, type=ty, unfold=[class_name])
-        local_ctxt.add_to_field(name, c.type, 'class_instances')
-        local_ctxt.add_to_field(name, c.type, 'hyps')
+        current_ctxt.add_to_field(name, c.type, 'class_instances')
+        current_ctxt.add_to_field(name, c.type, 'hyps')
         return c
     else:
         raise Exception("Error in definition of {0!s}:"\
                         "expected {1!s} to be a class name"\
                         .format(name, root))
 
-
-###############################################################################
-#
-# Create a context for the basic definitions.
-#
-###############################################################################
-
-local_ctxt = Context("local_ctxt")
 
 
 ###############################################################################

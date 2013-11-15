@@ -10,6 +10,8 @@
 #
 ###############################################################################
 
+from boole.core.context import Context
+
 
 ###############################################################################
 #
@@ -27,27 +29,66 @@ def set_verbose(setting=True):
     global verbose
     verbose = setting
 
-p_implicit = False
+implicit = False
 
 
-def print_implicit(setting=True):
+def set_implicit(setting=True):
     """Sets the print implicit flag:
     This flag makes the implicit arguments
     visible upon printing.
     """
-    global p_implicit
-    p_implicit = setting
+    global implicit
+    implicit = setting
+
+print_unicode = True
 
 
-###############################################################################
-#
-# Global variables for printing purposes
-#
-###############################################################################
+def set_unicode(setting=True):
+    """Print the unicode name of constants
+    """
+    global print_unicode
+    print_unicode = setting
+
 
 in_sage = False
 
-def in_sage(setting=True):
+
+def set_in_sage(setting=True):
     global in_sage
     in_sage = setting
 
+###############################################################################
+#
+# Global variables for managing the context
+#
+###############################################################################
+
+###############################################################################
+#
+# Create a default context for the user
+#
+###############################################################################
+
+current_ctxt = Context("default_ctxt")
+
+
+def get_current_ctxt():
+    return current_ctxt
+
+
+def set_current_ctxt(ctxt):
+    global current_ctxt
+    current_ctxt = ctxt
+
+
+def push_ctxt(name):
+    """Create a new context and give it a name,
+    make it a child of the current context
+    
+    Arguments:
+    - `name`:
+    """
+    new_ctxt = Context(name)
+    new_ctxt.parent[get_current_ctxt().name] = get_current_ctxt()
+    set_current_ctxt(new_ctxt)
+    
