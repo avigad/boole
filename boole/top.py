@@ -27,6 +27,10 @@ if __name__ == '__main__':
     formula1 = exists(b, And(Not(b), b))
     formula2 = forall(b, Or(Not(b), b))
     formula3 = abst([b, c], And(b, c))
+    formula4 = exists(b, And(Not(b), b))
+
+    print hash(formula1)
+    print hash(formula4)
 
     print eval_expr(formula1)
     print eval_expr(formula2)
@@ -120,7 +124,7 @@ if __name__ == '__main__':
     b = B('b')
     print
     tm = abst([A, a], a) == abst([B, b], b)
-    ty, g = mvar_infer(tm, ctxt=local_ctxt)
+    ty, g = mvar_infer(tm, ctxt=current_ctxt)
     print 'ty =', ty
     print
     print g
@@ -137,9 +141,9 @@ if __name__ == '__main__':
     print tm.arg.body.equals(tm.fun.arg.body)
     print tm.fun.fun.arg.to_string()
 
-    # typing.infer(tm, ctxt=local_ctxt)
+    # typing.infer(tm, ctxt=current_ctxt)
 
-    local_ctxt.show()
+    current_ctxt.show()
 
     a = A('a')
 

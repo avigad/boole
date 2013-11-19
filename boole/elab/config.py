@@ -81,7 +81,7 @@ def set_current_ctxt(ctxt):
     current_ctxt = ctxt
 
 
-def push_ctxt(name):
+def push_ctxt(name=""):
     """Create a new context and give it a name,
     make it a child of the current context
     

@@ -162,6 +162,9 @@ class Context(object):
         else:
             d = dicts
 
+        print "In context {0!s}".format(self.name)
+        print
+            
         for f in d:
             field = self._context[f]
             print f + ':'

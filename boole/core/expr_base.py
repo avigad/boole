@@ -75,7 +75,25 @@ class Expr(object):
         if self is expr:
             return True
         else:
-            return self.eq(expr)
+            # eq_val = self.eq(expr)
+            # if eq_val:
+            #     assert (hash(self) == hash(expr))
+            # else:
+            #     if hash(self) == hash(expr):
+            #         print self, self.type, expr, expr.type
+            #     assert (hash(self) != hash(expr))
+            # return eq_val
+            return hash(self) == hash(expr)
+
+    # hash for equality check, no hash cons for now.
+
+    def __hash__(self):
+        """Hash for terms: should return an integer
+        unique for all terms structurally equal to
+        self, if the hash function is collision-free
+        """
+        return self._hash()
+
 
     # equality and disequality
     

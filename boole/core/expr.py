@@ -90,6 +90,9 @@ class Const(Expr):
         else:
             return False
 
+    def _hash(self):
+        return hash('Const') ^ hash((self.name, self.type))
+
 
 class DB(Expr):
     """A bound index represented by a De Bruijn variable.
@@ -148,6 +151,9 @@ class DB(Expr):
         else:
             return False
 
+    def _hash(self):
+        return hash("DB") ^ self.index
+
 
 class Type(Expr):
     """The type of all small types
@@ -184,6 +190,9 @@ class Type(Expr):
         """
         return expr.is_type()
 
+    def _hash(self):
+        return hash('Type')
+
 
 class Kind(Expr):
     """The type of all large types
@@ -218,6 +227,9 @@ class Kind(Expr):
         - `expr`: an expression
         """
         return expr.is_kind()
+
+    def _hash(self):
+        return hash('Kind')
 
 
 class Bool(Expr):
@@ -254,6 +266,9 @@ class Bool(Expr):
         - `expr`: an expression
         """
         return expr.is_bool()
+
+    def _hash(self):
+        return hash('Bool')
 
 
 class Bound(Expr):
@@ -313,6 +328,11 @@ class Bound(Expr):
         else:
             return False
 
+    def _hash(self):
+        #use tuples instead of xor to avoid problems when body == dom
+        return hash("Bound") ^ hash(self.binder) \
+               ^ hash((self.dom, self.body))
+
 
 class App(Expr):
     """Applications. Carries the proof of well-formedness
@@ -365,6 +385,13 @@ class App(Expr):
         else:
             return False
 
+    def _hash(self):
+        #hash fun and arg have to be different, or the hash is trivial
+        h_fun = hash(self.fun)
+        h_arg = hash(self.arg)
+        assert(h_fun != h_arg)
+        return hash("App") ^ hash((h_fun, h_arg))
+
 
 class Pair(Expr):
     """Elements of Sigma types. They need to carry around their type,
@@ -415,6 +442,11 @@ class Pair(Expr):
         else:
             return False
 
+    def _hash(self, ):
+        #use hash on tuples to avoid cancellation
+        return hash("Pair") ^ hash(self.type) \
+               ^ hash((self.fst, self.snd))
+
 
 class Fst(Expr):
     """First projection for Sigma types
@@ -462,6 +494,9 @@ class Fst(Expr):
         else:
             return False
 
+    def _hash(self):
+        return hash("Fst") ^ hash(self.expr)
+    
 
 class Snd(Expr):
     """Second projection for Sigma types
@@ -509,6 +544,9 @@ class Snd(Expr):
         else:
             return False
 
+    def _hash(self):
+        return hash("Snd") ^ hash(self.expr)
+    
 
 class Ev(Expr):
     """Evidence type: provides evidence for a
@@ -562,11 +600,12 @@ class Ev(Expr):
         if self.goals is None:
             print "No proof!"
             print
-        prf = map(lambda x:str(x[1]), self.goals.history)
+        prf = map(lambda x: str(x[1]), self.goals.history)
         print ", ".join(prf)
         print
         
-
+    def _hash(self):
+        return hash("Ev")
 
 
 class Sub(Expr):
@@ -618,6 +657,9 @@ class Sub(Expr):
         else:
             return False
 
+    def _hash(self):
+        return hash("Sub") ^ hash((self.lhs, self.rhs))
+        
 
 class Box(Expr):
     """Boxed epressions: a boxed expression
@@ -667,6 +709,8 @@ class Box(Expr):
         else:
             return False
 
+    def _hash(self):
+        return hash("Box") ^ hash(self.expr)
 
 ##############################################################################
 #
@@ -674,6 +718,7 @@ class Box(Expr):
 # and Sig
 #
 ###############################################################################
+
 
 class Binder(object):
     """The class of Expression binders.
@@ -702,6 +747,9 @@ class Binder(object):
     def is_sig(self):
         return False
 
+    def __hash__(self, ):
+        raise NotImplementedError()
+
 
 class Pi(Binder):
     """Dependent product
@@ -713,6 +761,9 @@ class Pi(Binder):
         
     def is_pi(self):
         return True
+
+    def __hash__(self):
+        return hash("Pi")
 
 
 class Sig(Binder):
@@ -726,7 +777,10 @@ class Sig(Binder):
     def is_sig(self):
         return True
 
-        
+    def __hash__(self):
+        return hash("Sig")
+
+
 class Abst(Binder):
     """Abstraction
     """
@@ -738,6 +792,9 @@ class Abst(Binder):
     def is_abst(self):
         return True
 
+    def __hash__(self):
+        return hash("Abst")
+
  
 class Forall(Binder):
     """Universal quantification
@@ -746,9 +803,12 @@ class Forall(Binder):
     def __init__(self, var):
         Binder.__init__(self, var)
         self.name = "forall"
-        
+
     def is_forall(self):
         return True
+
+    def __hash__(self):
+        return hash("Forall")
 
 
 class Exists(Binder):
@@ -758,10 +818,13 @@ class Exists(Binder):
     def __init__(self, var):
         Binder.__init__(self, var)
         self.name = "exists"
-        
+
     def is_exists(self):
         return True
-        
+
+    def __hash__(self):
+        return hash("Exists")
+
 
 ###############################################################################
 #
@@ -823,6 +886,9 @@ class Tele(Expr):
             return reduce(lambda x, y: x and y, eq_info, True)
         else:
             return False
+
+    def _hash(self):
+        return hash("Tuple") ^ hash(tuple(self.types))
 
     def __str__(self):
         """Call the printer implemented in info
@@ -974,6 +1040,10 @@ class Mvar(Expr):
         """
         self.info = info.DefaultInfo()
         self._value = None
+
+    def _hash(self):
+        return hash("Mvar") ^ hash((self.name, self.type))
+        
 
 ##############################################################################
 #

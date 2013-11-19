@@ -1,6 +1,7 @@
 # Tests for type inference with subtypes and dependencies
 
 from boole.elab.prelude import *
+from boole.elab.terms import elaborate
 from nose.tools import *
 
 
