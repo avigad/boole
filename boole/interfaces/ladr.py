@@ -41,7 +41,8 @@ import tempfile
 # this sort of thing?
 #
 
-ladr_bin_path = "/Users/grant/Research/Provers/LADR/LADR-2009-11A/bin/"
+#ladr_bin_path = "/Users/grant/Research/Provers/LADR/LADR-2009-11A/bin/"
+ladr_bin_path = "/usr/bin/"
 
 from fractions import Fraction
 
