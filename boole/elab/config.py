@@ -89,7 +89,6 @@ def push_ctxt(name=""):
     - `name`:
     """
     new_ctxt = Context(name)
-    new_ctxt.add_to_field(get_current_ctxt().name, \
-                          get_current_ctxt(), 'parent')
+    new_ctxt.parent[get_current_ctxt().name] = get_current_ctxt()
     set_current_ctxt(new_ctxt)
     

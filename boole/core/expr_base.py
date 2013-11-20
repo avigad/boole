@@ -35,9 +35,10 @@ class Expr(object):
     """
 
     def __init__(self):
-        """Sets the default info
+        """Sets the default info and hash
         """
         self.info = info.DefaultInfo()
+        self._hash = None
 
     def __str__(self):
         """Call the printer implemented in info
@@ -85,16 +86,12 @@ class Expr(object):
             # return eq_val
             return hash(self) == hash(expr)
 
-    # hash for equality check, no hash cons for now.
-    def _hash(self):
-        raise NotImplementedError()
-
     def __hash__(self):
         """Hash for terms: should return an integer
         unique for all terms structurally equal to
         self, if the hash function is collision-free
         """
-        return self._hash()
+        return self._hash
 
     # equality and disequality
     def __eq__(self, arg):

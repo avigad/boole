@@ -61,6 +61,7 @@ class Const(Expr):
         self.value = value
         for k in kwargs:
             self.info[k] = kwargs[k]
+        self._hash = hash(('Const', self.name, self.type))
 
     def accept(self, visitor, *args, **kwargs):
         """The accept method allows the definition of
@@ -90,9 +91,6 @@ class Const(Expr):
         else:
             return False
 
-    def _hash(self):
-        return hash('Const') ^ hash((self.name, self.type))
-
 
 class DB(Expr):
     """A bound index represented by a De Bruijn variable.
@@ -105,6 +103,7 @@ class DB(Expr):
         """
         Expr.__init__(self)
         self.index = index
+        self._hash = hash(("DB", self.index))
 
     def incr(self, inc):
         """Increment the index
@@ -151,9 +150,6 @@ class DB(Expr):
         else:
             return False
 
-    def _hash(self):
-        return hash("DB") ^ self.index
-
 
 class Type(Expr):
     """The type of all small types
@@ -164,6 +160,7 @@ class Type(Expr):
         """
         Expr.__init__(self)
         self.name = 'Type'
+        self._hash = hash('Type')
 
     def accept(self, visitor, *args, **kwargs):
         """The accept method allows the definition of
@@ -190,9 +187,6 @@ class Type(Expr):
         """
         return expr.is_type()
 
-    def _hash(self):
-        return hash('Type')
-
 
 class Kind(Expr):
     """The type of all large types
@@ -202,6 +196,7 @@ class Kind(Expr):
         """
         """
         Expr.__init__(self)
+        self._hash = hash('Kind')
 
     def accept(self, visitor, *args, **kwargs):
         """The accept method allows the definition of
@@ -228,9 +223,6 @@ class Kind(Expr):
         """
         return expr.is_kind()
 
-    def _hash(self):
-        return hash('Kind')
-
 
 class Bool(Expr):
     """The type of all propositions.
@@ -241,6 +233,7 @@ class Bool(Expr):
         """
         Expr.__init__(self)
         self.name = 'Bool'
+        self._hash = hash('Bool')
 
     def accept(self, visitor, *args, **kwargs):
         """The accept method allows the definition of
@@ -267,9 +260,6 @@ class Bool(Expr):
         """
         return expr.is_bool()
 
-    def _hash(self):
-        return hash('Bool')
-
 
 class Bound(Expr):
     """An expression consisting of a binder,
@@ -289,6 +279,7 @@ class Bound(Expr):
         self.binder = binder
         self.dom = dom
         self.body = body
+        self._hash = hash(("Bound", self.binder, self.dom, self.body))
 
     def accept(self, visitor, *args, **kwargs):
         """The accept method allows the definition of
@@ -328,11 +319,6 @@ class Bound(Expr):
         else:
             return False
 
-    def _hash(self):
-        #use tuples instead of xor to avoid problems when body == dom
-        return hash("Bound") ^ hash(self.binder) \
-               ^ hash((self.dom, self.body))
-
 
 class App(Expr):
     """Applications. Carries the proof of well-formedness
@@ -351,6 +337,7 @@ class App(Expr):
         self.conv = conv
         self.fun = fun
         self.arg = arg
+        self._hash = hash(("App", self.fun, self.arg))
 
     def accept(self, visitor, *args, **kwargs):
         """The accept method allows the definition of
@@ -385,13 +372,6 @@ class App(Expr):
         else:
             return False
 
-    def _hash(self):
-        #hash fun and arg have to be different, or the hash is trivial
-        h_fun = hash(self.fun)
-        h_arg = hash(self.arg)
-        assert(h_fun != h_arg)
-        return hash("App") ^ hash((h_fun, h_arg))
-
 
 class Pair(Expr):
     """Elements of Sigma types. They need to carry around their type,
@@ -410,6 +390,7 @@ class Pair(Expr):
         self.fst = fst
         self.snd = snd
         self.type = type
+        self._hash = hash(("Pair", self.type, self.fst, self.snd))
 
     def accept(self, visitor, *args, **kwargs):
         """The accept method allows the definition of
@@ -442,11 +423,6 @@ class Pair(Expr):
         else:
             return False
 
-    def _hash(self, ):
-        #use hash on tuples to avoid cancellation
-        return hash("Pair") ^ hash(self.type) \
-               ^ hash((self.fst, self.snd))
-
 
 class Fst(Expr):
     """First projection for Sigma types
@@ -460,7 +436,8 @@ class Fst(Expr):
         """
         Expr.__init__(self)
         self.expr = expr
-
+        self._hash = hash(("Fst", self.expr))
+    
     def accept(self, visitor, *args, **kwargs):
         """The accept method allows the definition of
         recursive functions over objects of type expr.
@@ -494,9 +471,6 @@ class Fst(Expr):
         else:
             return False
 
-    def _hash(self):
-        return hash("Fst") ^ hash(self.expr)
-    
 
 class Snd(Expr):
     """Second projection for Sigma types
@@ -510,7 +484,8 @@ class Snd(Expr):
         """
         Expr.__init__(self)
         self.expr = expr
-
+        self._hash = hash(("Snd", self.expr))
+    
     def accept(self, visitor, *args, **kwargs):
         """The accept method allows the definition of
         recursive functions over objects of type expr.
@@ -544,9 +519,6 @@ class Snd(Expr):
         else:
             return False
 
-    def _hash(self):
-        return hash("Snd") ^ hash(self.expr)
-    
 
 class Ev(Expr):
     """Evidence type: provides evidence for a
@@ -564,7 +536,8 @@ class Ev(Expr):
         Expr.__init__(self)
         self.tele = tele
         self.goals = None
-        
+        self._hash = hash("Ev")
+
     def accept(self, visitor, *args, **kwargs):
         """The accept method allows the definition of
         recursive functions over objects of type expr.
@@ -604,9 +577,6 @@ class Ev(Expr):
         print ", ".join(prf)
         print
         
-    def _hash(self):
-        return hash("Ev")
-
 
 class Sub(Expr):
     """The subtype relation. Makes sense regardless
@@ -623,6 +593,7 @@ class Sub(Expr):
         Expr.__init__(self)
         self.lhs = lhs
         self.rhs = rhs
+        self._hash = hash(("Sub", self.lhs, self.rhs))
 
     def accept(self, visitor, *args, **kwargs):
         """The accept method allows the definition of
@@ -657,9 +628,6 @@ class Sub(Expr):
         else:
             return False
 
-    def _hash(self):
-        return hash("Sub") ^ hash((self.lhs, self.rhs))
-        
 
 class Box(Expr):
     """Boxed epressions: a boxed expression
@@ -680,7 +648,8 @@ class Box(Expr):
         self.conv = conv
         self.expr = expr
         self.type = type
-        
+        self._hash = hash(("Box", self.expr))
+
     def accept(self, visitor, *args, **kwargs):
         """The accept method allows the definition of
         recursive functions over objects of type expr.
@@ -709,9 +678,6 @@ class Box(Expr):
         else:
             return False
 
-    def _hash(self):
-        return hash("Box") ^ hash(self.expr)
-
 ##############################################################################
 #
 # The class of variable binders: this includes Pi, Abst, forall/exists
@@ -731,6 +697,7 @@ class Binder(object):
         - `var`: a variable name
         """
         self.var = var
+        self._hash = None
 
     def is_pi(self):
         return False
@@ -748,7 +715,7 @@ class Binder(object):
         return False
 
     def __hash__(self, ):
-        raise NotImplementedError()
+        return self._hash
 
 
 class Pi(Binder):
@@ -758,12 +725,10 @@ class Pi(Binder):
     def __init__(self, var):
         Binder.__init__(self, var)
         self.name = "pi"
-        
+        self._hash = hash("Pi")
+
     def is_pi(self):
         return True
-
-    def __hash__(self):
-        return hash("Pi")
 
 
 class Sig(Binder):
@@ -773,12 +738,10 @@ class Sig(Binder):
     def __init__(self, var):
         Binder.__init__(self, var)
         self.name = "sig"
-        
+        self._hash = hash("Sig")
+       
     def is_sig(self):
         return True
-
-    def __hash__(self):
-        return hash("Sig")
 
 
 class Abst(Binder):
@@ -788,12 +751,10 @@ class Abst(Binder):
     def __init__(self, var):
         Binder.__init__(self, var)
         self.name = "abst"
+        self._hash = hash("Abst")
         
     def is_abst(self):
         return True
-
-    def __hash__(self):
-        return hash("Abst")
 
  
 class Forall(Binder):
@@ -803,12 +764,10 @@ class Forall(Binder):
     def __init__(self, var):
         Binder.__init__(self, var)
         self.name = "forall"
+        self._hash = hash("Forall")
 
     def is_forall(self):
         return True
-
-    def __hash__(self):
-        return hash("Forall")
 
 
 class Exists(Binder):
@@ -818,12 +777,10 @@ class Exists(Binder):
     def __init__(self, var):
         Binder.__init__(self, var)
         self.name = "exists"
+        self._hash = hash("Exists")
 
     def is_exists(self):
         return True
-
-    def __hash__(self):
-        return hash("Exists")
 
 
 ###############################################################################
@@ -852,6 +809,7 @@ class Tele(Expr):
         self.types = types
         self.len = len(self.types)
         assert(len(self.vars) == self.len)
+        self._hash = hash(("Tuple", tuple(self.types)))
 
     def accept(self, visitor, *args, **kwargs):
         """The accept method allows the definition of
@@ -886,9 +844,6 @@ class Tele(Expr):
             return reduce(lambda x, y: x and y, eq_info, True)
         else:
             return False
-
-    def _hash(self):
-        return hash("Tuple") ^ hash(tuple(self.types))
 
     def __str__(self):
         """Call the printer implemented in info
@@ -999,6 +954,7 @@ class Mvar(Expr):
         self._value = None
         self.tele = nullctxt()
         self.pending = []
+        self._hash = hash(("Mvar", self.name, self.type))
 
     def accept(self, visitor, *args, **kwargs):
         return visitor.visit_mvar(self, *args, **kwargs)
@@ -1041,9 +997,6 @@ class Mvar(Expr):
         self.info = info.DefaultInfo()
         self._value = None
 
-    def _hash(self):
-        return hash("Mvar") ^ hash((self.name, self.type))
-        
 
 ##############################################################################
 #

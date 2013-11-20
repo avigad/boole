@@ -782,7 +782,7 @@ def check(expr, type=None, unfold=None):
         if conf.verbose:
             print "{0!s} : {1!s}.\n".format(val, ty)
     else:
-        current_ctxt.add_to_field(obl.name, obl, 'goals')
+        current_ctxt.goals[obl.name] = obl
         print "In checking the expression\n"\
         "{0!s} : {1!s}".format(val, ty)
         print "remaining type-checking constraints!"
@@ -834,7 +834,7 @@ def defvar(name, type, unfold=None, **kwargs):
         if conf.verbose:
             print "{0!s} : {1!s} is assumed.\n".format(c, c.type)
     else:
-        current_ctxt.add_to_field(obl.name, obl, 'goals')
+        current_ctxt.goals[obl.name] = obl
         print "In the declaration:\n{0!s} : {1!s}".format(name, c.type)
         print "remaining type-checking constraints!"
         print obl
@@ -855,7 +855,7 @@ def defconst(name, type, value=None, unfold=None, **kwargs):
         if conf.verbose:
             print "{0!s} : {1!s} is assumed.\n".format(c, c.type)
     else:
-        current_ctxt.add_to_field(obl.name, obl, 'goals')
+        current_ctxt.goals[obl.name] = obl
         print "In the declaration:\n{0!s} : {1!s}".format(name, c.type)
         print "remaining type-checking constraints!"
         print obl
@@ -887,14 +887,14 @@ def defexpr(name, expr, type=None, value=None, unfold=None, **kwargs):
     # def_name = "{0!s}_def".format(name)
     # c_def = const(def_name, eq_c)
     # current_ctxt.add_const(c_def)
-    current_ctxt.add_to_field(name, val, 'defs')
+    current_ctxt.defs[name] = val
 
     if obl.is_solved():
         c.info['unsolved_tcc'] = False
         if conf.verbose:
             print "{0!s} : {1!s} := {2!s} is defined.\n".format(c, ty, val)
     else:
-        current_ctxt.add_to_field(obl.name, obl, 'goals')
+        current_ctxt.goals[obl.name] = obl
         c.info['unsolved_tcc'] = True
         print "In the definition\n"\
         " {0!s} = {1!s} : {2!s}".format(name, val, ty)
@@ -913,7 +913,7 @@ def defhyp(name, prop):
     """
     c = defconst(name, prop)
     typing.infer(c.type, type=e.Bool(), ctxt=current_ctxt)
-    current_ctxt.add_to_field(name, c.type, 'hyps')
+    current_ctxt.hyps[name] = c.type
     return c
 
 
@@ -924,7 +924,7 @@ def defthm(name, prop, unfold=None):
     """
     c = defexpr(name, triv(), prop, unfold=unfold)
     if not c.info['unsolved_tcc']:
-        current_ctxt.add_to_field(name, c.type, 'hyps')
+        current_ctxt.hyps[name] = c.type
     return c
 
 
@@ -937,7 +937,7 @@ def defsub(name, prop):
     """
     if prop.is_sub():
         c = defhyp(name, prop)
-        current_ctxt.add_to_field(name, c.type, 'sub')
+        current_ctxt.sub[name] = c.type
         return c
     else:
         raise Exception("Error in definition {0!s}:"\
@@ -958,9 +958,9 @@ def defclass(name, params, defn):
     
     c = defexpr(name, class_def, type=class_ty)
     c.info['is_class'] = True
-    current_ctxt.add_to_field(name, c.type, 'classes')
+    current_ctxt.classes[name] = c.type
     c_def = current_ctxt.defs[name]
-    current_ctxt.add_to_field(name, c_def, 'class_def')
+    current_ctxt.class_def[name] = c_def
     return c
 
 
@@ -975,8 +975,8 @@ def definstance(name, ty, expr):
     if root.info.is_class:
         class_name = root.name
         c = defexpr(name, expr, type=ty, unfold=[class_name])
-        current_ctxt.add_to_field(name, c.type, 'class_instances')
-        current_ctxt.add_to_field(name, c.type, 'hyps')
+        current_ctxt.class_instances[name] = c.type
+        current_ctxt.hyps[name] = c.type
         return c
     else:
         raise Exception("Error in definition of {0!s}:"\
