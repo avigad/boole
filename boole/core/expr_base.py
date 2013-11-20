@@ -86,6 +86,8 @@ class Expr(object):
             return hash(self) == hash(expr)
 
     # hash for equality check, no hash cons for now.
+    def _hash(self):
+        raise NotImplementedError()
 
     def __hash__(self):
         """Hash for terms: should return an integer
@@ -94,9 +96,7 @@ class Expr(object):
         """
         return self._hash()
 
-
     # equality and disequality
-    
     def __eq__(self, arg):
         """Call eq implemented in info
         """

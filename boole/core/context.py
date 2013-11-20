@@ -4,6 +4,8 @@
 # context.py
 #
 # description: the type containing the local context.
+# the local context contains a number of fields, each of which is a pair
+# (dict, set), and the set contains the co-domain of the dictionary.
 #
 #
 # Authors:
@@ -35,16 +37,16 @@ def init_context():
     containing the current one.
     """
     ctxt = {
-        'decls'           :{},\
-        'hyps'            :{},\
-        'defs'            :{},\
-        'sub'             :{},\
-        'rew_rules'       :{},\
-        'classes'         :{},\
-        'class_def'       :{},\
-        'class_instances' :{},\
-        'goals'           :{},\
-        'parent'          :{}
+        'decls'           :({}, set()),\
+        'hyps'            :({}, set()),\
+        'defs'            :({}, set()),\
+        'sub'             :({}, set()),\
+        'rew_rules'       :({}, set()),\
+        'classes'         :({}, set()),\
+        'class_def'       :({}, set()),\
+        'class_instances' :({}, set()),\
+        'goals'           :({}, set()),\
+        'parent'          :({}, set())
         }
     return ctxt
 
@@ -65,6 +67,34 @@ class ContextErr(Exception):
         self.ctxt = ctxt
 
 
+class SetElt(object):
+    """A wrapper for elements of a set. The reason
+    for this type is our overloading of the __eq__
+    function for other needs than comparison. We take
+    __eq__ to be hash equality for elements of a SetElt
+    """
+    
+    def __init__(self, obj):
+        """a SetElt contains a single python object
+        
+        Arguments:
+        - `obj`:
+        """
+        self.obj = obj
+
+    def __eq__(self, s_elt):
+        """hash-equality
+        
+        Arguments:
+        - `obj`:
+        """
+        return hash(self.obj) == hash(s_elt.obj)
+
+    def __hash__(self):
+        return hash(self.obj)
+
+
+        
 class Context(object):
     """A context is a dictionary of
     dictionaries containing contextual information.
@@ -92,7 +122,7 @@ class Context(object):
         - `attr`:
         """
         try:
-            return self._context[attr]
+            return self._context[attr][0]
         except KeyError:
             mess = "Field {0!s} not found in context {1!s}"\
                    .format(attr, self.name)
@@ -105,20 +135,33 @@ class Context(object):
         - `expr`:
         """
         if expr.is_const():
-            self._context['decls'][expr.name] = expr
+            self.add_to_field(expr.name, expr, 'decls')
         else:
             mess = "The expression {0!s} is not a constant."\
                    .format(expr)
             raise ContextErr(mess, self)
 
+    def pop(self, field):
+        """Pop an element from a given field in the dictionary
+        
+        Arguments:
+        - `field`: a field name
+        """
+        try:
+            elt = self._context[field][0].popitem()[1]
+            try:
+                self._context[field][1].remove(SetElt(elt))
+            except KeyError:
+                assert(false)
+            return elt
+        except KeyError:
+            return None
+
     def next_goal(self):
         """Gets the next unsolved goal list in the context.
         Return None if there is none.
         """
-        try:
-            return self._context['goals'].popitem()[1]
-        except KeyError:
-            return None
+        return self.pop('goals')
 
     #TODO: should this be __setitem__?
     def add_to_field(self, name, expr, field):
@@ -130,7 +173,9 @@ class Context(object):
         - `field`: the name of a field
         """
         if field in self._context:
-            self._context[field][name] = expr
+            self._context[field][0][name] = expr
+            self._context[field][1].add(SetElt(expr))
+            assert(self.get_from_field(name, field) is expr)
         else:
             mess = "Field {0!s} not found in context {1!s}"\
                    .format(field, self.name)
@@ -145,11 +190,20 @@ class Context(object):
         - `field`: the name of a field
         """
         if field in self._context:
-            return self._context[field][name]
+            return self._context[field][0][name]
         else:
             mess = "Field {0!s} not found in context {1!s}"\
                    .format(field, self.name)
             raise ContextErr(mess, self)
+
+    def mem(self, expr, field):
+        """Check if expr is an element in field
+        
+        Arguments:
+        - `expr`:
+        - `field`:
+        """
+        return (SetElt(expr) in self._context[field][1])
 
     def show(self, dicts=None):
         """Show various definitions in the context.
@@ -164,9 +218,9 @@ class Context(object):
 
         print "In context {0!s}".format(self.name)
         print
-            
+
         for f in d:
-            field = self._context[f]
+            field = self._context[f][0]
             print f + ':'
             print
             for k in field:
