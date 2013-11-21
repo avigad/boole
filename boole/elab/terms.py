@@ -1072,7 +1072,8 @@ Not = defconst('Not', Bool >> Bool, value=v.not_val, \
 p = Bool('p')
 q = Bool('q')
 implies = defexpr('implies', abst([p, q], Sub(p, q)), Bool >> (Bool >> Bool), \
-          unicode=color.purple + 'implies' + color.reset)
+                  value=v.implies_val,\
+                  unicode=color.purple + 'implies' + color.reset)
 # allow input and output syntax implies([h1, ..., hn], conc)
 implies.info['__call__'] = implies_call
 implies.info['print_implies'] = True

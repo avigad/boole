@@ -41,10 +41,24 @@ import tempfile
 # this sort of thing?
 #
 
-#ladr_bin_path = "/Users/grant/Research/Provers/LADR/LADR-2009-11A/bin/"
-ladr_bin_path = "/usr/bin/"
+ladr_bin_path = "/home/croux/prog/C/LADR-2009-11A/bin/"
 
 from fractions import Fraction
+
+################################################################################
+#
+# Various command line function calls
+#
+################################################################################
+
+def prover9(p):
+    """Append a call to prover9 on the bash template p
+    
+    Arguments:
+    - `p`: a pipe template
+    """
+    p.append(ladr_bin_path + "prover9", "--")
+
 
 ################################################################################
 #
@@ -311,7 +325,7 @@ class LADR_Solver():
         s = self.mk_ladr_goal(f)
         print "\n--\nFinal LADR input formula:\n\n" + s + "\n--"
         p = pipes.Template()
-        p.append(ladr_bin_path + "prover9", "--")
+        prover9(p)
         #p.append(ladr_bin_path + "interpformat portable", "--")
         p.debug(False)
         t = tempfile.NamedTemporaryFile(mode='r')

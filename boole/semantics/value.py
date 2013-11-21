@@ -72,6 +72,12 @@ class Model(object):
         """
         s_eqns = [str(self.eqns[e]) for e in self.eqns]
         return "[" + ", ".join(s_eqns) + "]"
+
+    def print_vals(self):
+        """Print the semantic values
+        """
+        for k in self.vals:
+            print k,':', self.vals[k]
         
     def add_to_ctxt(self, context):
         """Add the equations in the model to the local

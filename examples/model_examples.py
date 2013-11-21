@@ -89,7 +89,7 @@ if __name__ == '__main__':
     
     print "Model M:"
     print
-    print M.vals
+    M.print_vals()
     print
     
     def checkM(e): check(e, M)
