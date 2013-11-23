@@ -16,8 +16,9 @@
 
 import boole.semantics.value as v
 from terms import pi, abst, forall, exists, sig, cast, pair,\
-     And, Or, Not, implies, true, false, triv,\
-     Bool, Type, Real, power, Int, mod,\
+     And, Or, Not, implies, eq, true, false, triv,\
+     Bool, Type, Real, Int,\
+     power, mod, add, mul, div, minus, uminus, lt, le,\
      deftype, defvar, defconst, defexpr, defhyp, elab, check,\
      defthm, defsub, defclass, definstance, defenum,\
      Add, Mul, Minus, Div, Uminus, Abs, Lt, Le,\

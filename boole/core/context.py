@@ -15,7 +15,7 @@
 #
 ##############################################################################
 
-from collections import MutableMapping, Counter
+from collections import MutableMapping, Counter, OrderedDict
 
 
 class ContextErr(Exception):
@@ -73,7 +73,7 @@ class CtxtField(MutableMapping):
         Arguments:
         - `name`:
         """
-        self.dict = {}
+        self.dict = OrderedDict()
         self.set = Counter()
 
     def __getitem__(self, key):
@@ -133,8 +133,8 @@ class Context(object):
         - `class_instances`: the definitions of the instance constants, which
         may depend on further instances, and the defining equations for the
         instances themselves.
-        - `unsolved_goals`: a list of unsolved goal lists.
-        - `parent_contexts`: a dictionary sending names to contexts
+        - `goals`: a dictionary of unsolved goal lists.
+        - `parent`: a dictionary sending names to contexts
         containing the current one.
         """
         self.name = name

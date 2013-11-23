@@ -103,13 +103,13 @@ _built_in_z3_funs = {
 _built_in_z3_sorts = {
     Int.name: z3.IntSort,
     Real.name: z3.RealSort,
-    'Bool': z3.BoolSort
+    Bool.name: z3.BoolSort
 }
 
 _built_in_z3_sort_values = {
     Int.name: (lambda s, ctxt: z3.IntVal(int(s), ctxt)),
     Real.name: (lambda s, ctxt: z3.RealVal(float(s), ctxt)),
-    'Bool': (lambda s, ctxt: z3.BoolVal(bool(s), ctxt))
+    Bool.name: (lambda s, ctxt: z3.BoolVal(bool(s), ctxt))
 }
 
 
@@ -212,7 +212,7 @@ class Boole_to_Z3(object):
 
     def get_z3_sort(self, s):
         if s.is_bool():
-            return _built_in_z3_sorts['Bool'](self.context)
+            return _built_in_z3_sorts[Bool.name](self.context)
         elif not s.is_const():
             raise Z3_Unexpected_Type
         if s.name in self.sort_dict.keys():

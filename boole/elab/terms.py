@@ -814,6 +814,19 @@ def deftype(name, **kwargs):
     return c
 
 
+def vartype(name, **kwargs):
+    """Define a type constant, without adding it
+    to current_ctxt.
+    
+    Arguments:
+    - `name`:
+    """
+    c = mktype(name, **kwargs)
+    if conf.verbose:
+        print "{0!s} : {1!s} is assumed.\n".format(c, c.type)
+    return c
+
+
 def defvar(name, type, unfold=None, **kwargs):
     """Define a constant, check it is well-typed,
     and return it.
@@ -1113,7 +1126,7 @@ mod = defconst('%', Int >> (Int >> Int), value=v.mod_val, infix=True)
 #
 ###############################################################################
 
-X = deftype('X')
+X = vartype('X')
 
 x = X('x')
 y = X('y')
