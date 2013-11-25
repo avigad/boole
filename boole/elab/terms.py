@@ -314,8 +314,8 @@ def pair(expr1, expr2):
     """
     e1 = to_expr(expr1)
     e2 = to_expr(expr2)
-    ty1, _ = typing.infer(e1, ctxt=current_ctxt)
-    ty2, _ = typing.infer(e2, ctxt=current_ctxt)
+    ty1, _ = typing.infer(e1, ctxt=current_ctxt())
+    ty2, _ = typing.infer(e2, ctxt=current_ctxt())
     return Pair(e1, e2, typ_mul(ty1, ty2))
 
 
@@ -329,7 +329,7 @@ def tm_call(fun, *args):
     - `fun`: an expression
     - `arg`: a list of expresstions
     """
-    fun_typ, _ = typing.infer(fun, ctxt=current_ctxt)
+    fun_typ, _ = typing.infer(fun, ctxt=current_ctxt())
     conv = [triv()] * len(args)
     cast_args = map(to_expr, args)
     return app_expr(fun, fun_typ, conv, cast_args)
@@ -573,7 +573,7 @@ def root_app_implicit(expr):
     """
     r, args = root_app(expr)
 
-    ty, _ = mvar_infer(r, ctxt=current_ctxt)
+    ty, _ = mvar_infer(r, ctxt=current_ctxt())
 
     non_implicit = []
     i = 0
@@ -674,11 +674,18 @@ def dest_implies(expr):
     return elist[:-1], elist[-1]
 
 
+def get_def(name):
+    """Return the definition associated to name
+    in the current or parent contexts
+    
+    Arguments:
+    - `name`:
+    """
+    return current_ctxt().get_rec(name, 'defs')
+
 ###############################################################################
 #
 # Term checking and elaboration.
-#
-# TODO: right now these just use the default local context. 
 #
 ###############################################################################
 
@@ -703,11 +710,11 @@ def elaborate(expr, type, unfold):
         unfold_tac = tac.par(tac.unfold(*unfold))
 
     if expr.info.elaborated and type is None:
-        ty, obl = typing.infer(expr, ctxt=current_ctxt)
+        ty, obl = typing.infer(expr, ctxt=current_ctxt())
         obl.solve_with(unfold_tac >> type_tac)
         return (expr, ty, obl)
 
-    _, obl = mvar_infer(expr, ctxt=current_ctxt)
+    _, obl = mvar_infer(expr, ctxt=current_ctxt())
 
     u.mvar_stack.clear()
     u.mvar_stack.new()
@@ -726,16 +733,16 @@ def elaborate(expr, type, unfold):
         try:
             ty = sub_mvar(type, undef=True)
         except e.ExprError:
-            _, obl = mvar_infer(type, ctxt=current_ctxt)
+            _, obl = mvar_infer(type, ctxt=current_ctxt())
             u.mvar_stack.clear()
             u.mvar_stack.new()
             obl.solve_with(unfold_tac >> elab_tac)
             ty = sub_mvar(type, undef=True)
 
     if type is None:
-        ty, obl = typing.infer(val, ctxt=current_ctxt)
+        ty, obl = typing.infer(val, ctxt=current_ctxt())
     else:
-        ty, obl = typing.infer(val, type=ty, ctxt=current_ctxt)
+        ty, obl = typing.infer(val, type=ty, ctxt=current_ctxt())
 
     obl.solve_with(unfold_tac >> type_tac)
 
@@ -782,7 +789,7 @@ def check(expr, type=None, unfold=None):
         if conf.verbose:
             print "{0!s} : {1!s}.\n".format(val, ty)
     else:
-        current_ctxt.goals[obl.name] = obl
+        current_ctxt().goals[obl.name] = obl
         print "In checking the expression\n"\
         "{0!s} : {1!s}".format(val, ty)
         print "remaining type-checking constraints!"
@@ -808,7 +815,7 @@ def deftype(name, **kwargs):
     - `name`:
     """
     c = mktype(name, **kwargs)
-    current_ctxt.add_const(c)
+    current_ctxt().add_const(c)
     if conf.verbose:
         print "{0!s} : {1!s} is assumed.\n".format(c, c.type)
     return c
@@ -847,7 +854,7 @@ def defvar(name, type, unfold=None, **kwargs):
         if conf.verbose:
             print "{0!s} : {1!s} is assumed.\n".format(c, c.type)
     else:
-        current_ctxt.goals[obl.name] = obl
+        current_ctxt().goals[obl.name] = obl
         print "In the declaration:\n{0!s} : {1!s}".format(name, c.type)
         print "remaining type-checking constraints!"
         print obl
@@ -863,12 +870,12 @@ def defconst(name, type, value=None, unfold=None, **kwargs):
     c, _, obl = elaborate(c, type, unfold)
 
     c.info['checked'] = True
-    current_ctxt.add_const(c)
+    current_ctxt().add_const(c)
     if obl.is_solved():
         if conf.verbose:
             print "{0!s} : {1!s} is assumed.\n".format(c, c.type)
     else:
-        current_ctxt.goals[obl.name] = obl
+        current_ctxt().goals[obl.name] = obl
         print "In the declaration:\n{0!s} : {1!s}".format(name, c.type)
         print "remaining type-checking constraints!"
         print obl
@@ -893,21 +900,21 @@ def defexpr(name, expr, type=None, value=None, unfold=None, **kwargs):
     c = const(name, ty, value=value, **kwargs)
     c.info['defined'] = True
     c.info['checked'] = True
-    current_ctxt.add_const(c)
+    current_ctxt().add_const(c)
 
     # TODO: add the equality to the context?
     # eq_c = equals(c, val)
     # def_name = "{0!s}_def".format(name)
     # c_def = const(def_name, eq_c)
     # current_ctxt.add_const(c_def)
-    current_ctxt.defs[name] = val
+    current_ctxt().defs[name] = val
 
     if obl.is_solved():
         c.info['unsolved_tcc'] = False
         if conf.verbose:
             print "{0!s} : {1!s} := {2!s} is defined.\n".format(c, ty, val)
     else:
-        current_ctxt.goals[obl.name] = obl
+        current_ctxt().goals[obl.name] = obl
         c.info['unsolved_tcc'] = True
         print "In the definition\n"\
         " {0!s} = {1!s} : {2!s}".format(name, val, ty)
@@ -925,8 +932,8 @@ def defhyp(name, prop):
     - `prop`: the proposition
     """
     c = defconst(name, prop)
-    typing.infer(c.type, type=e.Bool(), ctxt=current_ctxt)
-    current_ctxt.hyps[name] = c.type
+    typing.infer(c.type, type=e.Bool(), ctxt=current_ctxt())
+    current_ctxt().hyps[name] = c.type
     return c
 
 
@@ -937,7 +944,7 @@ def defthm(name, prop, unfold=None):
     """
     c = defexpr(name, triv(), prop, unfold=unfold)
     if not c.info['unsolved_tcc']:
-        current_ctxt.hyps[name] = c.type
+        current_ctxt().hyps[name] = c.type
     return c
 
 
@@ -950,7 +957,7 @@ def defsub(name, prop):
     """
     if prop.is_sub():
         c = defhyp(name, prop)
-        current_ctxt.sub[name] = c.type
+        current_ctxt().sub[name] = c.type
         return c
     else:
         raise Exception("Error in definition {0!s}:"\
@@ -971,9 +978,9 @@ def defclass(name, params, defn):
     
     c = defexpr(name, class_def, type=class_ty)
     c.info['is_class'] = True
-    current_ctxt.classes[name] = c.type
-    c_def = current_ctxt.defs[name]
-    current_ctxt.class_def[name] = c_def
+    current_ctxt().classes[name] = c.type
+    c_def = current_ctxt().defs[name]
+    current_ctxt().class_def[name] = c_def
     return c
 
 
@@ -988,8 +995,8 @@ def definstance(name, ty, expr):
     if root.info.is_class:
         class_name = root.name
         c = defexpr(name, expr, type=ty, unfold=[class_name])
-        current_ctxt.class_instances[name] = c.type
-        current_ctxt.hyps[name] = c.type
+        current_ctxt().class_instances[name] = c.type
+        current_ctxt().hyps[name] = c.type
         return c
     else:
         raise Exception("Error in definition of {0!s}:"\

@@ -533,7 +533,7 @@ class Instances(Tactic):
         else:
             hyps = goals[0].tele.types
             hyp_insts = [i for i in hyps if e.root_app(i)[0].info.is_class]
-            ctxt_insts = [i for i in context.class_instances.itervalues()]
+            ctxt_insts = context.to_list_rec('class_instances')
             for inst in hyp_insts + ctxt_insts:
                 try:
                     mvar_stack.new()

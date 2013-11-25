@@ -59,26 +59,20 @@ def set_in_sage(setting=True):
 
 ###############################################################################
 #
-# Global variables for managing the context
+# Global functions for managing the context
 #
 ###############################################################################
 
-###############################################################################
-#
-# Create a default context for the user
-#
-###############################################################################
-
-current_ctxt = Context("default_ctxt")
+_ctxt_var = Context("default_ctxt")
 
 
-def get_current_ctxt():
-    return current_ctxt
+def current_ctxt():
+    return _ctxt_var
 
 
 def set_current_ctxt(ctxt):
-    global current_ctxt
-    current_ctxt = ctxt
+    global _ctxt_var
+    _ctxt_var = ctxt
 
 
 def push_ctxt(name=""):
@@ -89,6 +83,6 @@ def push_ctxt(name=""):
     - `name`:
     """
     new_ctxt = Context(name)
-    new_ctxt.parent[get_current_ctxt().name] = get_current_ctxt()
+    new_ctxt.parent[_ctxt_var.name] = _ctxt_var
     set_current_ctxt(new_ctxt)
     

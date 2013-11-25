@@ -182,16 +182,6 @@ class Context(object):
         """
         self.__dict__[field][name] = expr
 
-    def get_from_field(self, name, field):
-        """Get the object associated to name in the
-        field.
-        
-        Arguments:
-        - `name`: a string
-        - `field`: the name of a field
-        """
-        return self.__dict__[field][name]
-
     def mem(self, expr, field):
         """Check if expr is an element in field
         
@@ -200,6 +190,62 @@ class Context(object):
         - `field`:
         """
         return self.__dict__[field].mem(expr)
+
+    def mem_rec(self, expr, field):
+        """Recursively check to see if expr is in the field,
+        or any of the parent fields
+        
+        Arguments:
+        - `expr`:
+        - `field`:
+        """
+        if self.__dict__[field].mem(expr):
+            return True
+        else:
+            for p in self.parent.itervalues():
+                if p.mem_rec(expr, field):
+                    return True
+            return False
+
+    def get_rec(self, key, field):
+        """Recursively try to find a value associated to
+        key in the field, using a search in the context, then in the
+        parent contexts
+        
+        Arguments:
+        - `key`:
+        - `field`:
+        """
+        try:
+            return self.__dict__[field][key]
+        except KeyError:
+            for p in self.parent.itervalues():
+                try:
+                    return p.get_rec(key, field)
+                except KeyError:
+                    pass
+            raise KeyError(key)
+
+    def to_list(self, field):
+        """Return the list of elements of
+        that field
+        
+        Arguments:
+        - `field`:
+        """
+        return list(self.__dict__[field].itervalues())
+
+    def to_list_rec(self, field):
+        """As above, but for self and all parent
+        contexts
+        
+        Arguments:
+        - `field`:
+        """
+        field_vals = self.to_list(field)
+        for p in self.parent.itervalues():
+            field_vals += p.to_list_rec(field)
+        return field_vals
 
     def show(self, dicts=None):
         """Show various definitions in the context.

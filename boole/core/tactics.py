@@ -163,7 +163,7 @@ def triv_fun(goal, context, _):
             return []
         if h.is_const() and h.name == 'false':
             return []
-    if context.mem(prop, 'hyps'):
+    if context.mem_rec(prop, 'hyps'):
         return []
     return [goal]
 
@@ -225,7 +225,7 @@ def sub_fun(goal, context, tac):
     """
     prop = goal.prop
     if prop.is_sub():
-        context_subs = [s for s in context.sub.itervalues()]
+        context_subs = context.to_list_rec('sub')
         if decide_sub(prop, context_subs):
             return []
         else:

@@ -159,7 +159,7 @@ def unfold(names, exp, context):
     """
     exprs = []
     for name in names:
-        e = context.get_from_field(name, 'defs')
+        e = context.get_rec(name, 'defs')
         exprs.append(e)
     return sub_in(exprs, names, exp)
 

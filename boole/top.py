@@ -14,12 +14,16 @@
 from boole import *
 from boole.core.expr import Mvar
 from boole.elab.terms import const, elaborate, mvar_infer, sub_mvar
+from boole.elab.config import push_ctxt, set_current_ctxt, current_ctxt
 
 
 if __name__ == '__main__':
 
     set_verbose()
 
+    push_ctxt('new')
+
+    print current_ctxt()
 
     b, c = Bool('b c')
 
@@ -124,7 +128,7 @@ if __name__ == '__main__':
     b = B('b')
     print
     tm = abst([A, a], a) == abst([B, b], b)
-    ty, g = mvar_infer(tm, ctxt=current_ctxt)
+    ty, g = mvar_infer(tm, ctxt=current_ctxt())
     print 'ty =', ty
     print
     print g
@@ -143,7 +147,7 @@ if __name__ == '__main__':
 
     # typing.infer(tm, ctxt=current_ctxt)
 
-    current_ctxt.show()
+    current_ctxt().show()
 
     a = A('a')
 

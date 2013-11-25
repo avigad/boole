@@ -22,7 +22,7 @@ from terms import pi, abst, forall, exists, sig, cast, pair,\
      deftype, defvar, defconst, defexpr, defhyp, elab, check,\
      defthm, defsub, defclass, definstance, defenum,\
      Add, Mul, Minus, Div, Uminus, Abs, Lt, Le,\
-     current_ctxt
+     current_ctxt, get_def
 
 from config import set_verbose, set_implicit
 
