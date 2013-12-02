@@ -38,6 +38,22 @@ aho_tm = Bound(Abst('f'), Bound(Pi('_'), Real, Real), ho_tm)
 
 super_beta = App(triv, aho_tm, atm)
 
+def test_max_sort():
+    """
+    """
+    
+
+def test_expr_type_infer():
+    """
+    """
+
+def test_expr_type_check():
+    """
+    """
+    
+
+
+
 def test_infer():
     ty, _ = infer(Bound(Pi('_'), Real, Real))
     assert(ty.equals(Type()))

@@ -25,6 +25,72 @@ n = Nat('n')
 q = Rat('q')
 
 
+def test_tm_str():
+    """
+    """
+
+def test_to_expr():
+    """
+    """
+
+def test_pair():
+    """
+    """
+    
+
+def test_tm_call():
+    """
+    """
+
+def test_iterative_app_call():
+    """
+    """
+
+def test_implies_call():
+    """
+    """
+
+def test_get_pair():
+    """
+    """
+    
+
+def test_typ_call():
+    """
+    """
+
+def test_constructors():
+    """
+    """
+    
+
+def test_root_app_implicit():
+    """
+    """
+
+def test_dest_binop_left():
+    """
+    """
+
+def test_dest_binop_right():
+    """
+    """
+    
+
+def test_elaborate():
+    """
+    """
+
+def test_check():
+    """
+    """
+    
+
+
+
+
+
+
 def test_sub():
     
     assert(elaborate(i + x, None, None)[2].is_solved())

@@ -18,11 +18,11 @@ from boole.core.info import *
 from boole.core.context import *
 from boole.core.expr import Const, Sub, Pair, Fst, Snd, Box, root_app, \
   root_clause, root_pi, subst_expr
-from boole.elab.color import *
+from boole.elaboration.color import *
 import boole.core.expr as e
 import boole.core.typing as typing
 import elab as elab_tools
-from boole.elab.elab import app_expr, mvar_infer, sub_mvar
+from boole.elaboration.elab import app_expr, mvar_infer, sub_mvar
 import boole.core.tactics as tac
 import unif as u
 import boole.semantics.value as v

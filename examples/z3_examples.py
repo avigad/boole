@@ -22,7 +22,7 @@ def test0():
     Likes = (Beatles >> (Beatles >> Bool))('Likes')
     
     T1 = Boole_to_Z3()
-    T2 = Z3_to_Boole(current_ctxt)
+    T2 = Z3_to_Boole(current_ctxt())
     
     def test(expr):
         print 'Boole expression:', expr

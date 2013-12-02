@@ -14,7 +14,7 @@
 import boole.core.expr as e
 from boole.core.goals import *
 from boole.core.tactics import *
-import elab
+import boole.elaboration.elab as elab
 import boole.core.conv as conv
 
 

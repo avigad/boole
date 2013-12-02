@@ -36,10 +36,10 @@ class VarGen(object):
         """Return an unused name:
         - if `name` is defined, returns a name with that
         prefix.
-        - if `free_in` is defined to be a list of expressions,
-        return a name which is free wrt the list of free variables in
-        that list: e.g. if name = 'x' and free_in=[x, x_1 + y], returns
-        x_2.
+        - if `free_in` is defined to be a list of variables,
+        return a name which is free wrt the variables in
+        that list: e.g. if name = 'x' and free_in=[x, x_1, y],
+        get_name returns x_2.
         """
         if name != None:
             pad = name

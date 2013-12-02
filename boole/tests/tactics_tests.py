@@ -24,6 +24,8 @@ import boole.core.context as context
 import boole.core.conv as conv
 
 
+
+
 Real = Const('Real', Type())
 
 x = Const('x', Real)
@@ -68,7 +70,10 @@ sig = Bound(Sig('x'), Real, Bound(Sig('y'), Real, \
 
 bin_op_x_y = App(triv, App(triv, bin_op, x), y)
 
-def test_triv():
+
+
+
+def test_trivial():
     """
     """
     ctxt = context.Context('test_ctxt')
@@ -79,8 +84,20 @@ def test_triv():
     g = Goals('test', ctxt, goals = [Goal(Tele(['_'], [p]), p)])
     g.solve_with(trivial)
     assert(g.is_solved())
-    
 
+def test_reach():
+    """
+    """
+
+def test_decide_sub():
+    """
+    """
+
+
+def test_sub_tac():
+    """
+    """
+    
 def test_simpl():
     ctxt = context.Context('test_ctxt')
     g = Goals('test', ctxt, goals = \
@@ -90,14 +107,7 @@ def test_simpl():
     g.solve_with(trivial)
     assert(g.is_solved())
 
-def test_intro():
-    ctxt = context.Context('test_ctxt')
-    g = Goals('test', ctxt, goals = \
-              [Goal(empty_tel, Bound(Forall('x'), Real, impl(p, impl(p, q))))])
-
-    g.solve_with(intros)
-    assert(g.goals[0].prop.equals(q))
-
+    
 def test_destruct():
     ctxt = context.Context('test_ctxt')
     Real2 = Const('Real2', Type())
@@ -126,4 +136,48 @@ def test_unpack():
     g.solve_with(unpack('s'))
     assert(g.goals[0]['h'].equals(bin_op_x_y))
     assert(g.goals[0].prop.lhs.is_pair())
+
+def test_apply_atom():
+    """
+    """
+
+def test_trytac():
+    """
+    """
+    
+def test_trywith():
+    """
+    """
+    
+def test_repeat():
+
+def test_idtac():
+    """
+    """
+
+def test_now():
+    """
+    """
+    
+def test_unfold():
+    """
+    """
+
+def test_intros():
+    ctxt = context.Context('test_ctxt')
+    g = Goals('test', ctxt, goals = \
+              [Goal(empty_tel, Bound(Forall('x'), Real, impl(p, impl(p, q))))])
+
+    g.solve_with(intros)
+    assert(g.goals[0].prop.equals(q))
+
+
+def test_par():
+    """
+    """
+
+def test_auto():
+    """
+    """
+    
 
