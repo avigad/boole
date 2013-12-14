@@ -1,6 +1,6 @@
 ###############################################################################
 #
-# prelude.py
+# config.py
 #
 # description: A module containing configuration variables and setter functions.
 #
@@ -29,13 +29,12 @@ def set_verbose(setting=True):
     global verbose
     verbose = setting
 
-implicit = False
-
+implicit = True
 
 def set_implicit(setting=True):
     """Sets the print implicit flag:
     This flag makes the implicit arguments
-    visible upon printing.
+    non visible upon printing.
     """
     global implicit
     implicit = setting
@@ -49,13 +48,6 @@ def set_unicode(setting=True):
     global print_unicode
     print_unicode = setting
 
-
-in_sage = False
-
-
-def set_in_sage(setting=True):
-    global in_sage
-    in_sage = setting
 
 ###############################################################################
 #

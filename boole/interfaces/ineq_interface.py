@@ -6,7 +6,8 @@
 #
 ###############################################################################
 
-from boole.elab.prelude import *
+from boole import *
+from boole.elaboration.terms import root_app_implicit
 import boole.core.typing as ty
 import boole.core.tactics as tac
 import boole.interfaces.ineqs.classes as ineq
@@ -233,7 +234,7 @@ if __name__ == '__main__':
 
     mul_add = defexpr('mul_add', (x + y) < (x * y))
 
-    tm_def = local_ctxt.defs['mul_add']
+    tm_def = current_ctxt().defs['mul_add']
 
     
     print translate(tm_def)
@@ -246,6 +247,6 @@ if __name__ == '__main__':
                                    implies(y < 1.0,\
                                            (x + y) > (x * y))))))
 
-    goal = local_ctxt.next_goal()
+    goal = current_ctxt().next_goal()
 
     goal.interact(real_ineq)

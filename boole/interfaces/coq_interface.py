@@ -8,11 +8,13 @@
 
 import operator
 
-from boole.elab.prelude import *
-from boole.elab.terms import root_app_implicit
+
+from boole import *
+from boole.elaboration.terms import root_app_implicit
 from boole.core.expr import open_bound_fresh, ExprVisitor,\
      Pi, Sig, Abst, Forall, Exists, root_app
 import boole.core.typing as ty
+import boole.config
 
 from uuid import uuid4
 
@@ -20,10 +22,10 @@ import subprocess
 import tempfile
 from os import devnull
 
-coq_path = "/usr/bin/coqtop"
+coq_path = boole.config.coq_bin
 session_id = uuid4().time_low
-filename = "coq_{0!s}_{1!s}.v".format(current_ctxt.name, session_id)
-out_file = "coq_{0!s}_{1!s}.out".format(current_ctxt.name, session_id)
+filename = "coq_{0!s}_{1!s}.v".format(current_ctxt().name, session_id)
+out_file = "coq_{0!s}_{1!s}.out".format(current_ctxt().name, session_id)
 
 
 ###############################################################################
@@ -346,16 +348,16 @@ def create_coq_file():
         f.write(make_imports())
         f.write(make_scope())
         f.write(make_defs())
-        for k in current_ctxt.decls:
-            if not is_coq_builtin(k) and k not in current_ctxt.defs:
-                k_decl = boole_to_coq(current_ctxt.decls[k].type)
+        for k in current_ctxt().decls:
+            if not is_coq_builtin(k) and k not in current_ctxt().defs:
+                k_decl = boole_to_coq(current_ctxt().decls[k].type)
                 f.write(coq_param(k, k_decl) + "\n")
-        for k in current_ctxt.defs:
+        for k in current_ctxt().defs:
             if not is_coq_builtin(k):
-                k_def = boole_to_coq(current_ctxt.defs[k])
+                k_def = boole_to_coq(current_ctxt().defs[k])
                 f.write(coq_def(k, "", k_def) + "\n")
-        for k in current_ctxt.goals:
-            k_goal = boole_to_coq_goal(current_ctxt.goals[k])
+        for k in current_ctxt().goals:
+            k_goal = boole_to_coq_goal(current_ctxt().goals[k])
             f.write(coq_prop(k, k_goal,coq_tac=tac) + "\n")
         print "Wrote output to file " + filename
         print
@@ -393,7 +395,7 @@ def check_coq_file():
                                   stderr=open(devnull, 'w'))
     with open(out_file, 'r') as coq_out:
         coq_out.seek(0)
-        for k in current_ctxt.goals:
+        for k in current_ctxt().goals:
             out_err.append(goal_error(k))
         for line in coq_out:
             for e in out_err:

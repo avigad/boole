@@ -29,6 +29,7 @@ import boole.semantics.value as v
 from boole.semantics.value import Value
 import config as conf
 from config import current_ctxt
+import boole.user_conf as user_conf
 
 
 ###############################################################################
@@ -56,7 +57,7 @@ def print_const(expr):
     """
     if not (expr.info.unicode is None) and conf.print_unicode:
         return expr.info.unicode
-    elif not (expr.info.sage_name is None) and conf.in_sage:
+    elif not (expr.info.sage_name is None) and user_conf.in_sage:
         return expr.info.sage_name
     else:
         return expr.name
@@ -80,7 +81,7 @@ def print_app(expr):
     Arguments:
     - `expr`: an expression
     """
-    if conf.implicit:
+    if not conf.implicit:
         root, args = root_app(expr)
     else:
         root, args = root_app_implicit(expr)
@@ -126,7 +127,7 @@ def print_pair(expr):
     Arguments:
     - `expr`: a pair
     """
-    if conf.implicit:
+    if not conf.implicit:
         pair_str = "pair({0!s}, {1!s}, {2!s})"\
                    .format(expr.fst, expr.snd, expr.type)
     else:
@@ -158,7 +159,7 @@ def print_box(expr):
     Arguments:
     - `expr`:
     """
-    if conf.implicit:
+    if not conf.implicit:
         box_str = "cast({0!s},{1!s},{2!s})"\
                   .format(expr.conv, expr.expr, expr.type)
     else:

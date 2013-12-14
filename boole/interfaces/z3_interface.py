@@ -8,13 +8,12 @@
 
 import operator
 
-from boole.elab.prelude import *
-from boole.elab.terms import *
+from boole.elaboration.prelude import *
+from boole.elaboration.terms import *
 from boole.core.expr import open_bound_fresh_consts
 import boole.core.typing as ty
 import boole.core.tactics as tac
 import boole.core.conv as conv
-import boole.interfaces.ineq_interface as ineq
 import boole.semantics.value as value
 from boole.semantics.value import Value, eval_expr
 

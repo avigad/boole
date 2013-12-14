@@ -25,11 +25,12 @@
 #  G. Passmore - 11-Nov-2013
 #
 
-from boole.elab.terms import *
+
+from boole.elaboration.terms import *
 import boole.core.typing as ty
 import boole.core.tactics as tac
-import boole.interfaces.ineq_interface as ineq
 from boole.core.expr import open_bound_fresh_consts
+import boole.config
 
 import pipes
 import tempfile
@@ -41,7 +42,7 @@ import tempfile
 # this sort of thing?
 #
 
-ladr_bin_path = "/home/croux/prog/C/LADR-2009-11A/bin/"
+ladr_bin_path = boole.config.ladr_bin
 
 from fractions import Fraction
 
