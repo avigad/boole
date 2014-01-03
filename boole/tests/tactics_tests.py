@@ -150,18 +150,22 @@ def test_trywith():
     """
     
 def test_repeat():
+    
 
 def test_idtac():
     """
     """
+    
 
 def test_now():
     """
     """
     
+    
 def test_unfold():
     """
     """
+    
 
 def test_intros():
     ctxt = context.Context('test_ctxt')
@@ -175,9 +179,11 @@ def test_intros():
 def test_par():
     """
     """
+    
 
 def test_auto():
     """
     """
+    
     
 

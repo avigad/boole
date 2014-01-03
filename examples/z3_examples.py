@@ -7,7 +7,7 @@
 #
 ################################################################################
 
-from boole.elab.prelude import *
+from boole import *
 from boole.interfaces.z3_interface import *
 
 
@@ -94,7 +94,7 @@ def test3():
     print 'Check: ', s.check()
     print 'Model: ', s.z3_model()
 
-    
+
 # tall, dark, and handsome puzzle
 def test4():
     
@@ -119,37 +119,75 @@ def test4():
     
     print 'Check:', s.check()
     print 'Model: ', s.z3_model()
-    
+
+def test5():
+
+    Person = deftype('Person')
+    Liar = defconst('Liar', Person >> Bool)
+    Says = defconst('Says', Person >> (Bool >> Bool))
+    x = Person('x')
+    p = Bool('p')
+    lies = forall([x, p], implies([Liar(x), Says(x, p)], Not(p)))
+    truth = forall([x, p], implies([Not(Liar(x)), Says(x, p)], p))
+    # defhyp('lies', forall(x, implies([Liar(x), Says(x, p)], Not(p))))
+    knave = defconst('knave', Person)
+    # paradox = Says(knave, Liar(knave))
+    s = Z3_Solver()
+    s.add(lies)
+    s.add(truth)
+    # s.add(paradox)
+
+    knight = defconst('knight', Person)
+    puzzle = Says(knight, Says(knave, Liar(knight)))
+    s.add(puzzle)
+    s.add(Not(Liar(knight)))
+
+    print 'Check:', s.check()
+    print 'Model: ', s.z3_model()
+
+    B = Z3_to_Boole()
+    b_mod = B.model(s.z3_model())
+    #TODO: make the names correspond!
+    print b_mod
+
+
     
 if __name__ == '__main__':
 
-    print '******'
-    print 'Test0:'
-    print '******'
-    test0()
-    print
+    # print '******'
+    # print 'Test0:'
+    # print '******'
+    # test0()
+    # print
     
-    print '******'
-    print 'Test1:'
-    print '******'
-    test1()
-    print
+    # print '******'
+    # print 'Test1:'
+    # print '******'
+    # test1()
+    # print
     
-    print '******'
-    print 'Test2:'
-    print '******'
-    test2()
-    print
+    # print '******'
+    # print 'Test2:'
+    # print '******'
+    # test2()
+    # print
 
-    print '******'
-    print 'Test3:'
-    print '******'
-    test3()
-    print
+    # print '******'
+    # print 'Test3:'
+    # print '******'
+    # test3()
+    # print
     
-    print '******'
-    print 'Test4:'
-    print '******'
-    test4()
-    print        
+    # print '******'
+    # print 'Test4:'
+    # print '******'
+    # test4()
+    # print        
         
+    print '******'
+    print 'Test5:'
+    print '******'
+    test5()
+    print        
+    
+    

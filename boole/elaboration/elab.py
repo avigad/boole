@@ -262,15 +262,13 @@ meta_var_gen = vargen.VarGen()
 
 class Enrich(e.ExprVisitor):
     """Enrich the evidence terms with a new
-    hypothesis
+    hypothesis name:prop
     """
     
     def __init__(self, name, prop):
         e.ExprVisitor.__init__(self)
         self.name = name
         self.prop = prop
-        self.abst = e.abstract_expr
-        self.open_fresh = e.open_bound_fresh
         
     def visit_const(self, expr, *args, **kwargs):
         return expr
@@ -288,10 +286,11 @@ class Enrich(e.ExprVisitor):
         return expr
 
     def visit_bound(self, expr, *args, **kwargs):
-        var, open_expr = self.open_fresh(expr)
+        var, open_expr = e.open_bound_fresh(expr)
         new_open_expr = self.visit(open_expr)
         dom = self.visit(expr.dom)
-        return e.Bound(expr.binder, dom, self.abst([var], new_open_expr))
+        return e.Bound(expr.binder, dom,
+                       e.abstract_expr([var], new_open_expr))
 
     def visit_app(self, expr, *args, **kwargs):
         ev = self.visit(expr.conv)
@@ -352,7 +351,7 @@ class Enrich(e.ExprVisitor):
 def enrich(name, prop, expr):
     """Enrich the telescopes of the
     evidence terms of expr with the hypothesis
-    prop with name name.
+    `prop` with name `name`.
     
     Arguments:
     - `name`:

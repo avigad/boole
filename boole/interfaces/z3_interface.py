@@ -118,10 +118,10 @@ _built_in_z3_sort_values = {
 #
 ###############################################################################
 
+
 def z3_to_fun(z3_expr):
-    """Takes a FuncInterp instance, and returns
-    the function which takes as input the value of
-    a z3 expression and returns the value of the
+    """Takes a FuncInterp instance, and returns the function which
+    takes as input a z3 expression and returns the value of the
     corresponding expression.
 
     Mutually recursive with z3_to_val
@@ -131,12 +131,13 @@ def z3_to_fun(z3_expr):
     """
     fun_list = z3_expr.as_list()
     other_val = z3_to_val(fun_list.pop())
-    fun_list_val = [(z3_to_val(p[0]), z3_to_val(p[1]))\
+    fun_list_val = [(str(z3_to_val(p[0])), z3_to_val(p[1]))\
                     for p in fun_list]
     fun_dict = dict(fun_list_val)
+
     def fun(a):
         try:
-            return fun_dict[a]
+            return fun_dict[str(a)]
         except KeyError:
             return other_val
 
@@ -144,7 +145,7 @@ def z3_to_fun(z3_expr):
 
 
 def z3_to_val(z3_expr):
-    """Send a z3 expression to it's value
+    """Send a z3 expression to its value
     as a python expression, if it has one,
     otherwise return the expresson itself.
     
