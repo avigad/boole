@@ -185,18 +185,20 @@ class Boole_to_Z3(object):
     """
     
     def __init__(self, context=None):
-        self.sort_dict = None
-        self.symbol_dict = None
-        self.context = None
-        self.reset(context)
+        if context != None:
+            self.context = context
+        else:
+            self.context = z3.Context()
+        self.sort_dict = {}
+        self.symbol_dict = {}
 
     def reset(self, context=None):
         if context != None:
             self.context = context
         else:
             self.context = z3.Context()
-        self.sort_dict = {}        # sorts
-        self.symbol_dict = {}      # constant and function symbols
+        self.sort_dict = {}
+        self.symbol_dict = {}
         
     def make_z3_sort(self, name):
         z3_sort = z3.DeclareSort(name, self.context)
@@ -414,7 +416,6 @@ class Z3_to_Boole(object):
     def translate(self, expr, bound_variables=[]):
         if z3.is_const(expr):
             return self.mk_const(expr)
-#                raise Z3_Unexpected_Expression('Unrecognized constant')
         elif z3.is_var(expr):    # a de Bruijn indexed bound variable
             bv_length = len(bound_variables)
             return bound_variables[bv_length - z3.get_var_index(expr) - 1]
@@ -422,13 +423,8 @@ class Z3_to_Boole(object):
             args = [self.translate(expr.arg(i), bound_variables)
                 for i in range(expr.num_args())]
             return self.mk_fun(expr.decl())(*args)
-
-#            else:
-#                raise Z3_Unexpected_Expression(expr)
         elif z3.is_quantifier(expr):
             num_vars = expr.num_vars()
-#            vars = [language.const_dict[expr.var_name(i)]
-#                for i in range(num_vars)]
             vars = [const(expr.var_name(i), self.mk_sort(expr.var_sort(i))) \
                 for i in range(num_vars)]
             new_bound_variables = bound_variables + vars

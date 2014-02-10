@@ -133,6 +133,7 @@ def test5():
     knave = defconst('knave', Person)
     # paradox = Says(knave, Liar(knave))
     s = Z3_Solver()
+
     s.add(lies)
     s.add(truth)
     # s.add(paradox)
@@ -140,8 +141,10 @@ def test5():
     knight = defconst('knight', Person)
     puzzle = Says(knight, Says(knave, Liar(knight)))
     s.add(puzzle)
+
     s.add(Not(Liar(knight)))
 
+    print s.solver
     print 'Check:', s.check()
     print 'Model: ', s.z3_model()
 
