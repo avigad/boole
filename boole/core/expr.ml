@@ -159,13 +159,20 @@ open Printf
 
 let make_name a = a
 
+let name_of cst =
+match cst with
+  | Const(a, _) -> a
+  | Mvar(a, _) -> a
+  | _ -> assert false
+
 let rec print_term o t =
   match t with
     Sort s -> fprintf o "%s" (string_of_sort s)
   | Const(a, _) -> fprintf o "%s" a
   | DB i -> fprintf o "DB(%s)" (string_of_int i)
   | Bound(b, a, ty, tm) ->
-    fprintf o "%s %s : %a . %a" (string_of_binder b) a
+    let tm = subst (Const (a, ty)) tm in
+    fprintf o "%s %s : %a.%a" (string_of_binder b) a
       print_term ty print_term tm
   | App(t1, t2) ->
     fprintf o "(%a %a)" print_term t1 print_term t2
