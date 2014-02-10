@@ -140,3 +140,38 @@ let fresh_var v t =
   var_count := !var_count + 1;
   let name = v^(string_of_int !var_count) in
   (name, Const(name , t))
+
+let string_of_sort s =
+  match s with
+    | Type -> "Type"
+    | Kind -> "Kind"
+    | Bool -> "Bool"
+
+let string_of_binder b =
+  match b with
+    | Forall -> "forall"
+    | Exists -> "exists" 
+    | Pi -> "pi" 
+    | Sig -> "sig"
+    | Abst -> "lam"
+
+open Printf
+
+let make_name a = a
+
+let rec print_term o t =
+  match t with
+    Sort s -> fprintf o "%s" (string_of_sort s)
+  | Const(a, _) -> fprintf o "%s" a
+  | DB i -> fprintf o "DB(%s)" (string_of_int i)
+  | Bound(b, a, ty, tm) ->
+    fprintf o "%s %s : %a . %a" (string_of_binder b) a
+      print_term ty print_term tm
+  | App(t1, t2) ->
+    fprintf o "(%a %a)" print_term t1 print_term t2
+  | Fst t -> fprintf o "Fst(%a)" print_term t
+  | Snd t -> fprintf o "Snd(%a)" print_term t
+  | Pair(_, _, t1, t2) -> fprintf o "(%a , %a)" print_term t1 print_term t2
+  | Cast(_, t1, t2) -> fprintf o "[%a : %a]" print_term t1 print_term t2
+  | Eq(t1, t2) -> fprintf o "%a == %a" print_term t1 print_term t2
+  | Mvar (a, _) -> fprintf o "%s" a

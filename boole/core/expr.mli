@@ -28,3 +28,7 @@ val compare : t -> t -> int
 val equal : t -> t -> bool
 
 val fresh_var : name -> t -> name * t
+
+val make_name : string -> name
+
+val print_term : out_channel -> t -> unit
