@@ -14,43 +14,50 @@
 
 type name = String.t
 
-type sort = Type | Kind | Bool
+type index = String.t
 
-type binder = Forall | Exists | Pi | Sig | Abst
+type level = Var of index | Max of level * level | Z | Suc of level
+
+let rec level_leq l1 l2 =
+  match l1, l2 with
+    | Z, _ -> true
+    | Var i, Var j -> i = j
+    | l, Max(m1, m2) -> level_leq l m1 || level_leq l m2
+    | Max(l1, l2), m -> level_leq l1 m && level_leq l2 m
+    | Suc l1, Suc l2 -> level_leq l1 l2
+    | l1, Suc l2 -> level_leq l1 l2
+    | _, Z -> false
+    | _, Var _ -> false
+
+type sort = Type of level | Bool
+
+let sort_leq s1 s2 =
+  match s1, s2 with
+    | Bool, _ -> true
+    | Type l1, Type l2 -> level_leq l1 l2
+    | _ -> false
+
+type cst = Toplevel | Local | Mvar
+
+type binder = Pi | Abst
 
 type t = 
     Sort of sort 
-  | Const of name * t 
+  | Const of cst * name * t
   | DB of int 
   | Bound of binder * name * t * t 
-  | App of t * t 
-  | Fst of t 
-  | Snd of t 
-  | Pair of name * t * t * t
-  | Cast of ctxt * t * t 
-  | Eq of t * t 
-  | Mvar of name * t
-and 
-  ctxt = Ctxt of t list
+  | App of t * t
+
 
       
 let rec abst_n v t n = 
   match t with
     | Sort _ | DB _ -> t
-    | Const (a, _) when a = v -> DB n
+    | Const (Local, a, _) when a = v -> DB n
     | Const _ -> t
     | Bound (binder, a, ty, tm) -> 
       Bound (binder, a, abst_n v ty n, abst_n v tm (n+1))
     | App (t1, t2) -> App (abst_n v t1 n, abst_n v t2 n)
-    | Fst tm -> Fst (abst_n v tm n)
-    | Snd tm -> Snd (abst_n v tm n)
-    | Pair (a, t1, t2, t3) -> 
-      Pair (a, abst_n v t1 (n+1), abst_n v t2 n, abst_n v t3 n)
-    | Cast (Ctxt tel, tm, ty) ->
-      let tel = List.map (fun t -> abst_n v t n) tel in
-      Cast(Ctxt tel, abst_n v tm n, abst_n v ty n)
-    | Eq (t1, t2) -> Eq (abst_n v t1 n, abst_n v t2 n)
-    | Mvar (a, t) -> Mvar (a, abst_n v t n)
 
 
 let abst v t = abst_n v t 0
@@ -65,21 +72,16 @@ let rec subst_n u t n =
     | Bound (binder, a, ty, tm) ->
       Bound (binder, a, subst_n u ty n, subst_n u tm (n+1))
     | App (t1, t2) -> App (subst_n u t1 n, subst_n u t2 n)
-    | Fst t -> Fst (subst_n u t n)
-    | Snd t -> Snd (subst_n u t n)
-    | Pair (a, t1, t2, t3) -> 
-      Pair (a, subst_n u t1 (n+1), subst_n u t2 n, subst_n u t3 n)
-    | Cast (Ctxt tel, t1, t2) -> 
-      let tel = List.map (fun t -> subst_n u t n) tel in
-      Cast (Ctxt tel, subst_n u t1 n, subst_n u t2 n)
-    | Eq (t1, t2) -> Eq (subst_n u t1 n, subst_n u t2 n)
-    | Mvar (a, t) -> Mvar (a, subst_n u t n)
 
 let subst u t = subst_n u t 0
 
 let rec compare t1 t2 =
   match t1, t2 with
-    | Const(a, _), Const(b, _) -> Pervasives.compare a b
+    | Const(c1, a1, _), Const(c2, a2, _) -> 
+      let c = Pervasives.compare c1 c2 in
+      if c = 0 then
+        Pervasives.compare a1 a2
+      else c
     | Const _, _ -> -1
     | Sort a, Sort b -> Pervasives.compare a b
     | Sort _, Const _ -> 1
@@ -100,37 +102,6 @@ let rec compare t1 t2 =
       let c_t = compare t1 t2 in
       if c_t = 0 then compare u1 u2 else c_t
     | App _, Const _ | App _, Sort _ | App _, DB _ | App _, Bound _ -> 1
-    | App _, _ -> -1
-    | Fst t1, Fst t2 -> compare t1 t2
-    | Fst _, Const _ | Fst _, Sort _ | Fst _, DB _ | Fst _, Bound _ | Fst _, App _ -> 1
-    | Fst _, _ -> -1
-    | Snd t1, Snd t2 -> compare t1 t2
-    | Snd _, Const _ | Snd _, Sort _ | Snd _, DB _ | Snd _, Bound _ | Snd _, App _ | Snd _, Fst _ -> 1
-    | Snd _, _ -> -1
-    | Pair(_, t1, u1, v1), Pair(_, t2, u2, v2) ->
-      let c_t = compare t1 t2 in
-      if c_t = 0 then
-        let c_u = compare u1 u2 in
-        if c_u = 0 then compare v1 v2
-        else c_u
-      else c_t
-    | Pair _, Const _ | Pair _, Sort _ | Pair _, DB _ | Pair _, Bound _ 
-    | Pair _, App _ | Pair _, Fst _ | Pair _, Snd _ -> 1
-    | Pair _, _ -> -1
-    | Eq(t1, u1), Eq(t2, u2) -> 
-      let c_t = compare t1 t2 in
-      if c_t = 0 then compare u1 u2 else c_t
-    | Eq _, Const _ | Eq _, Sort _ | Eq _, DB _ | Eq _, Bound _ 
-    | Eq _, App _ | Eq _, Fst _ | Eq _, Snd _ | Eq _, Pair _ -> 1
-    | Eq _, _ -> -1
-    | Cast (_, t1, u1), Cast(_, t2, u2) -> 
-      let c_t = compare t1 t2 in
-      if c_t = 0 then compare u1 u2 else c_t
-    | Cast _, Const _ | Cast _, Sort _ | Cast _, DB _ | Cast _, Bound _ 
-    | Cast _, App _ | Cast _, Fst _ | Cast _, Snd _ | Cast _, Pair _ | Cast _, Eq _ -> 1
-    | Cast _, _ -> -1
-    | Mvar(a, _), Mvar(b, _) -> Pervasives.compare a b
-    | Mvar _, _ -> 1
 
 let equal t1 t2 = (compare t1 t2 = 0)
 
@@ -139,46 +110,60 @@ let var_count = ref (-1)
 let fresh_var v t = 
   var_count := !var_count + 1;
   let name = v^(string_of_int !var_count) in
-  (name, Const(name , t))
+  (name, Const(Local, name , t))
+
+let rec string_of_level i =
+  match i with
+    | Var i -> i
+    | Max (i, j) -> "max("^(string_of_level i)^","^(string_of_level j)^")"
+    | Z -> "0"
+    | Suc i -> "s("^(string_of_level i)^")"
 
 let string_of_sort s =
   match s with
-    | Type -> "Type"
-    | Kind -> "Kind"
+    | Type i -> "Type"^(string_of_level i)
     | Bool -> "Bool"
 
 let string_of_binder b =
   match b with
-    | Forall -> "forall"
-    | Exists -> "exists" 
     | Pi -> "pi" 
-    | Sig -> "sig"
     | Abst -> "lam"
 
 open Printf
 
 let make_name a = a
 
+let make_index i = i
+
 let name_of cst =
 match cst with
-  | Const(a, _) -> a
-  | Mvar(a, _) -> a
+  | Const(_, a, _) -> a
   | _ -> assert false
 
 let rec print_term o t =
   match t with
     Sort s -> fprintf o "%s" (string_of_sort s)
-  | Const(a, _) -> fprintf o "%s" a
+  | Const(_, a, _) -> fprintf o "%s" a
   | DB i -> fprintf o "DB(%s)" (string_of_int i)
   | Bound(b, a, ty, tm) ->
-    let tm = subst (Const (a, ty)) tm in
+    let tm = subst (Const (Local, a, ty)) tm in
     fprintf o "%s %s : %a.%a" (string_of_binder b) a
       print_term ty print_term tm
   | App(t1, t2) ->
     fprintf o "(%a %a)" print_term t1 print_term t2
-  | Fst t -> fprintf o "Fst(%a)" print_term t
-  | Snd t -> fprintf o "Snd(%a)" print_term t
-  | Pair(_, _, t1, t2) -> fprintf o "(%a , %a)" print_term t1 print_term t2
-  | Cast(_, t1, t2) -> fprintf o "[%a : %a]" print_term t1 print_term t2
-  | Eq(t1, t2) -> fprintf o "%a == %a" print_term t1 print_term t2
-  | Mvar (a, _) -> fprintf o "%s" a
+
+
+let rec free_vars t =
+  match t with
+    | Sort _ | DB _ -> []
+    | Const(Local, a, t) -> a::free_vars t
+    | Const _ -> []
+    | Bound (_, _, t1, t2) -> (free_vars t1) @ (free_vars t2)
+    | App (t1, t2) -> (free_vars t1) @ (free_vars t2)
+
+let rec get_app t =
+  match t with
+    | App (t1, t2) ->
+      let hd, ts = get_app t1 in
+      (hd, t2::ts)
+    | _ -> (t, [])

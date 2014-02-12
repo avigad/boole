@@ -1,1 +1,1 @@
-val hd_beta : Expr.t -> Expr.t
+val hd_beta_step : Expr.t -> Expr.t

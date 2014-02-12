@@ -1,23 +1,24 @@
 
 type name
 
-type sort = Type | Kind | Bool
+type index = String.t
 
-type binder = Forall | Exists | Pi | Sig | Abst
+type level = Var of index | Max of level * level | Z | Suc of level
 
-type t =
-    Sort of sort
-  | Const of name * t
-  | DB of int
-  | Bound of binder * name * t * t
-  | App of t * t
-  | Fst of t
-  | Snd of t
-  | Pair of name * t * t * t
-  | Cast of ctxt * t * t
-  | Eq of t * t
-  | Mvar of name * t
-and ctxt = Ctxt of t list
+type sort = Type of level | Bool
+
+type cst = Toplevel | Local | Mvar
+
+type binder = Pi | Abst
+
+type t = 
+    Sort of sort 
+  | Const of cst * name * t 
+  | DB of int 
+  | Bound of binder * name * t * t 
+  | App of t * t 
+
+val sort_leq : sort -> sort -> bool
 
 val abst : name -> t -> t
 
@@ -31,8 +32,12 @@ val fresh_var : name -> t -> name * t
 
 val make_name : string -> name
 
+val make_index : string -> index
+
 (* Precondition: 
-   when calling name_of t, t must be a -constant- or a -meta-variable-!*)
+   when calling name_of t, t must be a -constant-!*)
 val name_of : t -> name
 
 val print_term : out_channel -> t -> unit
+
+val get_app : t -> t * t list
