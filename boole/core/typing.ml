@@ -22,11 +22,18 @@ exception NotAPi of Expr.t * Expr.t
 
 exception NotASig of Expr.t * Expr.t
 
+exception SortError of Expr.t * Expr.t
+
+exception KindHasNoType
+
 let max_sort s1 s2 =
   match s1, s2 with
-    | Bool, s 
-    | s, Bool -> s
+    | Bool, Type i -> Type i 
+    | Type i, Bool -> Type i
+    | Bool, Bool -> Bool
     | Type i, Type j -> Type (Max (i, j))
+    | Kind, _ | _, Kind -> assert false
+
 
 let pi_sort s1 s2 =
   match s1, s2 with
@@ -37,6 +44,7 @@ let rec type_raw conv t =
   match t with
     | Sort (Type i) -> Sort (Type (Suc i))
     | Sort Bool -> Sort (Type Z)
+    | Sort Kind -> raise KindHasNoType
     (* Do we ever need to check that this is well-kinded? *)
     | Const (_, _, ty) -> ty
     | DB _ -> assert false
@@ -48,6 +56,8 @@ let rec type_raw conv t =
       begin match b with
         | Pi -> 
           begin match t1_ty, t2_ty with
+            | Sort Kind, Sort _ -> raise (SortError (t1, t1_ty)) 
+            | Sort _, Sort Kind -> raise (SortError (t2, t2_ty))
             | Sort s1, Sort s2 -> Sort (pi_sort s1 s2)
             | Sort _, _ -> raise (NotASort (t2, t2_ty))
             | _, _ -> raise (NotASort (t1, t1_ty))
@@ -69,3 +79,22 @@ let rec type_raw conv t =
           | _ -> raise (NotAPi (t1, t1_ty))
       end
 
+    | LBound (b, i, t) ->
+      let t_ty = type_raw conv t in
+      begin match b with
+        | LPi ->
+          begin match t_ty with
+            | Sort _ -> Sort Kind
+            | _ -> raise (NotASort (t, t_ty))
+          end
+        | LAbst ->
+          let _ = type_raw conv t_ty in
+          LBound (LPi, i, t_ty)
+      end
+    | LApp (t, l) -> 
+      let t_ty = type_raw conv t in
+      begin
+        match t_ty with
+          | LBound (LPi, i, body) -> subst_l i l body
+          | _ -> raise (NotAPi (t, t_ty))
+      end
