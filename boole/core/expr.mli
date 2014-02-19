@@ -7,7 +7,7 @@ type level = Var of index | Max of level * level | Z | Suc of level
 
 type sort = Type of level | Bool | Kind
 
-type cst = Toplevel | Local | Mvar
+type cst = TopLevel | Local | Mvar
 
 type binder = Pi | Abst
 
@@ -35,6 +35,8 @@ val compare : t -> t -> int
 val equal : t -> t -> bool
 
 val fresh_var : name -> t -> name * t
+
+val open_t : name -> t -> t -> name * t
 
 val make_name : string -> name
 

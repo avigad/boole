@@ -44,7 +44,7 @@ module NMap = Map.Make(
 
 let rec unfold t names m =
   match t with
-    | Const(Toplevel, a, _) when List.mem a names ->
+    | Const(TopLevel, a, _) when List.mem a names ->
       begin try
               NMap.find a m
         with Not_found -> t

@@ -40,32 +40,35 @@ let pi_sort s1 s2 =
     | _, Bool -> Bool
     | x, y -> max_sort x y
 
+
 let rec type_raw conv t =
   match t with
     | Sort (Type i) -> Sort (Type (Suc i))
     | Sort Bool -> Sort (Type Z)
     | Sort Kind -> raise KindHasNoType
     (* Do we ever need to check that this is well-kinded? *)
+    (* This is done once for top-level constants, and
+       local variables should checked at creation *)
     | Const (_, _, ty) -> ty
     | DB _ -> assert false
     | Bound (b, v, t1, t2) ->
       let t1_ty = type_raw conv t1 in
-      let vname, vc = fresh_var v t1 in
-      let t2 = subst vc t2 in
+      let vname, t2 = open_t v t1 t2 in
       let t2_ty = type_raw conv t2 in
       begin match b with
-        | Pi -> 
+        | Pi ->
           begin match t1_ty, t2_ty with
+            | Sort s1, Sort s2 when s1 != Kind && s2 != Kind -> 
+              Sort (pi_sort s1 s2)
             | Sort Kind, Sort _ -> raise (SortError (t1, t1_ty)) 
             | Sort _, Sort Kind -> raise (SortError (t2, t2_ty))
-            | Sort s1, Sort s2 -> Sort (pi_sort s1 s2)
             | Sort _, _ -> raise (NotASort (t2, t2_ty))
             | _, _ -> raise (NotASort (t1, t1_ty))
           end
         | Abst -> 
           (* Check to see if t2 is well-kinded *)
           let _ = type_raw conv t2_ty in
-          Bound(Pi, v, t1, abst vname t2)
+          Bound(Pi, v, t1, abst vname t2_ty)
       end
     | App (t1, t2) ->
       let t1_ty = type_raw conv t1 in

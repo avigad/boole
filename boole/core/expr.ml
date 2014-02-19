@@ -37,7 +37,7 @@ let sort_leq s1 s2 =
     | Type l1, Type l2 -> level_leq l1 l2
     | _ -> false
 
-type cst = Toplevel | Local | Mvar
+type cst = TopLevel | Local | Mvar
 
 type binder = Pi | Abst
 
@@ -169,15 +169,34 @@ let equal t1 t2 = (compare t1 t2 = 0)
 
 let var_count = ref (-1)
 
+let mvar_count = ref (-1)
+
+let level_count = ref (-1)
+
 let fresh_var v t = 
-  var_count := !var_count + 1;
+  incr var_count;
   let name = v^(string_of_int !var_count) in
   (name, Const(Local, name , t))
+
+let fresh_mvar v t = 
+  incr mvar_count;
+  let name = v^(string_of_int !mvar_count) in
+  (name, Const(Mvar, name , t))
+
+let fresh_level v =
+  incr level_count;
+  let level = v^(string_of_int !level_count) in
+  Var level
+
+let open_t v ty tm =
+  let (a, c) = fresh_var v ty in
+  (a, subst c tm)
 
 let rec string_of_level i =
   match i with
     | Var i -> i
-    | Max (i, j) -> "max("^(string_of_level i)^","^(string_of_level j)^")"
+    | Max (i, j) -> 
+      "max("^(string_of_level i)^","^(string_of_level j)^")"
     | Z -> "0"
     | Suc i -> "s("^(string_of_level i)^")"
 
