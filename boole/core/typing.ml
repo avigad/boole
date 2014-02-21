@@ -24,28 +24,18 @@ exception NotASig of Expr.t * Expr.t
 
 exception SortError of Expr.t * Expr.t
 
-exception KindHasNoType
-
 let max_sort s1 s2 =
   match s1, s2 with
-    | Bool, Type i -> Type i 
-    | Type i, Bool -> Type i
-    | Bool, Bool -> Bool
     | Type i, Type j -> Type (Max (i, j))
-    | Kind, _ | _, Kind -> assert false
-
 
 let pi_sort s1 s2 =
   match s1, s2 with
-    | _, Bool -> Bool
-    | x, y -> max_sort x y
-
+    | Type i, Type j -> Type (LProd (i, j))
 
 let rec type_raw conv t =
   match t with
     | Sort (Type i) -> Sort (Type (Suc i))
-    | Sort Bool -> Sort (Type Z)
-    | Sort Kind -> raise KindHasNoType
+    | TopLevel (_, (is, ty), ls) -> subst_ls is ls ty
     (* Do we ever need to check that this is well-kinded? *)
     (* This is done once for top-level constants, and
        local variables should checked at creation *)
@@ -58,10 +48,13 @@ let rec type_raw conv t =
       begin match b with
         | Pi ->
           begin match t1_ty, t2_ty with
-            | Sort s1, Sort s2 when s1 != Kind && s2 != Kind -> 
-              Sort (pi_sort s1 s2)
-            | Sort Kind, Sort _ -> raise (SortError (t1, t1_ty)) 
-            | Sort _, Sort Kind -> raise (SortError (t2, t2_ty))
+            | Sort s1, Sort s2 -> Sort (pi_sort s1 s2)
+            | Sort _, _ -> raise (NotASort (t2, t2_ty))
+            | _, _ -> raise (NotASort (t1, t1_ty))
+          end
+        | Sig ->
+          begin match t1_ty, t2_ty with
+            | Sort s1, Sort s2 -> Sort (max_sort s1 s2)
             | Sort _, _ -> raise (NotASort (t2, t2_ty))
             | _, _ -> raise (NotASort (t1, t1_ty))
           end
@@ -81,23 +74,27 @@ let rec type_raw conv t =
             raise (TypeError (t2, t2_ty, ty_arg))
           | _ -> raise (NotAPi (t1, t1_ty))
       end
-
-    | LBound (b, i, t) ->
+    | Pair (a, ty, t1, t2) ->
+      let t1_ty = type_raw conv t1 in
+      let ty_sub_t1 = subst t1 ty in
+      let t2_ty = type_raw conv t2 in
+      if conv t2_ty ty_sub_t1 then
+        let _, ty = open_t a t1_ty ty in
+        let _ = type_raw conv ty in
+        Bound (Sig, a, t1_ty, ty)
+      else
+        raise (TypeError (t2, t2_ty, ty_sub_t1))
+    | Proj (Fst, t) ->
       let t_ty = type_raw conv t in
-      begin match b with
-        | LPi ->
-          begin match t_ty with
-            | Sort _ -> Sort Kind
-            | _ -> raise (NotASort (t, t_ty))
-          end
-        | LAbst ->
-          let _ = type_raw conv t_ty in
-          LBound (LPi, i, t_ty)
+      begin match t_ty with
+        | Bound (Pi, _, ty_arg, _) -> ty_arg
+        | _ -> raise (NotASig (t, t_ty))
       end
-    | LApp (t, l) -> 
+    | Proj (Snd, t) ->
       let t_ty = type_raw conv t in
-      begin
-        match t_ty with
-          | LBound (LPi, i, body) -> subst_l i l body
-          | _ -> raise (NotAPi (t, t_ty))
+      begin match t_ty with
+        | Bound (Pi, _, _, ty_body) ->
+          let fst_t = Proj (Fst, t) in
+          subst fst_t ty_body
+        | _ -> raise (NotASig (t, t_ty))
       end

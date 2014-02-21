@@ -4,23 +4,27 @@ type name
 type index
 
 type level = Var of index | Max of level * level | Z | Suc of level
+             | LProd of level * level
 
-type sort = Type of level | Bool | Kind
+type sort = Type of level
 
-type cst = TopLevel | Local | Mvar
+type cst = Local | Mvar
 
-type binder = Pi | Abst
+type binder = Pi | Abst | Sig
 
-type ubinder = LPi | LAbst
+type proj = Fst | Snd
 
 type t = 
-    Sort of sort 
-  | Const of cst * name * t 
+    Sort of sort
+  | TopLevel of name * toplevel * level list
+  | Const of cst * name * t
   | DB of int 
   | Bound of binder * name * t * t 
-  | App of t * t 
-  | LBound of ubinder * index * t
-  | LApp of t * level
+  | App of t * t
+  | Pair of name * t * t * t
+  | Proj of proj * t
+and
+  toplevel = index list * t
 
 val sort_leq : sort -> sort -> bool
 
@@ -29,6 +33,8 @@ val abst : name -> t -> t
 val subst : t -> t -> t
 
 val subst_l : index -> level -> t -> t
+
+val subst_ls : index list -> level list -> t -> t
 
 val compare : t -> t -> int
 

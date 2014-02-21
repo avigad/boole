@@ -9,8 +9,6 @@ exception NotASig of Expr.t * Expr.t
 
 exception SortError of Expr.t * Expr.t
 
-exception KindHasNoType
-
 val max_sort : Expr.sort -> Expr.sort -> Expr.sort
 
 val pi_sort : Expr.sort -> Expr.sort -> Expr.sort
