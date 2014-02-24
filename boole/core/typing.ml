@@ -32,7 +32,7 @@ let pi_sort s1 s2 =
   match s1, s2 with
     | Type i, Type j -> Type (LProd (i, j))
 
-let rec type_raw conv t =
+let rec type_raw (conv : Conv.conv) t =
   match t with
     | Sort (Type i) -> Sort (Type (Suc i))
     | TopLevel (_, (is, ty), ls) -> subst_ls is ls ty
@@ -68,7 +68,7 @@ let rec type_raw conv t =
       let t2_ty = type_raw conv t2 in
       begin
         match t1_ty with
-          | Bound (Pi, _, ty_arg, ty_body) when conv t2_ty ty_arg ->
+          | Bound (Pi, _, ty_arg, ty_body) when Conv.check_conv conv t2_ty ty_arg ->
             subst t2 ty_body
           | Bound (Pi, _, ty_arg, _) -> 
             raise (TypeError (t2, t2_ty, ty_arg))
@@ -78,7 +78,7 @@ let rec type_raw conv t =
       let t1_ty = type_raw conv t1 in
       let ty_sub_t1 = subst t1 ty in
       let t2_ty = type_raw conv t2 in
-      if conv t2_ty ty_sub_t1 then
+      if Conv.check_conv conv t2_ty ty_sub_t1 then
         let _, ty = open_t a t1_ty ty in
         let _ = type_raw conv ty in
         Bound (Sig, a, t1_ty, ty)
@@ -98,3 +98,29 @@ let rec type_raw conv t =
           subst fst_t ty_body
         | _ -> raise (NotASig (t, t_ty))
       end
+
+let print_type_err o t1 t2 t3 =
+  Printf.fprintf o
+    "Type Error: %a is of type %a, but is expected to be of type %a\n" 
+    print_term t1 print_term t2 print_term t3
+
+let check_core o conv t =
+  try 
+    let ty = type_raw conv t in
+    Printf.fprintf o "%a : %a\n" print_term t print_term ty
+  with
+    | TypeError (t1, t2, t3) ->
+      print_type_err o t1 t2 t3
+    | NotAPi (t1, t2) ->
+        Printf.fprintf o
+          "Type Error: %a has type %a is expected to be a Pi type"
+          print_term t1 print_term t2
+    | NotASig (t1, t2) ->
+        Printf.fprintf o 
+          "Type Error: %a has type %a is expected to be a Pi type"
+          print_term t1 print_term t2
+    | NotASort (t1, t2) ->
+        Printf.fprintf o 
+          "Type Error: %a has type %a is expected to be a Pi type"
+          print_term t1 print_term t2
+

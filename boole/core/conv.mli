@@ -1,9 +1,15 @@
-val hd_beta_step : Expr.t -> Expr.t
+type reduction
 
-val hd_beta_norm : Expr.t -> Expr.t
+type conv
 
-module NMap : Map.S with type key = Expr.name
+val hd_beta_step : reduction
 
-val unfold : Expr.t -> Expr.name list -> Expr.t NMap.t -> Expr.t
+val hd_beta_norm : reduction
 
-val conv : Expr.t -> Expr.t -> bool
+val unfold : Expr.name list -> Expr.t Expr.NMap.t -> reduction
+
+val conv : conv
+
+val reduce : reduction -> Expr.t -> Expr.t
+
+val check_conv : conv -> Expr.t -> Expr.t -> bool

@@ -14,6 +14,13 @@
 
 type name = String.t
 
+
+module NMap = Map.Make(
+  struct 
+    type t = name 
+    let compare = Pervasives.compare 
+  end)
+
 type index = String.t
 
 type level = 
@@ -218,7 +225,7 @@ let fresh_var v t =
 let fresh_mvar v t = 
   incr mvar_count;
   let name = v^(string_of_int !mvar_count) in
-  (name, Const(Mvar, name , t))
+  Const(Mvar, name , t)
 
 let fresh_level v =
   incr level_count;
@@ -241,7 +248,7 @@ let rec string_of_level i =
 
 let string_of_sort s =
   let Type i = s in
-  "Type"^(string_of_level i)
+  "Type "^(string_of_level i)
 
 let string_of_binder b =
   match b with
@@ -300,16 +307,18 @@ let rec ivars l =
     | Max (l1, l2) -> (ivars l1)@(ivars l2)
     | LProd (l1, l2) -> (ivars l1)@(ivars l2)
 
-let rec uvars t =
+let rec mvar_list t =
   match t with
     | Sort (Type l) -> ivars l
     | DB _ | TopLevel _ -> []
-    | Const (_, _, t) -> uvars t
-    | Bound (_, _, t1, t2) -> uvars t1 @ uvars t2
-    | App (t1, t2) -> uvars t1 @ uvars t2
+    | Const (_, _, t) -> mvar_list t
+    | Bound (_, _, t1, t2) -> mvar_list t1 @ mvar_list t2
+    | App (t1, t2) -> mvar_list t1 @ mvar_list t2
     | Pair(_, ty, t1, t2) ->
-      (uvars ty) @ (uvars t1) @ (uvars t2)
-    | Proj (_, t) -> uvars t
+      (mvar_list ty) @ (mvar_list t1) @ (mvar_list t2)
+    | Proj (_, t) -> mvar_list t
+
+let has_mvars t = (mvar_list t = [])
 
 let rec get_app t =
   match t with

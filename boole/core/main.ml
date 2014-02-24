@@ -3,7 +3,7 @@
 open Expr
 open Typing
 open Conv
-open Unif
+open Elab
 
 
 let lam x ty tm = Bound(Abst, name_of x, ty, abst (name_of x) tm)
@@ -15,14 +15,29 @@ let (^) t1 t2 = App(t1, t2)
 
 let top s t = TopLevel(make_name s, ([], t), [])
 
+let local s t = Const(Local, make_name s, t)
+
 let main () =
 
   let a = top "A" type0 in
-  let x = Const(Local, make_name "x", a) in
+  let x = local "x" a in
+  let ty = local "X" type0 in
   let a_to_a = pi x a a in
   let f = top "f" a_to_a in
+  let dummy = local "_" ty in
+  let poly_id = pi ty type0 (pi dummy ty ty) in
+  let g = top "g" poly_id in
   let t = lam x a (f^(f^x)) in
-  let ty = Typing.type_raw conv t in
-  Printf.printf "%a : %a\n" print_term t print_term ty
+  let m1 = fresh_mvar (make_name "m") type0 in
+  (* let m2 = fresh_mvar (make_name "m") type0 in *)
+  let u = lam x a ((g^m1)^x) in
+  Typing.check_core stdout conv t;
+  let cs = Elab.make_type_constr t in
+  Elab.print_cstr_list stdout cs;
+  print_newline ();
+  let cs = Elab.make_type_constr u in
+  Elab.print_cstr_list stdout cs;
+  print_newline ()
+
 
 let () = main ()

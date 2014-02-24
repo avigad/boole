@@ -26,6 +26,8 @@ type t =
 and
   toplevel = index list * t
 
+module NMap : Map.S with type key = name
+
 val sort_leq : sort -> sort -> bool
 
 val abst : name -> t -> t
@@ -42,6 +44,8 @@ val equal : t -> t -> bool
 
 val fresh_var : name -> t -> name * t
 
+val fresh_mvar : name -> t -> t
+
 val open_t : name -> t -> t -> name * t
 
 val make_name : string -> name
@@ -55,3 +59,5 @@ val name_of : t -> name
 val print_term : out_channel -> t -> unit
 
 val get_app : t -> t * t list
+
+val has_mvars : t -> bool

@@ -17,6 +17,10 @@ open Expr
 
 exception ConstantUndefined of Expr.t
 
+type reduction = Expr.t -> Expr.t
+
+type conv = Expr.t -> Expr.t -> bool
+
 let hd_beta_step t =
   match t with
     | App (Bound (Abst, _, _, t1), t2) ->
@@ -42,13 +46,7 @@ let rec hd_beta_norm t =
 
 
 
-module NMap = Map.Make(
-  struct 
-    type t = name 
-    let compare = Pervasives.compare 
-  end)
-
-let rec unfold t names m =
+let rec unfold names m t =
   match t with
     | TopLevel (a, top, ls) when List.mem a names ->
       begin try
@@ -60,14 +58,14 @@ let rec unfold t names m =
     | TopLevel _
     | Const _ | Sort _ | DB _ -> t
     | Bound (b, a, ty, tm) ->
-      let ty_u, tm_u = unfold ty names m, unfold tm names m in
+      let ty_u, tm_u = unfold names m ty, unfold names m tm in
       Bound (b, a, ty_u, tm_u)
-    | App (t1, t2) -> App (unfold t1 names m, unfold t2 names m)
+    | App (t1, t2) -> App (unfold names m t1, unfold names m t2)
     | Pair (a, ty, t1, t2) ->
-      let ty_u = unfold ty names m in
-      let t1_u, t2_u = unfold t1 names m, unfold t2 names m in
+      let ty_u = unfold names m ty in
+      let t1_u, t2_u = unfold names m t1, unfold names m t2 in
       Pair (a, ty_u, t1_u, t2_u)
-    | Proj (p, t) -> Proj (p, unfold t names m)
+    | Proj (p, t) -> Proj (p, unfold names m t)
 
 
 let rec beta_eq t1 t2 =
@@ -86,21 +84,27 @@ let rec beta_eq t1 t2 =
 
 
 let rec conv t1 t2 =
-  let h1, tl1 = get_app (hd_beta_norm t1) in
-  let h2, tl2 = get_app (hd_beta_norm t2) in
-  let args =
-    begin try
-            List.for_all2 conv tl1 tl2
-      with Invalid_argument _ -> false
-    end
-  in
-  if args then
-    begin match h1, h2 with
-      | Bound(Pi, _, ty1, tm1), Bound(Pi, _, ty2, tm2) ->
-        (beta_eq ty1 ty2) && (conv tm1 tm2)
-      | Bound _, Bound _ -> beta_eq h1 h2
-      | Sort s1, Sort s2 -> Expr.sort_leq s1 s2 
-      | _, _ -> Expr.equal h1 h2
-    end
-  else false
+  if t1 == t2 then true
+  else begin
+    let h1, tl1 = get_app (hd_beta_norm t1) in
+    let h2, tl2 = get_app (hd_beta_norm t2) in
+    let args =
+      begin try
+              List.for_all2 conv tl1 tl2
+        with Invalid_argument _ -> false
+      end
+    in
+    if args then
+      begin match h1, h2 with
+        | Bound(Pi, _, ty1, tm1), Bound(Pi, _, ty2, tm2) ->
+            (beta_eq ty1 ty2) && (conv tm1 tm2)
+        | Bound _, Bound _ -> beta_eq h1 h2
+        | Sort s1, Sort s2 -> Expr.sort_leq s1 s2 
+        | _, _ -> Expr.equal h1 h2
+      end
+    else false
+  end
 
+let reduce r = r
+
+let check_conv c = c
