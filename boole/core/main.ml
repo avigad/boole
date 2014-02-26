@@ -1,10 +1,8 @@
-
-
 open Expr
 open Typing
 open Conv
 open Elab
-
+open Unif
 
 let lam x ty tm = Bound(Abst, name_of x, ty, abst (name_of x) tm)
 let pi x ty tm = Bound(Pi, name_of x, ty, abst (name_of x) tm)
@@ -37,7 +35,9 @@ let main () =
   print_newline ();
   let cs = Elab.make_type_constr u in
   Elab.print_cstr_list stdout cs;
-  print_newline ()
-
+  print_newline ();
+  let m = Unif.first_order Conv.hd_beta_norm cs Unif.empty_assnt in
+  Typing.check_core stdout conv u;
+  Typing.check_core stdout conv (mvar_subst m u)
 
 let () = main ()

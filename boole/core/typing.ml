@@ -99,10 +99,10 @@ let rec type_raw (conv : Conv.conv) t =
         | _ -> raise (NotASig (t, t_ty))
       end
 
-let print_type_err o t1 t2 t3 =
+let print_type_err o t t1 t2 t3 =
   Printf.fprintf o
-    "Type Error: %a is of type %a, but is expected to be of type %a\n" 
-    print_term t1 print_term t2 print_term t3
+    "Type Error: in %a:\n%a is of type %a, but is expected to be of type %a\n" 
+    print_term t print_term t1 print_term t2 print_term t3
 
 let check_core o conv t =
   try 
@@ -110,7 +110,7 @@ let check_core o conv t =
     Printf.fprintf o "%a : %a\n" print_term t print_term ty
   with
     | TypeError (t1, t2, t3) ->
-      print_type_err o t1 t2 t3
+      print_type_err o t t1 t2 t3
     | NotAPi (t1, t2) ->
         Printf.fprintf o
           "Type Error: %a has type %a is expected to be a Pi type"
