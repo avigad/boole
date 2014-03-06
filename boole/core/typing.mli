@@ -15,4 +15,3 @@ val pi_sort : Expr.sort -> Expr.sort -> Expr.sort
 
 val type_raw : Conv.conv -> Expr.t -> Expr.t
 
-val check_core : out_channel -> Conv.conv -> Expr.t -> unit

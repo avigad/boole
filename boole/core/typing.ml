@@ -24,13 +24,28 @@ exception NotASig of Expr.t * Expr.t
 
 exception SortError of Expr.t * Expr.t
 
+let rec max i j = 
+  match i, j with
+    | Suc i', Suc j' -> Suc (max i' j')
+    | Z, _ -> j
+    | _, Z -> i
+    | _ -> Max (i, j)
+
 let max_sort s1 s2 =
   match s1, s2 with
-    | Type i, Type j -> Type (Max (i, j))
+    | Type i, Type j -> Type (max i j)
+
+let lprod i j = 
+  match i, j with
+    | _, Z -> Z
+    | Z, _ -> j
+    | _, Suc _ -> max i j
+    | _ -> LProd (i, j)
+
 
 let pi_sort s1 s2 =
   match s1, s2 with
-    | Type i, Type j -> Type (LProd (i, j))
+    | Type i, Type j -> Type (lprod i j)
 
 let rec type_raw (conv : Conv.conv) t =
   match t with
@@ -98,29 +113,4 @@ let rec type_raw (conv : Conv.conv) t =
           subst fst_t ty_body
         | _ -> raise (NotASig (t, t_ty))
       end
-
-let print_type_err o t t1 t2 t3 =
-  Printf.fprintf o
-    "Type Error: in %a:\n%a is of type %a, but is expected to be of type %a\n" 
-    print_term t print_term t1 print_term t2 print_term t3
-
-let check_core o conv t =
-  try 
-    let ty = type_raw conv t in
-    Printf.fprintf o "%a : %a\n" print_term t print_term ty
-  with
-    | TypeError (t1, t2, t3) ->
-      print_type_err o t t1 t2 t3
-    | NotAPi (t1, t2) ->
-        Printf.fprintf o
-          "Type Error: %a has type %a is expected to be a Pi type"
-          print_term t1 print_term t2
-    | NotASig (t1, t2) ->
-        Printf.fprintf o 
-          "Type Error: %a has type %a is expected to be a Pi type"
-          print_term t1 print_term t2
-    | NotASort (t1, t2) ->
-        Printf.fprintf o 
-          "Type Error: %a has type %a is expected to be a Pi type"
-          print_term t1 print_term t2
 

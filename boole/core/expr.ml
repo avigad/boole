@@ -272,7 +272,8 @@ let rec print_term o t =
   match t with
       Sort s -> fprintf o "%s" (string_of_sort s)
     | TopLevel (a, _, _) -> fprintf o "%s" a
-    | Const(_, a, _) -> fprintf o "%s" a
+    | Const(Local, a, _) -> fprintf o "%s" a
+    | Const(Mvar, a, _) -> fprintf o "?%s" a
     | DB i -> fprintf o "DB(%s)" (string_of_int i)
     | Bound(b, a, ty, tm) ->
       let tm = subst (Const (Local, a, ty)) tm in
@@ -326,3 +327,5 @@ let rec get_app t =
       let hd, ts = get_app t1 in
       (hd, t2::ts)
     | _ -> (t, [])
+
+  
