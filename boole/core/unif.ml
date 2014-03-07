@@ -90,13 +90,13 @@ let rec fo_step conv t1 t2 s =
     | _ -> raise (CannotUnify (t1, t2))
             
 
-let rec first_order r csts s = 
+let rec fo_unif r csts s = 
   match csts with
     | [] -> s
     | Eq (t1, t2)::cs ->
         let m_t = fo_step r t1 t2 s in
-        first_order r cs m_t
-    | _::cs -> first_order r cs s
+        fo_unif r cs m_t
+    | _::cs -> fo_unif r cs s
 
 let elab unif conv t =
   let cst = make_type_constr t in
@@ -152,7 +152,6 @@ let rec ho_step conv t1 t2 s =
   let hd1, args1 = Expr.get_app t1 in
     match hd1 with
     | Const(Mvar, a, _) -> 
-        (* TODO: the following line is not required with ho unif *)
         begin try
                 if in_dom a s then
                   ho_step conv (mvar_subst s t1) t2 s
@@ -164,8 +163,11 @@ let rec ho_step conv t1 t2 s =
           with Invalid_argument _ ->
           raise (CannotUnify (t1, t2))
         end
-    | _ -> s, rigid_rigid t1 t2
-
+    | _ -> let hd2, _ = Expr.get_app t2 in
+           begin match hd2 with
+             | Const (Mvar, _, _) -> ho_step conv t2 t1 s
+             | _ -> s, rigid_rigid t1 t2
+           end
 
 let rec ho_unif conv constr s =
   match constr with

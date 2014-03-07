@@ -25,7 +25,7 @@ boole_lex.cmo : expr.cmo conv.cmo elab.cmo typing.cmo toplevel.cmo boole_parse.m
 	$(OCAMLC) -c $(FLAGS) boole_lex.ml
 
 boole_parse.cmo : expr.cmo conv.cmo elab.cmo typing.cmo toplevel.cmo boole_parse.ml
-	$(OCAMLC) -c $(FLAGS) boole_parse.ml
+	$(OCAMLC) -c $(FLAGS) boole_parse.mli boole_parse.ml
 
 boole_lex.ml : expr.cmo conv.cmo elab.cmo typing.cmo toplevel.cmo boole_parse.cmo boole_lex.mll
 	$(OCAMLLEX) boole_lex.mll

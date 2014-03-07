@@ -9,6 +9,8 @@ val mvar_subst : subst -> Expr.t -> Expr.t
 
 type unif = Conv.reduction -> Elab.constr list -> subst -> subst
 
-val first_order : unif
+val fo_unif : unif
+
+val ho_unif : unif
 
 val elab : unif -> Conv.reduction -> Expr.t -> Expr.t

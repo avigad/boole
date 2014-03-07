@@ -236,59 +236,6 @@ let open_t v ty tm =
   let (a, c) = fresh_var v ty in
   (a, subst c tm)
 
-let rec string_of_level i =
-  match i with
-    | Var i -> i
-    | Max (i, j) -> 
-      "max("^(string_of_level i)^","^(string_of_level j)^")"
-    | LProd (i, j) ->
-      "i_max("^(string_of_level i)^","^(string_of_level j)^")"
-    | Z -> "0"
-    | Suc i -> "s("^(string_of_level i)^")"
-
-let string_of_sort s =
-  let Type i = s in
-  "Type "^(string_of_level i)
-
-let string_of_binder b =
-  match b with
-    | Pi -> "pi" 
-    | Abst -> "lam"
-    | Sig -> "sig"
-
-open Printf
-
-let make_name a = a
-
-let make_index i = i
-
-let name_of cst =
-match cst with
-  | Const(_, a, _) -> a
-  | _ -> assert false
-
-
-let rec print_term o t =
-  match t with
-      Sort s -> fprintf o "%s" (string_of_sort s)
-    | TopLevel (a, _, _) -> fprintf o "%s" a
-    | Const(Local, a, _) -> fprintf o "%s" a
-    | Const(Mvar, a, _) -> fprintf o "?%s" a
-    | DB i -> fprintf o "DB(%s)" (string_of_int i)
-    | Bound(b, a, ty, tm) ->
-      let tm = subst (Const (Local, a, ty)) tm in
-      fprintf o "%s %s : %a.%a" (string_of_binder b) a
-        print_term ty print_term tm
-    | App(t1, t2) ->
-      fprintf o "(%a %a)" print_term t1 print_term t2
-    | Pair(_, _, t1, t2) ->
-      fprintf o "(%a, %a)" print_term t1 print_term t2
-    | Proj(Fst, t) ->
-      fprintf o "fst(%a)" print_term t
-    | Proj(Snd, t) ->
-      fprintf o "snd(%a)" print_term t
-
-
 let rec free_vars t =
   match t with
     | Sort _ | DB _ | TopLevel _ -> []
@@ -328,4 +275,86 @@ let rec get_app t =
       (hd, t2::ts)
     | _ -> (t, [])
 
-  
+let rec int_of_level i =
+  match i with
+    | Z -> Some 0
+    | Suc j -> begin
+      match int_of_level j with
+        | Some k -> Some (k+1)
+        | None -> None
+    end
+    | _ -> None
+
+let rec string_of_level i =
+  match int_of_level i with
+      Some m -> string_of_int m
+    | None ->
+        begin match i with
+          | Var i -> i
+          | Max (i, j) -> 
+              "max("^(string_of_level i)^","^(string_of_level j)^")"
+          | LProd (i, j) ->
+              "i_max("^(string_of_level i)^","^(string_of_level j)^")"
+          | Z -> "0"
+          | Suc i -> "s("^(string_of_level i)^")"
+        end
+
+let string_of_sort s =
+  let Type i = s in
+  match int_of_level i with
+    | Some 0 -> "Bool"
+    | Some 1 -> "Type"
+    | _ -> "Type "^(string_of_level i)
+
+let string_of_binder b =
+  match b with
+    | Pi -> "Π" 
+    | Abst -> "λ"
+    | Sig -> "Σ"
+
+open Printf
+
+let make_name a = a
+
+let make_index i = i
+
+let name_of cst =
+match cst with
+  | Const(_, a, _) -> a
+  | _ -> assert false
+
+
+let rec print_term o t =
+  match t with
+      Sort s -> fprintf o "%s" (string_of_sort s)
+    | TopLevel (a, _, _) -> fprintf o "%s" a
+    | Const(Local, a, _) -> fprintf o "%s" a
+    | Const(Mvar, a, _) -> fprintf o "?%s" a
+    | DB i -> fprintf o "DB(%s)" (string_of_int i)
+    | Bound(b, a, ty, tm) ->
+      let tm = subst (Const (Local, a, ty)) tm in
+      if not (List.mem a (free_vars tm)) then
+        begin
+          (* printf "\n"; *)
+          (* printf "%s" a; *)
+          (* printf "\n"; *)
+          (* List.iter (fun x -> printf "%s " x) (free_vars t); *)
+          (* printf "\n"; *)
+          match b with
+            | Pi  -> fprintf o "%a -> %a" print_term ty print_term tm
+            | Sig -> fprintf o "%a * %a" print_term ty print_term tm
+            | _   -> 
+                fprintf o "%s _ : %a.%a" (string_of_binder b)
+                  print_term ty print_term tm
+        end
+      else
+        fprintf o "%s %s : %a.%a" (string_of_binder b) a
+        print_term ty print_term tm
+    | App(t1, t2) ->
+      fprintf o "(%a %a)" print_term t1 print_term t2
+    | Pair(_, _, t1, t2) ->
+      fprintf o "(%a, %a)" print_term t1 print_term t2
+    | Proj(Fst, t) ->
+      fprintf o "fst(%a)" print_term t
+    | Proj(Snd, t) ->
+      fprintf o "snd(%a)" print_term t
