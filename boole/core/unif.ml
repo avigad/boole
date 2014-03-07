@@ -139,35 +139,42 @@ let rec rigid_rigid t1 t2 =
 type branch = Branch of constr list list
 
 (* TODO: make this proper ho unification *)
-let flex_rigid mvar args_m hd args_hd s = 
+let flex_rigid mvar args_m r s = 
+  let hd_r, args_r = Expr.get_app r in
   let arg_cstr = 
-    List.map2 (fun a b -> Eq (a, b)) args_m args_hd 
+    List.map2 (fun a b -> Eq (a, b)) args_m args_r
   in
-  subst_add mvar hd s, arg_cstr
+  subst_add mvar hd_r s, arg_cstr
   
 
-let ho_step conv t1 t2 s =
+let rec ho_step conv t1 t2 s =
   let t1, t2 = Conv.reduce conv t1, Conv.reduce conv t2 in
   let hd1, args1 = Expr.get_app t1 in
-  let hd2, args2 = Expr.get_app t2 in
-
     match hd1 with
     | Const(Mvar, a, _) -> 
         (* TODO: the following line is not required with ho unif *)
-        if List.length args1 = List.length args2 then
-          begin
-            if occurs_rigid a t2 then
-              raise (CannotUnify (t1, t2))
-            else
-              flex_rigid a args1 hd2 args2 s
-          end
-        else 
+        begin try
+                if in_dom a s then
+                  ho_step conv (mvar_subst s t1) t2 s
+                else if occurs_rigid a t2 then
+                  raise (CannotUnify (t1, t2))
+                else
+                  let r = mvar_subst s t2 in
+                  flex_rigid a args1 r s
+          with Invalid_argument _ ->
           raise (CannotUnify (t1, t2))
+        end
     | _ -> s, rigid_rigid t1 t2
-        
 
-(* (\* Return a list of possible unifiers for a higher-order problem *\) *)
-(* val get_ho_solutions =  *)
+
+let rec ho_unif conv constr s =
+  match constr with
+    | [] -> s
+    | Eq (t1, t2)::cs ->
+        let s', cs' = ho_step conv t1 t2 s in
+        ho_unif conv (cs'@cs) s'
+    | _::cs ->  ho_unif conv cs s
+
 
 (* (\* The type of unification hints *\) *)
 (* type hint =  *)
