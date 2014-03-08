@@ -103,6 +103,8 @@ let elab unif conv t =
   let s = unif conv cst empty_subst in
   mvar_subst s t
 
+type branch = Branch of (subst * constrs) list | Postpone
+
 let occurs_rigid a t = occurs a t
   
 let rec rigid_rigid t1 t2 =
@@ -136,7 +138,7 @@ let rec rigid_rigid t1 t2 =
     | _ -> raise (CannotUnify (t1, t2))
 
 
-type branch = Branch of constr list list
+let one_branch s c = Branch [(s, c)]
 
 (* TODO: make this proper ho unification *)
 let flex_rigid mvar args_m r s = 
@@ -144,14 +146,15 @@ let flex_rigid mvar args_m r s =
   let arg_cstr = 
     List.map2 (fun a b -> Eq (a, b)) args_m args_r
   in
-  subst_add mvar hd_r s, arg_cstr
+  one_branch (subst_add mvar hd_r s) arg_cstr
   
 
 let rec ho_step conv t1 t2 s =
   let t1, t2 = Conv.reduce conv t1, Conv.reduce conv t2 in
   let hd1, args1 = Expr.get_app t1 in
-    match hd1 with
-    | Const(Mvar, a, _) -> 
+  let hd2, _ = Expr.get_app t2 in
+    match hd1, hd2 with
+    | Const(Mvar, a, _), _ -> 
         begin try
                 if in_dom a s then
                   ho_step conv (mvar_subst s t1) t2 s
@@ -163,18 +166,33 @@ let rec ho_step conv t1 t2 s =
           with Invalid_argument _ ->
           raise (CannotUnify (t1, t2))
         end
-    | _ -> let hd2, _ = Expr.get_app t2 in
-           begin match hd2 with
-             | Const (Mvar, _, _) -> ho_step conv t2 t1 s
-             | _ -> s, rigid_rigid t1 t2
-           end
+    | _, Const (Mvar, _, _) -> ho_step conv t2 t1 s
+    | _ -> one_branch s (rigid_rigid t1 t2)
+
+
+let rec try_branch t1 t2 branches unif =
+  match branches with
+    | [] -> raise (CannotUnify (t1, t2))
+    | (s, cs)::bs -> 
+        try 
+          unif s cs
+        with CannotUnify _ ->
+          try_branch t1 t2 bs unif
 
 let rec ho_unif conv constr s =
   match constr with
     | [] -> s
     | Eq (t1, t2)::cs ->
-        let s', cs' = ho_step conv t1 t2 s in
-        ho_unif conv (cs'@cs) s'
+        begin match ho_step conv t1 t2 s
+          with
+            | Branch bs -> 
+                try_branch t1 t2 bs 
+                  (fun s' cs' -> ho_unif conv (cs'@cs) s')
+            | Postpone ->
+                (*TODO: this may not terminate! *)
+                (*Create a flag for previously postponed problems*)
+                ho_unif conv (cs@[Eq (t1, t2)]) s
+        end
     | _::cs ->  ho_unif conv cs s
 
 
