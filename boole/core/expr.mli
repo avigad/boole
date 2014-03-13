@@ -56,8 +56,12 @@ val make_index : string -> index
    when calling name_of t, t must be a -constant-!*)
 val name_of : t -> name
 
+val string_of_name : name -> string
+
 val print_term : out_channel -> t -> unit
 
 val get_app : t -> t * t list
+
+val free_vars : t -> name list
 
 val has_mvars : t -> bool

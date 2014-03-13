@@ -266,7 +266,9 @@ let rec mvar_list t =
       (mvar_list ty) @ (mvar_list t1) @ (mvar_list t2)
     | Proj (_, t) -> mvar_list t
 
-let has_mvars t = (mvar_list t = [])
+let has_free_vars t = not (free_vars t = [])
+
+let has_mvars t = not (mvar_list t = [])
 
 let rec get_app t =
   match t with
@@ -323,6 +325,8 @@ match cst with
   | Const(_, a, _) -> a
   | _ -> assert false
 
+
+let string_of_name a = a
 
 let rec print_term o t =
   match t with
