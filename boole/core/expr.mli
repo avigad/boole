@@ -1,10 +1,27 @@
+(*****************************************************************
+
+  expr.ml
+
+ description: types and expressions in Boole
+
+
+ Authors:
+ Jeremy Avigad
+ Cody Roux
+
+
+******************************************************************)
 
 type name
 
 type index
 
-type level = Var of index | Max of level * level | Z | Suc of level
-             | LProd of level * level
+type level = 
+    Var of index 
+  | Max of level * level 
+  | Z 
+  | Suc of level
+  | LProd of level * level
 
 type sort = Type of level
 
@@ -26,7 +43,11 @@ type t =
 and
   toplevel = index list * t
 
+
+
 module NMap : Map.S with type key = name
+
+
 
 val sort_leq : sort -> sort -> bool
 
@@ -53,7 +74,7 @@ val make_name : string -> name
 val make_index : string -> index
 
 (* Precondition: 
-   when calling name_of t, t must be a -constant-!*)
+   when calling name_of t, t must be a constant*)
 val name_of : t -> name
 
 val string_of_name : name -> string
@@ -61,6 +82,10 @@ val string_of_name : name -> string
 val print_term : out_channel -> t -> unit
 
 val get_app : t -> t * t list
+
+val make_app : t -> t list -> t
+
+val make_abst : t list -> t -> t
 
 val free_vars : t -> name list
 

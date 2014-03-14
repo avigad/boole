@@ -1,3 +1,17 @@
+(*****************************************************************
+
+ typing.ml
+
+ description: basic type inference for elaborated
+              Boole terms.
+
+
+ Authors:
+ Jeremy Avigad
+ Cody Roux
+
+
+******************************************************************)
 
 exception TypeError of Expr.t * Expr.t * Expr.t
 

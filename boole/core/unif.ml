@@ -146,8 +146,39 @@ let flex_rigid mvar args_m r s =
   let arg_cstr = 
     List.map2 (fun a b -> Eq (a, b)) args_m args_r
   in
-  one_branch (subst_add mvar hd_r s) arg_cstr
-  
+  one_branch (subst_add (Expr.name_of mvar) hd_r s) arg_cstr
+
+(*TODO: explain this function *)
+(* (note: this is the imitation part of Huet's 
+   higher order unification algorithm) *)
+let imitate mvar args_m hd args s =
+  let k = List.length args_m in
+  let rec args_vars m tpe = 
+    match m with
+      | 0 -> []
+      | _ -> begin match tpe with
+          Bound (Pi, a, ty, tm) ->
+            snd (Expr.fresh_var a ty) :: (args_vars (m-1) tm)
+          | _ -> assert false
+      end
+  in
+  let args_vars = List.rev (args_vars k (Elab.type_raw mvar)) in
+  let rec body tm args cstrs =
+    match args with
+      | [] -> (tm, cstrs)
+      | u::us ->
+          let u_ty = Elab.type_raw u in
+          (* TODO: get the name for u_arg from
+             the type of hd *)
+          let u_mvar = Expr.fresh_mvar (make_name "u_arg") u_ty in
+          let u_app = make_app u_mvar args_vars in
+          let u_ts = make_app u_mvar args_m in
+          body (App (tm, u_app)) us (Eq (u_ts, u)::cstrs)
+  in
+  let body, constr = body hd args [] in
+  let body = make_abst args_vars body in
+  let s = subst_add (Expr.name_of mvar) body s in
+  s, constr
 
 let rec ho_step conv t1 t2 s =
   let t1, t2 = Conv.reduce conv t1, Conv.reduce conv t2 in
@@ -162,7 +193,7 @@ let rec ho_step conv t1 t2 s =
                   raise (CannotUnify (t1, t2))
                 else
                   let r = mvar_subst s t2 in
-                  flex_rigid a args1 r s
+                  flex_rigid hd1 args1 r s
           with Invalid_argument _ ->
           raise (CannotUnify (t1, t2))
         end

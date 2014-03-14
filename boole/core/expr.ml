@@ -277,6 +277,22 @@ let rec get_app t =
       (hd, t2::ts)
     | _ -> (t, [])
 
+let rec make_app t args =
+  match args with
+    | [] -> t
+    | u::us -> make_app (App (t, u)) us
+
+let rec make_abst vars t =
+  match vars with
+    | [] -> t
+    | v::vs -> 
+        begin match v with
+          | Const(Local, a, ty) ->
+              let v_t = abst a t in
+              make_abst vs (Bound (Abst, a, ty, v_t))
+          | _ -> invalid_arg "make_abst"
+        end
+
 let rec int_of_level i =
   match i with
     | Z -> Some 0
@@ -323,7 +339,7 @@ let make_index i = i
 let name_of cst =
 match cst with
   | Const(_, a, _) -> a
-  | _ -> assert false
+  | _ -> invalid_arg "name_of"
 
 
 let string_of_name a = a
