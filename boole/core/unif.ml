@@ -158,7 +158,8 @@ let imitate mvar args_m hd args s =
       | 0 -> []
       | _ -> begin match tpe with
           Bound (Pi, a, ty, tm) ->
-            snd (Expr.fresh_var a ty) :: (args_vars (m-1) tm)
+            let b, tm = Expr.open_t a ty tm in
+            Const(Local, b, ty) :: (args_vars (m-1) tm)
           | _ -> assert false
       end
   in
@@ -179,6 +180,40 @@ let imitate mvar args_m hd args s =
   let body = make_abst args_vars body in
   let s = subst_add (Expr.name_of mvar) body s in
   s, constr
+
+let project conv mvar arg_m rhs s =
+  let ty_m = Elab.type_raw mvar in
+  let rhs_ty = Elab.type_raw rhs in
+  let rec args_proj args tpe = 
+    match args with
+      | [] -> [], []
+      | t::ts -> begin match tpe with
+          Bound (Pi, a, ty, tm) ->
+            let b, tm = Expr.open_t a ty tm in
+            let args, proj = args_proj ts tm in
+            let args = Const(Local, b, ty) :: args in
+            let proj = 
+              if conv ty rhs_ty then
+                (Const (Local, b, ty), t) :: proj
+              else
+                proj
+            in
+            args, proj
+                
+          | _ -> assert false
+      end
+  in
+  let args, proj = args_proj arg_m ty_m in
+  let args = List.rev args in
+  let branches =
+    List.map (
+      fun (x, t) ->  
+        let s = subst_add (Expr.name_of mvar)
+          (make_abst args x) s in
+        s, [Eq (t, rhs)]
+    ) proj
+  in
+  Branch branches
 
 let rec ho_step conv t1 t2 s =
   let t1, t2 = Conv.reduce conv t1, Conv.reduce conv t2 in
@@ -235,7 +270,6 @@ let rec ho_unif conv constr s =
 
 (* (\* Apply a given hint to the current problem *\) *)
 (* val apply_hint =  *)
-
 
 (* let rec higher_order r csts m hints = *)
 (*   match csts with *)
