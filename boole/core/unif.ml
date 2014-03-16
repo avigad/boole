@@ -140,13 +140,6 @@ let rec rigid_rigid t1 t2 =
 
 let one_branch s c = Branch [(s, c)]
 
-(* TODO: make this proper ho unification *)
-let flex_rigid mvar args_m r s = 
-  let hd_r, args_r = Expr.get_app r in
-  let arg_cstr = 
-    List.map2 (fun a b -> Eq (a, b)) args_m args_r
-  in
-  one_branch (subst_add (Expr.name_of mvar) hd_r s) arg_cstr
 
 (*TODO: explain this function *)
 (* (note: this is the imitation part of Huet's 
@@ -193,7 +186,7 @@ let project conv mvar arg_m rhs s =
             let args, proj = args_proj ts tm in
             let args = Const(Local, b, ty) :: args in
             let proj = 
-              if conv ty rhs_ty then
+              if Conv.check_conv conv ty rhs_ty then
                 (Const (Local, b, ty), t) :: proj
               else
                 proj
@@ -205,34 +198,45 @@ let project conv mvar arg_m rhs s =
   in
   let args, proj = args_proj arg_m ty_m in
   let args = List.rev args in
-  let branches =
-    List.map (
-      fun (x, t) ->  
-        let s = subst_add (Expr.name_of mvar)
-          (make_abst args x) s in
-        s, [Eq (t, rhs)]
-    ) proj
-  in
-  Branch branches
+  List.map (
+    fun (x, t) ->  
+      let s = subst_add (Expr.name_of mvar)
+        (make_abst args x) s in
+      s, [Eq (t, rhs)]
+  ) proj
 
-let rec ho_step conv t1 t2 s =
-  let t1, t2 = Conv.reduce conv t1, Conv.reduce conv t2 in
+(* let flex_rigid mvar args_m r s =  *)
+(*   let hd_r, args_r = Expr.get_app r in *)
+(*   let arg_cstr =  *)
+(*     List.map2 (fun a b -> Eq (a, b)) args_m args_r *)
+(*   in *)
+(*   one_branch (subst_add (Expr.name_of mvar) hd_r s) arg_cstr *)
+
+let flex_rigid conv mvar args_m r s = 
+  let hd_r, args_r = Expr.get_app r in
+  let imit = imitate mvar args_m hd_r args_r s in
+  let proj = project conv mvar args_m r s in
+  Branch (imit::proj)
+
+let rec ho_step red t1 t2 s =
+  let t1, t2 = Conv.reduce red t1, Conv.reduce red t2 in
   let hd1, args1 = Expr.get_app t1 in
   let hd2, _ = Expr.get_app t2 in
     match hd1, hd2 with
     | Const(Mvar, a, _), _ -> 
         begin try
                 if in_dom a s then
-                  ho_step conv (mvar_subst s t1) t2 s
+                  ho_step red (mvar_subst s t1) t2 s
                 else if occurs_rigid a t2 then
                   raise (CannotUnify (t1, t2))
                 else
                   let r = mvar_subst s t2 in
-                  flex_rigid hd1 args1 r s
+                  (* TODO: make this parametric in conv *)
+                  flex_rigid Conv.conv hd1 args1 r s
           with Invalid_argument _ ->
           raise (CannotUnify (t1, t2))
         end
-    | _, Const (Mvar, _, _) -> ho_step conv t2 t1 s
+    | _, Const (Mvar, _, _) -> ho_step red t2 t1 s
     | _ -> one_branch s (rigid_rigid t1 t2)
 
 
