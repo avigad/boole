@@ -16,67 +16,59 @@ open Expr
 
 exception TypeError of Expr.t * Expr.t * Expr.t
 
-exception NotASort of Expr.t * Expr.t
+exception NotAType of Expr.t * Expr.t
 
 exception NotAPi of Expr.t * Expr.t
 
 exception NotASig of Expr.t * Expr.t
 
-exception SortError of Expr.t * Expr.t
+exception KindError of Expr.t * Expr.t
 
-let rec max i j = 
+let rec max_level i j = 
   match i, j with
     | Suc i', Suc j' -> Suc (max i' j')
     | Z, _ -> j
     | _, Z -> i
     | _ -> Max (i, j)
 
-let max_sort s1 s2 =
-  match s1, s2 with
-    | Type i, Type j -> Type (max i j)
-
-let lprod i j = 
+let pi_level i j = 
   match i, j with
     | _, Z -> Z
     | Z, _ -> j
     | _, Suc _ -> max i j
     | _ -> LProd (i, j)
 
-
-let pi_sort s1 s2 =
-  match s1, s2 with
-    | Type i, Type j -> Type (lprod i j)
-
 let rec type_raw (conv : Conv.conv) t =
+  (* Printf.printf "\n\nChecking %a...\n\n" print_term t; *)
   match t with
-    | Sort (Type i) -> Sort (Type (Suc i))
+    | Type i -> Type (Suc i)
     | TopLevel (_, (is, ty), ls) -> subst_ls is ls ty
     (* Do we ever need to check that this is well-kinded? *)
     (* This is done once for top-level constants, and
        local variables should checked at creation *)
     | Const (_, _, ty) -> ty
     | DB _ -> assert false
-    | Bound (b, v, t1, t2) ->
-      let t1_ty = type_raw conv t1 in
-      let vname, t2 = open_t v t1 t2 in
-      let t2_ty = type_raw conv t2 in
+    | Bound (b, v, ty, tm) ->
+      let ty_ty = type_raw conv ty in
+      let vname, open_tm = open_t v ty tm in
+      let tm_ty = type_raw conv open_tm in
       begin match b with
         | Pi ->
-          begin match t1_ty, t2_ty with
-            | Sort s1, Sort s2 -> Sort (pi_sort s1 s2)
-            | Sort _, _ -> raise (NotASort (t2, t2_ty))
-            | _, _ -> raise (NotASort (t1, t1_ty))
+          begin match ty_ty, tm_ty with
+            | Type s1, Type s2 -> Type (pi_level s1 s2)
+            | Type _, _ -> raise (NotAType (tm, tm_ty))
+            | _, _ -> raise (NotAType (ty, ty_ty))
           end
         | Sig ->
-          begin match t1_ty, t2_ty with
-            | Sort s1, Sort s2 -> Sort (max_sort s1 s2)
-            | Sort _, _ -> raise (NotASort (t2, t2_ty))
-            | _, _ -> raise (NotASort (t1, t1_ty))
+          begin match ty_ty, tm_ty with
+            | Type s1, Type s2 -> Type (max_level s1 s2)
+            | Type _, _ -> raise (NotAType (tm, tm_ty))
+            | _, _ -> raise (NotAType (ty, ty_ty))
           end
         | Abst -> 
           (* Check to see if t2 is well-kinded *)
-          let _ = type_raw conv t2_ty in
-          Bound(Pi, v, t1, abst vname t2_ty)
+          let _ = type_raw conv tm_ty in
+          Bound(Pi, v, ty, abst vname tm_ty)
       end
     | App (t1, t2) ->
       let t1_ty = type_raw conv t1 in

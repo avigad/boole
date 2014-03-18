@@ -27,7 +27,7 @@ let hd_beta_step t =
       subst t2 t1
     | Proj (Fst, Pair(_, _, t, _)) -> t
     | Proj (Snd, Pair(_, _, _, t)) -> t
-    | Sort _ | Const _ | DB _
+    | Type _ | Const _ | DB _
     | Bound _ | App _ | Pair _ 
     | TopLevel _ | Proj _ -> t
 
@@ -41,7 +41,7 @@ let rec hd_beta_norm t =
       hd_beta_norm t
     | Proj (Snd, Pair(_, _, _, t)) -> 
       hd_beta_norm t
-    | Sort _ | Const _ | DB _
+    | Type _ | Const _ | DB _
     | Bound _ | App _ | Pair _ | Proj _ | TopLevel _ -> t
 
 
@@ -56,7 +56,7 @@ let rec unfold names m t =
         with Not_found -> raise (ConstantUndefined t)
       end
     | TopLevel _
-    | Const _ | Sort _ | DB _ -> t
+    | Const _ | Type _ | DB _ -> t
     | Bound (b, a, ty, tm) ->
       let ty_u, tm_u = unfold names m ty, unfold names m tm in
       Bound (b, a, ty_u, tm_u)
@@ -99,7 +99,7 @@ let rec conv t1 t2 =
         | Bound(Pi, _, ty1, tm1), Bound(Pi, _, ty2, tm2) ->
             (beta_eq ty1 ty2) && (conv tm1 tm2)
         | Bound _, Bound _ -> beta_eq h1 h2
-        | Sort s1, Sort s2 -> Expr.sort_leq s1 s2 
+        | Type s1, Type s2 -> Expr.level_leq s1 s2 
         | _, _ -> Expr.equal h1 h2
       end
     else false

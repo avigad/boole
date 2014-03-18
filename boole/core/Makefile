@@ -6,11 +6,13 @@ OCAMLYACC=ocamlyacc
 
 OCAMLLEX=ocamllex
 
-FLAGS=-annot,"-w @a-e"
+CFLAGS=-annot,"-w @a-e"
+
+LFLAGS=-g
 
 OCAMLBUILD=ocamlbuild
 
-OPTIONS=-cflags $(FLAGS)
+OPTIONS=-verbose 1 -cflags $(CFLAGS) -lflags $(LFLAGS)
 
 .PHONY: native byte clean stat
 

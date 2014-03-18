@@ -36,7 +36,7 @@ expr_1 :
    | IDENT
        { Toplevel.make_var $1 }
    | WILD
-       { Toplevel.wild () }
+       { Toplevel.wild }
    | BOOL
        { Toplevel.type0 }
    | TYPE

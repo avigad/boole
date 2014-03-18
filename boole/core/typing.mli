@@ -15,17 +15,17 @@
 
 exception TypeError of Expr.t * Expr.t * Expr.t
 
-exception NotASort of Expr.t * Expr.t
+exception NotAType of Expr.t * Expr.t
 
 exception NotAPi of Expr.t * Expr.t
 
 exception NotASig of Expr.t * Expr.t
 
-exception SortError of Expr.t * Expr.t
+exception KindError of Expr.t * Expr.t
 
-val max_sort : Expr.sort -> Expr.sort -> Expr.sort
+val max_level : Expr.level -> Expr.level -> Expr.level
 
-val pi_sort : Expr.sort -> Expr.sort -> Expr.sort
+val pi_level : Expr.level -> Expr.level -> Expr.level
 
 val type_raw : Conv.conv -> Expr.t -> Expr.t
 

@@ -6,10 +6,13 @@ open Context
 
 exception NotFound of string
 
+exception TypingError
+
+exception UnifError
 
 let top_ctxt = ref (new_ctxt "top")
 
-let dummy = Sort (Type Z)
+let dummy = Type Z
 
 let make_var s =
     let x = make_name s in
@@ -41,12 +44,12 @@ let pair s ty t1 t2 =
   let x = make_name s in
   Pair(x, abst x ty, t1, t2)
 
-let type0 = Sort (Type Z)
+let type0 = Type Z
 
-let type1 = Sort (Type (Suc Z))
+let type1 = Type (Suc Z)
 
 let check_core t =
-  let ty = type_raw Conv.conv t in
+  let ty = Typing.type_raw Conv.conv t in
   match free_vars ty with
       [] ->
         Printf.printf "%a : %a\n" print_term t print_term ty
@@ -56,50 +59,67 @@ let check_core t =
 let elab t = Unif.elab Unif.ho_unif Conv.hd_beta_norm t
 
 
-let wild () =
-  let ty = fresh_mvar (make_name "T") type1 in
-  fresh_mvar (make_name "m") ty
-
+let wild = Const(Mvar,Expr.make_name "Boole_wild", type1)
 
 let print_type_err t t1 t2 t3 =
   Printf.eprintf
     "Type Error: in %a:\n%a is of type %a, but is expected to be of type %a\n" 
     print_term t print_term t1 print_term t2 print_term t3
 
+let err t = Printf.eprintf "In the term %a:\n" print_term t
 
-let elab_call f t =
+(*TODO: clean this up *)
+let wrap_call f t =
   try
-    let t = elab t in
     f t
   with
     | NotFound s ->
+        err t;
         Printf.eprintf
-          "Unknown identifier: %s\n" s
+          "Unknown identifier: %s\n" s;
+        raise TypingError
     | TypeError (t1, t2, t3) ->
-      print_type_err t t1 t2 t3
+        err t;
+        print_type_err t t1 t2 t3;
+        raise TypingError
     | NotAPi (t1, t2) ->
+        err t;
         Printf.eprintf
           "Type Error: %a has type %a, which is expected to be a Pi type\n"
-          print_term t1 print_term t2
+          print_term t1 print_term t2;
+        raise TypingError
     | NotASig (t1, t2) ->
+        err t;
         Printf.eprintf 
           "Type Error: %a has type %a, which is expected to be a Sigma type\n"
-          print_term t1 print_term t2
-    | NotASort (t1, t2) ->
+          print_term t1 print_term t2;
+        raise TypingError
+    | NotAType (t1, t2) ->
+        err t;
         Printf.eprintf 
-          "Type Error: %a has type %a which is expected to be a sort\n"
-          print_term t1 print_term t2
+          "Type Error: %a has type %a which is expected to be Type\n"
+          print_term t1 print_term t2;
+        raise TypingError
+    | Unif.UnsolvableConstr cs ->
+        Printf.eprintf
+          "Unification Error: cannot solve constraints\n%a\n" Elab.print_cstrs cs;
+        raise UnifError
 
+let check t = 
+    let t1 = Elab.decorate t in
+    let t2 = wrap_call elab t1 in
+    wrap_call check_core t2
 
-let check t = elab_call check_core t
-
-let add_top s t = elab_call
-  (fun t -> match type_raw Conv.conv t with
-      | Sort _ ->
-        let x = make_name s in
-        let x_tm = TopLevel(x, ([], t), []) in
-        check_core x_tm;
-        top_ctxt := add_decl x t !top_ctxt
-    | ty -> raise (NotASort (t, ty)))
-  t
+let add_top s t = 
+  let t1 = Elab.decorate t in
+  let t2 = wrap_call elab t1 in
+  wrap_call
+    (fun t -> match Typing.type_raw Conv.conv t with
+      | Type _ ->
+          let x = make_name s in
+          let x_tm = TopLevel(x, ([], t), []) in
+          check_core x_tm;
+          top_ctxt := add_decl x t !top_ctxt
+      | ty -> raise (NotAType (t, ty)))
+    t2
 

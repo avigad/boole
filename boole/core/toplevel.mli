@@ -1,4 +1,6 @@
 exception NotFound of string
+exception TypingError
+exception UnifError
 
 val top_ctxt : Context.t ref
 
@@ -11,7 +13,7 @@ val fst : Expr.t -> Expr.t
 val snd : Expr.t -> Expr.t
 val pair : string -> Expr.t -> Expr.t -> Expr.t -> Expr.t
 
-val wild : unit -> Expr.t
+val wild  : Expr.t
 val dummy : Expr.t
 val type0 : Expr.t
 val type1 : Expr.t

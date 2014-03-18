@@ -48,12 +48,6 @@ let rec level_leq l1 l2 =
     | _, Z -> false
     | _, Var _ -> false
 
-type sort = Type of level
-
-let sort_leq s1 s2 =
-  let Type l1, Type l2 = s1, s2 in
-  level_leq l1 l2
-
 type cst = Local | Mvar
 
 type binder = Pi | Abst | Sig
@@ -61,7 +55,7 @@ type binder = Pi | Abst | Sig
 type proj = Fst | Snd
 
 type t = 
-    Sort of sort
+    Type of level
   | TopLevel of name * toplevel * level list
   | Const of cst * name * t
   | DB of int 
@@ -75,7 +69,7 @@ and
       
 let rec abst_n v t n = 
   match t with
-    | Sort _ | DB _ -> t
+    | Type _ | DB _ -> t
     | TopLevel _ -> t
     | Const (Local, a, _) when a = v -> DB n
     | Const (Local, _, _) | Const (Mvar, _, _) -> t
@@ -96,7 +90,7 @@ let abst v t = abst_n v t 0
 
 let rec subst_n u t n =
   match t with
-    | Sort _ | Const _
+    | Type _ | Const _
     | TopLevel _ -> t
     | DB i when i = n -> u
     | DB i when i < n -> DB (n - 1)
@@ -131,11 +125,11 @@ let rec compare t1 t2 =
       else c
     | Const _, TopLevel _ -> 1
     | Const _, _ -> -1
-    | Sort a, Sort b -> Pervasives.compare a b
-    | Sort _, Const _ | Sort _, TopLevel _ -> 1
-    | Sort _ , _ -> -1
+    | Type a, Type b -> Pervasives.compare a b
+    | Type _, Const _ | Type _, TopLevel _ -> 1
+    | Type _ , _ -> -1
     | DB n, DB m -> Pervasives.compare n m
-    | DB _, Const _ | DB _, Sort _ | DB _, TopLevel _ -> 1
+    | DB _, Const _ | DB _, Type _ | DB _, TopLevel _ -> 1
     | DB _, _ -> -1
     | Bound (b1, _, ty1, t1), Bound(b2, _, ty2, t2) ->
       let c = Pervasives.compare b1 b2 in
@@ -144,13 +138,13 @@ let rec compare t1 t2 =
         if c_ty = 0 then compare t1 t2
         else c_ty
       else c
-    | Bound _, Const _ | Bound _, Sort _ 
+    | Bound _, Const _ | Bound _, Type _ 
     | Bound _, DB _ | Bound _, TopLevel _ -> 1
     | Bound _, _ -> -1
     | App(t1, u1), App(t2, u2) ->
       let c_t = compare t1 t2 in
       if c_t = 0 then compare u1 u2 else c_t
-    | App _, Const _ | App _, Sort _ | App _, DB _ 
+    | App _, Const _ | App _, Type _ | App _, DB _ 
     | App _, Bound _ | App _, TopLevel _ -> 1
     | App _, _ -> -1
     | Pair (_, ty1, t1, u1), Pair(_, ty2, t2, u2) -> 
@@ -160,7 +154,7 @@ let rec compare t1 t2 =
         if c_t = 0 then compare u1 u2
         else c_t
       else c_ty
-    | Pair _, Const _ | Pair _, Sort _ | Pair _, DB _ 
+    | Pair _, Const _ | Pair _, Type _ | Pair _, DB _ 
     | Pair _, Bound _ | Pair _, TopLevel _ | Pair _ , App _ -> 1
     | Pair _, _ -> -1
     | Proj (p1, t1), Proj (p2, t2) ->
@@ -183,9 +177,9 @@ let rec subst_l v l t =
     | Const(c, a, ty) ->
       let ty_s = subst_l v l ty in
       Const(c, a, ty_s)
-    | Sort (Type m) ->
+    | Type m ->
       let m_s = subst_level v l m in
-      Sort (Type m_s)
+      Type m_s
     | Bound(b, a, ty, body) ->
       let ty_s = subst_l v l ty in
       let body_s = subst_l v l body in
@@ -238,7 +232,7 @@ let open_t v ty tm =
 
 let rec free_vars t =
   match t with
-    | Sort _ | DB _ | TopLevel _ -> []
+    | Type _ | DB _ | TopLevel _ -> []
     | Const(Local, a, t) -> a::free_vars t
     | Const _ -> []
     | Bound (_, _, t1, t2) -> (free_vars t1) @ (free_vars t2)
@@ -257,7 +251,7 @@ let rec ivars l =
 
 let rec mvar_list t =
   match t with
-    | Sort (Type l) -> ivars l
+    | Type l -> ivars l
     | DB _ | TopLevel _ -> []
     | Const (_, _, t) -> mvar_list t
     | Bound (_, _, t1, t2) -> mvar_list t1 @ mvar_list t2
@@ -282,16 +276,23 @@ let rec make_app t args =
     | [] -> t
     | u::us -> make_app (App (t, u)) us
 
-let rec make_abst vars t =
+
+let rec make_bnd b vars t =
   match vars with
     | [] -> t
     | v::vs -> 
         begin match v with
           | Const(Local, a, ty) ->
               let v_t = abst a t in
-              make_abst vs (Bound (Abst, a, ty, v_t))
-          | _ -> invalid_arg "make_abst"
+              make_bnd b vs (Bound (b, a, ty, v_t))
+          | _ -> invalid_arg "make_bnd"
         end
+
+
+let make_abst vars t = make_bnd Abst vars t
+
+let make_pi vars t = make_bnd Pi vars t
+
 
 let rec int_of_level i =
   match i with
@@ -317,13 +318,6 @@ let rec string_of_level i =
           | Suc i -> "s("^(string_of_level i)^")"
         end
 
-let string_of_sort s =
-  let Type i = s in
-  match int_of_level i with
-    | Some 0 -> "Bool"
-    | Some 1 -> "Type"
-    | _ -> "Type "^(string_of_level i)
-
 let string_of_binder b =
   match b with
     | Pi -> "Π" 
@@ -346,7 +340,13 @@ let string_of_name a = a
 
 let rec print_term o t =
   match t with
-      Sort s -> fprintf o "%s" (string_of_sort s)
+      Type l -> 
+        let s = match int_of_level l with
+          | Some 0 -> "Bool"
+          | Some 1 -> "Type"
+          | _ -> "Type "^(string_of_level l)
+        in
+        fprintf o "%s" s
     | TopLevel (a, _, _) -> fprintf o "%s" a
     | Const(Local, a, _) -> fprintf o "%s" a
     | Const(Mvar, a, _) -> fprintf o "?%s" a
@@ -355,16 +355,13 @@ let rec print_term o t =
       let tm = subst (Const (Local, a, ty)) tm in
       if not (List.mem a (free_vars tm)) then
         begin
-          (* printf "\n"; *)
-          (* printf "%s" a; *)
-          (* printf "\n"; *)
-          (* List.iter (fun x -> printf "%s " x) (free_vars t); *)
-          (* printf "\n"; *)
           match b with
             | Pi  -> fprintf o "%a -> %a" print_term ty print_term tm
             | Sig -> fprintf o "%a * %a" print_term ty print_term tm
             | _   -> 
-                fprintf o "%s _ : %a.%a" (string_of_binder b)
+                (* fprintf o "%s _ : %a.%a" (string_of_binder b) *)
+                (*   print_term ty print_term tm *)
+                fprintf o "%s %s : %a.%a" (string_of_binder b) (string_of_name a)
                   print_term ty print_term tm
         end
       else

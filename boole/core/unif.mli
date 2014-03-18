@@ -1,5 +1,5 @@
 
-exception UnsolvableConstr of Elab.constr list
+exception UnsolvableConstr of Elab.constrs
 
 type subst
 

@@ -18,6 +18,7 @@ let _ =
         | Toplevel.NotFound s ->
             Printf.eprintf "Error: identifier %s not found\n" s;
             flush stderr
+        | Toplevel.TypingError | Toplevel.UnifError -> ()
       end
     done
   with Lexer.Eof ->

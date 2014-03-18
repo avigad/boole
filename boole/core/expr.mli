@@ -23,8 +23,6 @@ type level =
   | Suc of level
   | LProd of level * level
 
-type sort = Type of level
-
 type cst = Local | Mvar
 
 type binder = Pi | Abst | Sig
@@ -32,7 +30,7 @@ type binder = Pi | Abst | Sig
 type proj = Fst | Snd
 
 type t = 
-    Sort of sort
+    Type of level
   | TopLevel of name * toplevel * level list
   | Const of cst * name * t
   | DB of int 
@@ -49,7 +47,7 @@ module NMap : Map.S with type key = name
 
 
 
-val sort_leq : sort -> sort -> bool
+val level_leq : level -> level -> bool
 
 val abst : name -> t -> t
 
@@ -86,6 +84,8 @@ val get_app : t -> t * t list
 val make_app : t -> t list -> t
 
 val make_abst : t list -> t -> t
+
+val make_pi : t list -> t -> t
 
 val free_vars : t -> name list
 

@@ -18,7 +18,7 @@ let subst_add a t s = NMap.add a t s
 
 let rec mvar_subst s t =
   match t with
-    | Sort _ |  TopLevel _ | DB _ -> t
+    | Type _ |  TopLevel _ | DB _ -> t
     | Const (Local, a, ty) -> Const (Local, a, mvar_subst s ty)
     | Const (Mvar, a, ty) ->
         if NMap.mem a s then 
@@ -35,7 +35,7 @@ let rec mvar_subst s t =
 
 let rec occurs x t =
   match t with
-    | Sort _ |  TopLevel _ | DB _ -> false
+    | Type _ |  TopLevel _ | DB _ -> false
     | Const (Local, _, ty) -> occurs x ty
     | Const (Mvar, a, _) when x = a -> true
     | Const (Mvar, _, ty) -> occurs x ty
@@ -81,7 +81,7 @@ let rec fo_step conv t1 t2 s =
         then fo_step conv u1 u2 s
         else raise (CannotUnify (t1, t2))
     | Pair(a1, ty1, t1, u1), Pair(_, ty2, t2, u2) ->
-        let dummy = Sort (Type Z) in
+        let dummy = Type Z in
         let _, ty1_o = open_t a1 dummy ty1 in
         let _, ty2_o = open_t a1 dummy ty2 in
         let m_ty = fo_step conv ty1_o ty2_o s in
@@ -100,6 +100,7 @@ let rec fo_unif r csts s =
 
 let elab unif conv t =
   let cst = make_type_constr t in
+  Printf.printf "\n\nconstraints for %a:\n%a\n\n" Expr.print_term t Elab.print_cstrs cst;
   let s = unif conv cst empty_subst in
   mvar_subst s t
 
@@ -131,7 +132,7 @@ let rec rigid_rigid t1 t2 =
         then [Eq (u1, u2)]
         else raise (CannotUnify (t1, t2))
     | Pair(a1, ty1, t1, u1), Pair(_, ty2, t2, u2) ->
-        let dummy = Sort (Type Z) in
+        let dummy = Type Z in
         let _, ty1_o = open_t a1 dummy ty1 in
         let _, ty2_o = open_t a1 dummy ty2 in
         [Eq (ty1_o, ty2_o); Eq (t1, t2); Eq (u1, u2)]
@@ -145,18 +146,24 @@ let one_branch s c = Branch [(s, c)]
 (* (note: this is the imitation part of Huet's 
    higher order unification algorithm) *)
 let imitate mvar args_m hd args s =
-  let k = List.length args_m in
-  let rec args_vars m tpe = 
-    match m with
-      | 0 -> []
-      | _ -> begin match tpe with
-          Bound (Pi, a, ty, tm) ->
+  let rec args_vars args tpe = 
+    match args with
+      | [] -> []
+      | (Const(Local, a, ty) as c)::ags ->
+          begin match tpe with
+            | Bound (Pi, _, _, tm) ->
+                let _, tm = Expr.open_t a ty tm in
+                c :: args_vars ags tm
+            | _ -> assert false
+          end
+      | _::ags -> begin match tpe with
+          | Bound (Pi, a, ty, tm) ->
             let b, tm = Expr.open_t a ty tm in
-            Const(Local, b, ty) :: (args_vars (m-1) tm)
+            Const (Local, b, ty) :: (args_vars ags tm)
           | _ -> assert false
       end
   in
-  let args_vars = List.rev (args_vars k (Elab.type_raw mvar)) in
+  let args_vars = args_vars args_m (Elab.type_raw mvar) in
   let rec body tm args cstrs =
     match args with
       | [] -> (tm, cstrs)
@@ -169,8 +176,10 @@ let imitate mvar args_m hd args s =
           let u_ts = make_app u_mvar args_m in
           body (App (tm, u_app)) us (Eq (u_ts, u)::cstrs)
   in
+  (* TODO: treat the case hd = Local var *)
   let body, constr = body hd args [] in
   let body = make_abst args_vars body in
+  Printf.printf "\n\n body = %a \n\n" print_term body;
   let s = subst_add (Expr.name_of mvar) body s in
   s, constr
 
@@ -181,7 +190,7 @@ let project conv mvar arg_m rhs s =
     match args with
       | [] -> [], []
       | t::ts -> begin match tpe with
-          Bound (Pi, a, ty, tm) ->
+          | Bound (Pi, a, ty, tm) ->
             let b, tm = Expr.open_t a ty tm in
             let args, proj = args_proj ts tm in
             let args = Const(Local, b, ty) :: args in
@@ -199,9 +208,10 @@ let project conv mvar arg_m rhs s =
   let args, proj = args_proj arg_m ty_m in
   let args = List.rev args in
   List.map (
-    fun (x, t) ->  
-      let s = subst_add (Expr.name_of mvar)
-        (make_abst args x) s in
+    fun (x, t) ->
+      let p_x = make_abst args x in
+      Printf.printf "\n\n proj = %a \n\n" print_term p_x;
+      let s = subst_add (Expr.name_of mvar) p_x s in
       s, [Eq (t, rhs)]
   ) proj
 
@@ -250,21 +260,23 @@ let rec try_branch t1 t2 branches unif =
           try_branch t1 t2 bs unif
 
 let rec ho_unif conv constr s =
-  match constr with
-    | [] -> s
-    | Eq (t1, t2)::cs ->
-        begin match ho_step conv t1 t2 s
-          with
-            | Branch bs -> 
-                try_branch t1 t2 bs 
-                  (fun s' cs' -> ho_unif conv (cs'@cs) s')
-            | Postpone ->
+  try
+    match constr with
+      | [] -> s
+      | Eq (t1, t2)::cs ->
+          begin match ho_step conv t1 t2 s
+            with
+              | Branch bs -> 
+                  try_branch t1 t2 bs 
+                    (fun s' cs' -> ho_unif conv (cs'@cs) s')
+              | Postpone ->
                 (*TODO: this may not terminate! *)
                 (*Create a flag for previously postponed problems*)
-                ho_unif conv (cs@[Eq (t1, t2)]) s
-        end
-    | _::cs ->  ho_unif conv cs s
-
+                  ho_unif conv (cs@[Eq (t1, t2)]) s
+          end
+      | _::cs ->  ho_unif conv cs s
+  with
+      CannotUnify _ -> raise (UnsolvableConstr constr)
 
 (* (\* The type of unification hints *\) *)
 (* type hint =  *)
