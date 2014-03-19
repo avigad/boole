@@ -14,3 +14,5 @@ val fo_unif : unif
 val ho_unif : unif
 
 val elab : unif -> Conv.reduction -> Expr.t -> Expr.t
+
+val print_subst : out_channel -> subst -> unit

@@ -75,9 +75,10 @@ let rec type_raw (conv : Conv.conv) t =
       let t2_ty = type_raw conv t2 in
       begin
         match t1_ty with
-          | Bound (Pi, _, ty_arg, ty_body) when Conv.check_conv conv t2_ty ty_arg ->
+          | Bound (Pi, _, ty_arg, ty_body) 
+              when Conv.check_conv conv t2_ty ty_arg ->
             subst t2 ty_body
-          | Bound (Pi, _, ty_arg, _) -> 
+          | Bound (Pi, _, ty_arg, _) ->
             raise (TypeError (t2, t2_ty, ty_arg))
           | _ -> raise (NotAPi (t1, t1_ty))
       end

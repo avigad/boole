@@ -12,7 +12,7 @@ LFLAGS=-g
 
 OCAMLBUILD=ocamlbuild
 
-OPTIONS=-verbose 1 -cflags $(CFLAGS) -lflags $(LFLAGS)
+OPTIONS=-verbose 0 -cflags $(CFLAGS) -lflags $(LFLAGS)
 
 .PHONY: native byte clean stat
 

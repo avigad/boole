@@ -93,7 +93,6 @@ let rec subst_n u t n =
     | Type _ | Const _
     | TopLevel _ -> t
     | DB i when i = n -> u
-    | DB i when i < n -> DB (n - 1)
     | DB i -> DB i
     | Bound (binder, a, ty, tm) ->
       let ty_sub = subst_n u ty n in
@@ -358,7 +357,7 @@ let rec print_term o t =
           match b with
             | Pi  -> fprintf o "%a -> %a" print_term ty print_term tm
             | Sig -> fprintf o "%a * %a" print_term ty print_term tm
-            | _   -> 
+            | _   ->
                 (* fprintf o "%s _ : %a.%a" (string_of_binder b) *)
                 (*   print_term ty print_term tm *)
                 fprintf o "%s %s : %a.%a" (string_of_binder b) (string_of_name a)

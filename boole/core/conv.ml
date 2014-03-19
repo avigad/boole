@@ -35,14 +35,26 @@ let hd_beta_step t =
 
 let rec hd_beta_norm t =
   match t with
-    | App (Bound (Abst, _, _, t1), t2) ->
-      hd_beta_norm (subst t2 t1)
-    | Proj (Fst, Pair(_, _, t, _)) -> 
-      hd_beta_norm t
-    | Proj (Snd, Pair(_, _, _, t)) -> 
-      hd_beta_norm t
+    | App (t1, t2) ->
+        begin match hd_beta_norm t1 with
+          | Bound (Abst, _, _, t1') ->
+              hd_beta_norm (subst t2 t1')
+          | _ -> t
+        end
+    | Proj (Fst, t') -> 
+        begin match hd_beta_norm t' with
+          | Pair (_, _, t'', _) ->
+              hd_beta_norm t''
+          | _ -> t
+        end
+    | Proj (Snd, t') -> 
+        begin match hd_beta_norm t' with
+          | Pair (_, _, _, t'') ->
+              hd_beta_norm t''
+          | _ -> t
+        end
     | Type _ | Const _ | DB _
-    | Bound _ | App _ | Pair _ | Proj _ | TopLevel _ -> t
+    | Bound _ | Pair _ | TopLevel _ -> t
 
 
 

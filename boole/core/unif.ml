@@ -10,6 +10,13 @@ type subst = Expr.t NMap.t
 
 type unif = Conv.reduction -> Elab.constr list -> subst -> subst
 
+let print_subst o s =
+  NMap.iter 
+    (fun a t -> Printf.fprintf o "%s |-> %a\n"
+      (string_of_name a) print_term t)
+    s
+
+
 let empty_subst = NMap.empty
 
 let in_dom a s = NMap.mem a s
@@ -26,11 +33,20 @@ let rec mvar_subst s t =
         else
           Const (Mvar, a, mvar_subst s ty)
     | Bound (b, a, ty, body) ->
-        Bound( b, a, mvar_subst s ty, mvar_subst s body)
+        let a', open_body = Expr.open_t a ty body in
+        let subst_ty = mvar_subst s ty in
+        let subst_body = mvar_subst s open_body in
+        Bound (b, a, subst_ty, Expr.abst a' subst_body)
+          
     | App (t1, t2) ->
         App (mvar_subst s t1, mvar_subst s t2)
     | Pair (a, ty, t1, t2) ->
-        Pair (a, mvar_subst s ty, mvar_subst s t1, mvar_subst s t2)
+        let dummy = Type Z in
+        let a', open_ty = Expr.open_t a dummy ty in
+        let ty_subst = mvar_subst s open_ty in
+        let t1_subst = mvar_subst s t1 in
+        let t2_subst = mvar_subst s t2 in
+        Pair (a, Expr.abst a' ty_subst, t1_subst, t2_subst)
     | Proj (p, t) -> Proj(p, mvar_subst s t)
 
 let rec occurs x t =
@@ -102,6 +118,7 @@ let elab unif conv t =
   let cst = make_type_constr t in
   Printf.printf "\n\nconstraints for %a:\n%a\n\n" Expr.print_term t Elab.print_cstrs cst;
   let s = unif conv cst empty_subst in
+  Printf.printf "\n\nfound substitution:\n%a\n\n" print_subst s;
   mvar_subst s t
 
 type branch = Branch of (subst * constrs) list | Postpone
@@ -179,7 +196,7 @@ let imitate mvar args_m hd args s =
   (* TODO: treat the case hd = Local var *)
   let body, constr = body hd args [] in
   let body = make_abst args_vars body in
-  Printf.printf "\n\n body = %a \n\n" print_term body;
+  (* Printf.printf "\n\n body = %a \n\n" print_term body; *)
   let s = subst_add (Expr.name_of mvar) body s in
   s, constr
 
@@ -210,7 +227,7 @@ let project conv mvar arg_m rhs s =
   List.map (
     fun (x, t) ->
       let p_x = make_abst args x in
-      Printf.printf "\n\n proj = %a \n\n" print_term p_x;
+      (* Printf.printf "\n\n proj = %a \n\n" print_term p_x; *)
       let s = subst_add (Expr.name_of mvar) p_x s in
       s, [Eq (t, rhs)]
   ) proj
