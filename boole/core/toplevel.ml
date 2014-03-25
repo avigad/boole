@@ -108,6 +108,11 @@ let wrap_call f t =
         Printf.eprintf
           "Unification Error: cannot solve constraints\n%a\n" Elab.print_cstrs cs;
         raise UnifError
+    | Unif.MvarNoVal (t,m) ->
+        Printf.eprintf
+          "Unification Error: in %a: cannot find a value for ?%s\n" 
+          Expr.print_term t (Expr.string_of_name m);
+        raise UnifError
 
 let check t = 
     let t1 = Elab.decorate t in

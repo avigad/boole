@@ -79,6 +79,8 @@ val string_of_name : name -> string
 
 val print_term : out_channel -> t -> unit
 
+val print_term_list : out_channel -> t list -> unit
+
 val get_app : t -> t * t list
 
 val make_app : t -> t list -> t
@@ -88,5 +90,7 @@ val make_abst : t list -> t -> t
 val make_pi : t list -> t -> t
 
 val free_vars : t -> name list
+
+val get_mvars : t -> name list
 
 val has_mvars : t -> bool

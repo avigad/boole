@@ -248,20 +248,21 @@ let rec ivars l =
     | Max (l1, l2) -> (ivars l1)@(ivars l2)
     | LProd (l1, l2) -> (ivars l1)@(ivars l2)
 
-let rec mvar_list t =
+let rec get_mvars t =
   match t with
     | Type l -> ivars l
     | DB _ | TopLevel _ -> []
-    | Const (_, _, t) -> mvar_list t
-    | Bound (_, _, t1, t2) -> mvar_list t1 @ mvar_list t2
-    | App (t1, t2) -> mvar_list t1 @ mvar_list t2
+    | Const (Mvar, m, t) -> m::get_mvars t
+    | Const (Local, _, t) -> get_mvars t
+    | Bound (_, _, t1, t2) -> get_mvars t1 @ get_mvars t2
+    | App (t1, t2) -> get_mvars t1 @ get_mvars t2
     | Pair(_, ty, t1, t2) ->
-      (mvar_list ty) @ (mvar_list t1) @ (mvar_list t2)
-    | Proj (_, t) -> mvar_list t
+      (get_mvars ty) @ (get_mvars t1) @ (get_mvars t2)
+    | Proj (_, t) -> get_mvars t
 
 let has_free_vars t = not (free_vars t = [])
 
-let has_mvars t = not (mvar_list t = [])
+let has_mvars t = not (get_mvars t = [])
 
 let rec get_app t =
   match t with
@@ -372,3 +373,6 @@ let rec print_term o t =
       fprintf o "fst(%a)" print_term t
     | Proj(Snd, t) ->
       fprintf o "snd(%a)" print_term t
+
+let print_term_list o ts =
+  List.iter (fun t -> fprintf o "%a " print_term t) ts

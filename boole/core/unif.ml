@@ -6,6 +6,8 @@ exception UFail
 
 exception UnsolvableConstr of Elab.constrs
 
+exception MvarNoVal of Expr.t * Expr.name
+
 type subst = Expr.t NMap.t
 
 type branch = Branch of (subst * Elab.constrs) list | Postpone
@@ -35,7 +37,7 @@ let rec mvar_subst s t =
     | Const (Local, a, ty) -> Const (Local, a, mvar_subst s ty)
     | Const (Mvar, a, ty) ->
         if NMap.mem a s then 
-          NMap.find a s
+          mvar_subst s (NMap.find a s)
         else
           Const (Mvar, a, mvar_subst s ty)
     | Bound (b, a, ty, body) ->
@@ -122,10 +124,17 @@ let rec fo_unif i csts s =
 
 let elab unif info t =
   let cst = make_type_constr t in
-  Printf.printf "\n\nconstraints for %a:\n%a\n\n" Expr.print_term t Elab.print_cstrs cst;
+  (* Printf.printf "\n\nconstraints for %a:\n%a\n\n" Expr.print_term t Elab.print_cstrs cst; *)
   let s = unif info cst empty_subst in
-  Printf.printf "\n\nfound substitution:\n%a\n\n" print_subst s;
-  mvar_subst s t
+  let t_sub = mvar_subst s t in
+  let m_t_sub = Expr.get_mvars t_sub in
+  if m_t_sub = [] then
+    begin
+      (* Printf.printf "\n\nfound substitution:\n%a\n\n" print_subst s; *)
+      t_sub
+    end
+  else
+    raise (MvarNoVal (t, List.hd m_t_sub))
 
 let occurs_rigid a t = occurs a t
   
@@ -160,11 +169,13 @@ let destruct t1 t2 =
     | _ -> raise UFail
 
 
+let apply_hint hints c = hints c
+
 let rigid_rigid hints t1 t2 s =
   try
     Branch [(s, destruct t1 t2)]
   with UFail  ->
-    hints s (Eq (t1, t2))
+    apply_hint hints s (Eq (t1, t2))
 
 
 (*TODO: explain this function *)
@@ -190,7 +201,8 @@ let imitate mvar args_m hd args s =
   in
   let args_vars = args_vars args_m (Elab.type_raw mvar) in
   let rec body tm args cstrs =
-    match args with
+    (* Printf.printf "\n\n args = %a \n\n" print_term_list args; *)
+    match List.rev args with
       | [] -> (tm, cstrs)
       | u::us ->
           let u_ty = Elab.type_raw u in
@@ -201,11 +213,10 @@ let imitate mvar args_m hd args s =
           let u_ts = make_app u_mvar args_m in
           body (App (tm, u_app)) us (Eq (u_ts, u)::cstrs)
   in
-  (* TODO: treat the case hd = Local var *)
   let body, constr = body hd args [] in
   let body = make_abst args_vars body in
-  Printf.printf "\n\n body = %a \n\n" print_term body;
-  Printf.printf "\n\n cstrs = %a \n\n" print_cstrs constr;
+  (* Printf.printf "\n\n body = %a \n\n" print_term body; *)
+  (* Printf.printf "\n\n cstrs = %a \n\n" print_cstrs constr; *)
 
   let s = subst_add (Expr.name_of mvar) body s in
   s, constr
@@ -279,33 +290,48 @@ let rec try_branch branches unif c cs =
         with UFail ->
           try_branch bs unif c cs
 
+(*TODO: apply substitution first *)
+let is_trivial info c s =
+  match c with
+    | Eq (t1, t2) -> 
+        let t1_sub, t2_sub = mvar_subst s t1, mvar_subst s t2 in
+        Conv.check_conv info.conv t1_sub t2_sub
+    | _ -> false  
+
 
 let rec ho_unif info constr s =
   try
     match constr with
       | [] -> s
-      | (Eq (t1, t2) as c)::cs ->
-          begin match ho_step info t1 t2 s
-            with
-              | Branch bs -> 
-                  try_branch bs (fun s cs -> ho_unif info cs s) c cs
-              | Postpone ->
-                  (*TODO: this may not terminate! *)
-                  (* Create a flag for previously postponed problems*)
-                  (* ho_unif conv (cs@[Eq (t1, t2)]) s *)
-                  assert false
-          end
-      | (HasType _ as c) :: cs ->
-          (*Don't fail if type_hint fails *)
-          begin
-            try
-              match info.hints s c with
-                | Branch bs ->
-                    try_branch bs (fun s cs -> ho_unif info cs s) c cs
-                | Postpone -> assert false
-            with UFail -> ho_unif info cs s
-          end
-      | _::cs -> ho_unif info cs s
+      | c::cs ->
+          (*TODO: optimize: head normal form is computed many times *)
+          if is_trivial info c s then ho_unif info cs s
+            else begin
+              (* Printf.printf "\n\nconstraints:\n%a\n\n" Elab.print_cstrs constr; *)
+              match c with
+                | Eq (t1, t2) ->
+                    begin match ho_step info t1 t2 s
+                      with
+                        | Branch bs -> 
+                            try_branch bs (fun s cs -> ho_unif info cs s) c cs
+                        | Postpone ->
+                            (*TODO: this may not terminate! *)
+                            (* Create a flag for previously postponed problems*)
+                            (* ho_unif conv (cs@[Eq (t1, t2)]) s *)
+                            assert false
+                    end
+                | HasType _ ->
+                    (*TODO: postpone if failure *)
+                    begin
+                      try
+                        match apply_hint info.hints s c with
+                          | Branch bs ->
+                              try_branch bs (fun s cs -> ho_unif info cs s) c cs
+                          | Postpone -> assert false
+                      with UFail -> ho_unif info cs s
+                    end
+                | _ -> ho_unif info cs s
+            end
   with
       UFail -> raise (UnsolvableConstr constr)
 
@@ -316,13 +342,16 @@ let append_hint c br =
 
 let add_hint t hints =
   fun s c ->
-    let br = hints s c in
+    let br = apply_hint hints s c in
     match c with
       | HasType (_, ty) ->
+          let ty_s = mvar_subst s ty in
           let hd_t, _ = get_app t in
-          let hd_ty, _ = get_app ty in
-          if hd_t = hd_ty then
-            append_hint (s, [Eq (t, ty)]) br
+          let hd_ty, _ = get_app ty_s in
+          if Expr.equal hd_t hd_ty then
+            begin
+              append_hint (s, [Eq (t, ty)]) br
+            end
           else
             br
       | _ -> br
