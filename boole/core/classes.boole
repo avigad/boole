@@ -1,0 +1,9 @@
+Var Int : Type
+Var Mul : [T : Type][m : T -> T -> T] Bool
+Var intMul : Int -> Int -> Int
+Var e : Mul Int intMul
+Hint (Mul Int intMul)
+Var i : Int
+Var j : Int
+Var mul : [T : Type][m : T -> T -> T] Mul T m -> T -> T -> T
+Check mul _ _ _ i j

@@ -11,6 +11,7 @@ rule token = parse
   | "Var"   { VAR }
   | "Def"   { DEF }
   | "Check" { CHECK }
+  | "Hint"  { HINT }
   | ":="    { COLONEQ }
   | "=>"    { MAPSTO }
   | "->"    { ARROW }

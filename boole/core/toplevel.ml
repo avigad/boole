@@ -56,7 +56,11 @@ let check_core t =
     | a::_ -> raise (NotFound (string_of_name a))
 
 (* let elab t = Unif.elab Unif.fo_unif Conv.hd_beta_norm t *)
-let elab t = Unif.elab Unif.ho_unif Conv.hd_beta_norm t
+let elab t = 
+  let u_info = {Unif.red = Conv.hd_beta_norm; 
+                Unif.conv = Conv.conv; 
+                Unif.hints = !top_ctxt.hints} in
+  Unif.elab Unif.ho_unif u_info t
 
 
 let wild = Const(Mvar,Expr.make_name "Boole_wild", type1)
@@ -123,3 +127,6 @@ let add_top s t =
       | ty -> raise (NotAType (t, ty)))
     t2
 
+let add_hint t =
+  check t;
+  top_ctxt := add_hint t !top_ctxt

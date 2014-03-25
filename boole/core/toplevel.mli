@@ -22,3 +22,4 @@ val elab : Expr.t -> Expr.t
 val check : Expr.t -> unit
 
 val add_top : string -> Expr.t -> unit
+val add_hint : Expr.t -> unit

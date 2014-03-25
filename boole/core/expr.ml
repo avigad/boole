@@ -355,12 +355,10 @@ let rec print_term o t =
       if not (List.mem a (free_vars tm)) then
         begin
           match b with
-            | Pi  -> fprintf o "%a -> %a" print_term ty print_term tm
-            | Sig -> fprintf o "%a * %a" print_term ty print_term tm
+            | Pi  -> fprintf o "(%a -> %a)" print_term ty print_term tm
+            | Sig -> fprintf o "(%a * %a)" print_term ty print_term tm
             | _   ->
-                (* fprintf o "%s _ : %a.%a" (string_of_binder b) *)
-                (*   print_term ty print_term tm *)
-                fprintf o "%s %s : %a.%a" (string_of_binder b) (string_of_name a)
+                fprintf o "%s _ : %a.%a" (string_of_binder b)
                   print_term ty print_term tm
         end
       else

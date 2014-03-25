@@ -15,6 +15,7 @@
 %token MBAR
 %token COLONEQ
 %token VAR
+%token HINT
 %token DEF
 %token CHECK
 %token EOL
@@ -66,6 +67,8 @@ top :
        { Toplevel.add_top $2 $4 }
    | CHECK expr EOL
        { Toplevel.check $2 }
+   | HINT expr EOL
+       { Toplevel.add_hint $2 }
    | EOL
        { () }
 ;
