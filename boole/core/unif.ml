@@ -6,7 +6,7 @@ exception UFail
 
 exception UnsolvableConstr of Elab.constrs
 
-exception MvarNoVal of Expr.t * Expr.name
+exception MvarNoVal of Expr.t * Expr.name list
 
 type subst = Expr.t NMap.t
 
@@ -134,7 +134,7 @@ let elab unif info t =
       t_sub
     end
   else
-    raise (MvarNoVal (t, List.hd m_t_sub))
+    raise (MvarNoVal (t, m_t_sub))
 
 let occurs_rigid a t = occurs a t
   

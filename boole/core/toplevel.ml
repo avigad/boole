@@ -48,6 +48,15 @@ let type0 = Type Z
 
 let type1 = Type (Suc Z)
 
+(* TODO: make this top-level? *)
+let magic a t =
+  let magic_a = Expr.make_name ("magic_" ^ Expr.string_of_name a) in
+  Const(Local, magic_a, t)
+
+
+(* let make_goals t mvars = ??? *)
+  
+
 let check_core t =
   let ty = Typing.type_raw Conv.conv t in
   match free_vars ty with
@@ -111,7 +120,7 @@ let wrap_call f t =
     | Unif.MvarNoVal (t,m) ->
         Printf.eprintf
           "Unification Error: in %a: cannot find a value for ?%s\n" 
-          Expr.print_term t (Expr.string_of_name m);
+          Expr.print_term t (Expr.string_of_name (List.hd m));
         raise UnifError
 
 let check t = 

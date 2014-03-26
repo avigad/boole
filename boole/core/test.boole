@@ -1,0 +1,21 @@
+Check Type
+Check Bool
+Var T : Type
+Var b : Bool
+Check [x : T] T
+Var e : T
+Check \ x : T => T
+Var id : [X : Type] X -> X
+Check id
+Check id _ b
+Check id _ e
+Var U : Type
+Var f : U
+Var Eq : [X : Type] [Y : Type] X -> Y -> Bool
+Check Eq
+Check Eq _ _ e f
+Var S : { t : Type | Bool }
+Check { t : Type | Bool }
+Check S
+Var Refl : [t : Type] [x : t] Eq _ _ x x
+

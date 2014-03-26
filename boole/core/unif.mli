@@ -1,7 +1,7 @@
 
 exception UnsolvableConstr of Elab.constrs
 
-exception MvarNoVal of Expr.t * Expr.name
+exception MvarNoVal of Expr.t * Expr.name list
 
 type subst
 
