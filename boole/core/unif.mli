@@ -1,18 +1,22 @@
 
 exception UnsolvableConstr of Elab.constrs
 
-exception MvarNoVal of Expr.t * Expr.name list
+exception MvarNoVal of Expr.t * Expr.t list
 
 type subst
 
 type hints
 
 type unif_info = 
-    {red : Conv.reduction; 
-     conv : Conv.conv; 
-     hints : hints}
+    {
+      red : Conv.reduction; 
+      conv : Conv.conv; 
+      hints : hints
+    }
 
 val empty_subst : subst
+
+val add_subst : Expr.name -> Expr.t -> subst -> subst
 
 val mvar_subst : subst -> Expr.t -> Expr.t
 

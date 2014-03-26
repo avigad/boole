@@ -91,6 +91,6 @@ val make_pi : t list -> t -> t
 
 val free_vars : t -> name list
 
-val get_mvars : t -> name list
+val get_mvars : t -> t list
 
 val has_mvars : t -> bool

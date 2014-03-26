@@ -250,9 +250,9 @@ let rec ivars l =
 
 let rec get_mvars t =
   match t with
-    | Type l -> ivars l
+    | Type _ -> []
     | DB _ | TopLevel _ -> []
-    | Const (Mvar, m, t) -> m::get_mvars t
+    | Const (Mvar, _, ty) -> t::get_mvars ty
     | Const (Local, _, t) -> get_mvars t
     | Bound (_, _, t1, t2) -> get_mvars t1 @ get_mvars t2
     | App (t1, t2) -> get_mvars t1 @ get_mvars t2

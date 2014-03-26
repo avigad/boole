@@ -6,7 +6,7 @@ exception UFail
 
 exception UnsolvableConstr of Elab.constrs
 
-exception MvarNoVal of Expr.t * Expr.name list
+exception MvarNoVal of Expr.t * Expr.t list
 
 type subst = Expr.t NMap.t
 
@@ -29,7 +29,7 @@ let empty_subst = NMap.empty
 
 let in_dom a s = NMap.mem a s
 
-let subst_add a t s = NMap.add a t s
+let add_subst a t s = NMap.add a t s
 
 let rec mvar_subst s t =
   match t with
@@ -83,7 +83,7 @@ let rec fo_step red t1 t2 s =
           if occurs a t_sub then
             raise UFail
           else
-            subst_add a t_sub s
+            add_subst a t_sub s
     | Const(Local, a1, _), Const(Local, a2, _)
     (*TODO: should we check level coherence here? *)
     | TopLevel(a1, _, _), TopLevel(a2, _, _) ->
@@ -129,12 +129,11 @@ let elab unif info t =
   let t_sub = mvar_subst s t in
   let m_t_sub = Expr.get_mvars t_sub in
   if m_t_sub = [] then
-    begin
-      (* Printf.printf "\n\nfound substitution:\n%a\n\n" print_subst s; *)
-      t_sub
-    end
+    (* Printf.printf "\n\nfound substitution:\n%a\n\n" 
+       print_subst s; *)
+    t_sub
   else
-    raise (MvarNoVal (t, m_t_sub))
+    raise (MvarNoVal (t_sub, m_t_sub))
 
 let occurs_rigid a t = occurs a t
   
@@ -218,7 +217,7 @@ let imitate mvar args_m hd args s =
   (* Printf.printf "\n\n body = %a \n\n" print_term body; *)
   (* Printf.printf "\n\n cstrs = %a \n\n" print_cstrs constr; *)
 
-  let s = subst_add (Expr.name_of mvar) body s in
+  let s = add_subst (Expr.name_of mvar) body s in
   s, constr
 
 let project conv mvar arg_m rhs s =
@@ -249,7 +248,7 @@ let project conv mvar arg_m rhs s =
     fun (x, t) ->
       let p_x = make_abst args x in
       (* Printf.printf "\n\n proj = %a \n\n" print_term p_x; *)
-      let s = subst_add (Expr.name_of mvar) p_x s in
+      let s = add_subst (Expr.name_of mvar) p_x s in
       s, [Eq (t, rhs)]
   ) proj
 

@@ -16,8 +16,8 @@ type t =
       (* classes         : decl NMap.t; *)
       (* class_def       : decl NMap.t; *)
       (* class_instances : decl NMap.t; *)
-      hints              : Unif.hints
-      (* goals           : decl NMap.t; *)
+      hints              : Unif.hints;
+      goals              : Expr.t NMap.t;
       (* parent          : t option *)
     }
         
@@ -34,8 +34,8 @@ let new_ctxt name =
     (* classes         = new_map ; *)
     (* class_def       = new_map ; *)
     (* class_instances = new_map ; *)
-    hints = Unif.empty_hints
-    (* goals           = new_map ; *)
+    hints              = Unif.empty_hints ;
+    goals              = new_map ;
     (* parent          = None *)
   }
 
@@ -49,3 +49,8 @@ let get_decl a ctxt =
 let add_hint h ctxt =
   {ctxt with
     hints = Unif.add_hint h ctxt.hints}
+
+let add_goal a g ctxt =
+  {ctxt with
+    goals = NMap.add a g ctxt.goals}
+  

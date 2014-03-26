@@ -54,7 +54,25 @@ let magic a t =
   Const(Local, magic_a, t)
 
 
-(* let make_goals t mvars = ??? *)
+let make_goals t mvars =
+  let subst = List.fold_left 
+    (fun s m -> match m with
+      | Const (Mvar, a, ty) ->
+          let goal = magic a ty in
+          Unif.add_subst a goal s
+      | _ -> assert false)
+    Unif.empty_subst
+    mvars
+  in
+  List.iter
+    (fun m ->
+      match m with
+        | Const (Mvar, a, ty) ->
+            let ty_s = Unif.mvar_subst subst ty in
+            top_ctxt := Context.add_goal a ty_s !top_ctxt
+        | _ -> assert false)
+    mvars;
+  Unif.mvar_subst subst t
   
 
 let check_core t =
@@ -69,8 +87,10 @@ let elab t =
   let u_info = {Unif.red = Conv.hd_beta_norm; 
                 Unif.conv = Conv.conv; 
                 Unif.hints = !top_ctxt.hints} in
-  Unif.elab Unif.ho_unif u_info t
-
+  try
+    Unif.elab Unif.ho_unif u_info t
+  with Unif.MvarNoVal (t, ms) ->
+    make_goals t ms
 
 let wild = Const(Mvar,Expr.make_name "Boole_wild", type1)
 
@@ -82,7 +102,7 @@ let print_type_err t t1 t2 t3 =
 let err t = Printf.eprintf "In the term %a:\n" print_term t
 
 (*TODO: clean this up *)
-let wrap_call f t =
+let call_with_handle f t =
   try
     f t
   with
@@ -119,19 +139,20 @@ let wrap_call f t =
         raise UnifError
     | Unif.MvarNoVal (t,m) ->
         Printf.eprintf
-          "Unification Error: in %a: cannot find a value for ?%s\n" 
-          Expr.print_term t (Expr.string_of_name (List.hd m));
+          "Unification Error: in %a: cannot find a value for ?%s\n"
+          Expr.print_term t (Expr.string_of_name
+                               (Expr.name_of (List.hd m)));
         raise UnifError
 
 let check t = 
     let t1 = Elab.decorate t in
-    let t2 = wrap_call elab t1 in
-    wrap_call check_core t2
+    let t2 = call_with_handle elab t1 in
+    call_with_handle check_core t2
 
 let add_top s t = 
   let t1 = Elab.decorate t in
-  let t2 = wrap_call elab t1 in
-  wrap_call
+  let t2 = call_with_handle elab t1 in
+  call_with_handle
     (fun t -> match Typing.type_raw Conv.conv t with
       | Type _ ->
           let x = make_name s in
