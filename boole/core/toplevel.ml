@@ -48,7 +48,7 @@ let type0 = Type Z
 
 let type1 = Type (Suc Z)
 
-(* TODO: make this top-level? *)
+
 let magic a t =
   let magic_a = Expr.make_name ("magic_" ^ Expr.string_of_name a) in
   Const(Local, magic_a, t)
@@ -64,15 +64,19 @@ let make_goals t mvars =
     Unif.empty_subst
     mvars
   in
-  List.iter
-    (fun m ->
-      match m with
-        | Const (Mvar, a, ty) ->
-            let ty_s = Unif.mvar_subst subst ty in
-            top_ctxt := Context.add_goal a ty_s !top_ctxt
-        | _ -> assert false)
-    mvars;
-  Unif.mvar_subst subst t
+  let goals = 
+    List.fold_left
+      (fun gs m ->
+        match m with
+          | Const (Mvar, a, ty) ->
+              let ty_s = Unif.mvar_subst subst ty in
+              top_ctxt := Context.add_goal a ty_s !top_ctxt;
+              ty_s::gs
+              
+          | _ -> assert false)
+      [] mvars
+  in
+  (Unif.mvar_subst subst t, goals)
   
 
 let check_core t =
@@ -88,7 +92,7 @@ let elab t =
                 Unif.conv = Conv.conv; 
                 Unif.hints = !top_ctxt.hints} in
   try
-    Unif.elab Unif.ho_unif u_info t
+    (Unif.elab Unif.ho_unif u_info t, [])
   with Unif.MvarNoVal (t, ms) ->
     make_goals t ms
 
@@ -101,7 +105,6 @@ let print_type_err t t1 t2 t3 =
 
 let err t = Printf.eprintf "In the term %a:\n" print_term t
 
-(*TODO: clean this up *)
 let call_with_handle f t =
   try
     f t
@@ -144,14 +147,30 @@ let call_with_handle f t =
                                (Expr.name_of (List.hd m)));
         raise UnifError
 
+let print_goals goals =
+  let i = ref 1 in
+  if goals = [] then
+    ()
+  else begin
+    Printf.printf "Remaining goals:\n\n";
+    List.iter (
+      fun g -> 
+        Printf.printf "%d: %a\n" !i print_term g
+    ) goals;
+    Printf.printf "\n"
+  end
+  
+
+
 let check t = 
     let t1 = Elab.decorate t in
-    let t2 = call_with_handle elab t1 in
-    call_with_handle check_core t2
+    let t2, goals = call_with_handle elab t1 in
+    call_with_handle check_core t2;
+    print_goals goals
 
 let add_top s t = 
   let t1 = Elab.decorate t in
-  let t2 = call_with_handle elab t1 in
+  let t2, goals = call_with_handle elab t1 in
   call_with_handle
     (fun t -> match Typing.type_raw Conv.conv t with
       | Type _ ->
@@ -160,7 +179,8 @@ let add_top s t =
           check_core x_tm;
           top_ctxt := add_decl x t !top_ctxt
       | ty -> raise (NotAType (t, ty)))
-    t2
+    t2;
+  print_goals goals
 
 let add_hint t =
   check t;

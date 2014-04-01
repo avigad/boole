@@ -18,7 +18,7 @@ val dummy : Expr.t
 val type0 : Expr.t
 val type1 : Expr.t
 
-val elab : Expr.t -> Expr.t
+val elab : Expr.t -> Expr.t * Expr.t list
 val check : Expr.t -> unit
 
 val add_top : string -> Expr.t -> unit
