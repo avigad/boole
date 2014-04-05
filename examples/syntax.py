@@ -210,5 +210,3 @@ if __name__ == '__main__':
     test1()     # cody's tests
     test2()    # jeremy's tests
 
-    x, y = Real('x y')
-    new = defexpr('new', x*x + 2*y == 3)

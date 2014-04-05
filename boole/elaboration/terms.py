@@ -491,8 +491,6 @@ def fold_over(base_op, var, tm, **kwargs):
         return base_op(var, tm, **kwargs)
 
 
-#TODO: this should be st_typ, but arrows are not printed
-#correctly at the type level.
 @with_info(st_term)
 def pi_base(var, codom, **kwargs):
     return elab_tools.pi(var, codom, **kwargs)

@@ -517,8 +517,6 @@ class instance(Tactic):
                 raise TacticFailure(mess, self, goals)
 
 
-#TODO: succeed if only "complicated" goals remain, without
-# uninstantiated Mvars.
 class Instances(Tactic):
     """Recusively tries to apply every instance in the context,
     and fails if none solve the goal.

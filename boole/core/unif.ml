@@ -85,7 +85,6 @@ let rec fo_step red t1 t2 s =
           else
             add_subst a t_sub s
     | Const(Local, a1, _), Const(Local, a2, _)
-    (*TODO: should we check level coherence here? *)
     | TopLevel(a1, _, _), TopLevel(a2, _, _) ->
         if a1 = a2 then s else raise UFail
     | App(t1, u1), App(t2, u2) ->
@@ -124,13 +123,10 @@ let rec fo_unif i csts s =
 
 let elab unif info t =
   let cst = make_type_constr t in
-  (* Printf.printf "\n\nconstraints for %a:\n%a\n\n" Expr.print_term t Elab.print_cstrs cst; *)
   let s = unif info cst empty_subst in
   let t_sub = mvar_subst s t in
   let m_t_sub = Expr.get_mvars t_sub in
   if m_t_sub = [] then
-    (* Printf.printf "\n\nfound substitution:\n%a\n\n" 
-       print_subst s; *)
     t_sub
   else
     raise (MvarNoVal (t_sub, m_t_sub))
@@ -143,7 +139,6 @@ let destruct t1 t2 =
     | _, Const(Mvar, _, _) ->
         assert false
     | Const(Local, a1, _), Const(Local, a2, _)
-    (*TODO: should we check level coherence here? *)
     | TopLevel(a1, _, _), TopLevel(a2, _, _) ->
         if a1 = a2 then [] else raise UFail
     | App(t1, u1), App(t2, u2) ->
@@ -177,9 +172,8 @@ let rigid_rigid hints t1 t2 s =
     apply_hint hints s (Eq (t1, t2))
 
 
-(*TODO: explain this function *)
-(* (note: this is the imitation part of Huet's 
-   higher order unification algorithm) *)
+(* This is the imitation part of Huet's 
+   higher order unification algorithm *)
 let imitate mvar args_m hd args s =
   let rec args_vars args tpe = 
     match args with
@@ -200,7 +194,6 @@ let imitate mvar args_m hd args s =
   in
   let args_vars = args_vars args_m (Elab.type_raw mvar) in
   let rec body tm args cstrs =
-    (* Printf.printf "\n\n args = %a \n\n" print_term_list args; *)
     match List.rev args with
       | [] -> (tm, cstrs)
       | u::us ->
@@ -214,12 +207,11 @@ let imitate mvar args_m hd args s =
   in
   let body, constr = body hd args [] in
   let body = make_abst args_vars body in
-  (* Printf.printf "\n\n body = %a \n\n" print_term body; *)
-  (* Printf.printf "\n\n cstrs = %a \n\n" print_cstrs constr; *)
 
   let s = add_subst (Expr.name_of mvar) body s in
   s, constr
 
+(* This is the projection part from Huet's algorithm *)
 let project conv mvar arg_m rhs s =
   let ty_m = Elab.type_raw mvar in
   let rhs_ty = Elab.type_raw rhs in
@@ -247,7 +239,6 @@ let project conv mvar arg_m rhs s =
   List.map (
     fun (x, t) ->
       let p_x = make_abst args x in
-      (* Printf.printf "\n\n proj = %a \n\n" print_term p_x; *)
       let s = add_subst (Expr.name_of mvar) p_x s in
       s, [Eq (t, rhs)]
   ) proj
@@ -271,7 +262,6 @@ let rec ho_step info t1 t2 s =
                   raise UFail
                 else
                   let r = mvar_subst s t2 in
-                  (* TODO: make this parametric in conv *)
                   flex_rigid info.conv hd1 args1 r s
           with Invalid_argument _ ->
           raise UFail
@@ -289,7 +279,6 @@ let rec try_branch branches unif c cs =
         with UFail ->
           try_branch bs unif c cs
 
-(*TODO: apply substitution first *)
 let is_trivial info c s =
   match c with
     | Eq (t1, t2) -> 
@@ -303,10 +292,8 @@ let rec ho_unif info constr s =
     match constr with
       | [] -> s
       | c::cs ->
-          (*TODO: optimize: head normal form is computed many times *)
           if is_trivial info c s then ho_unif info cs s
             else begin
-              (* Printf.printf "\n\nconstraints:\n%a\n\n" Elab.print_cstrs constr; *)
               match c with
                 | Eq (t1, t2) ->
                     begin match ho_step info t1 t2 s
