@@ -29,8 +29,10 @@
 from boole.elaboration.terms import *
 import boole.core.typing as ty
 import boole.core.tactics as tac
-from boole.core.expr import open_bound_fresh_consts
+import boole.core.conv as conv
+from boole.core.expr import open_bound_fresh_consts, Bound, Forall, abstract_expr
 import boole.config
+
 
 import pipes
 import tempfile
@@ -38,11 +40,11 @@ import tempfile
 #
 # You must set this to your LADR bin path.
 #
-# Q: Is there a global `settings' module for Boole we can use to store
-# this sort of thing?
-#
+
 
 ladr_bin_path = boole.config.ladr_bin
+
+default_timeout = 15
 
 from fractions import Fraction
 
@@ -52,20 +54,64 @@ from fractions import Fraction
 #
 ################################################################################
 
-def prover9(p):
+def ladr(name, p):
     """Append a call to prover9 on the bash template p
     
     Arguments:
     - `p`: a pipe template
     """
-    p.append(ladr_bin_path + "prover9", "--")
+    p.append(ladr_bin_path + name, "--")
+
+###############################################################################
+#
+# Utility for sending a goal to prover9
+#
+###############################################################################
 
 
-################################################################################
+def prover9_tac_fun(unfold, timeout):
+    def aux_fun(goal, context, _):
+        New_S = LADR_Solver()
+        #TODO: this is an abominable hack!
+        g = goal.prop
+        for i, v in reversed(list(enumerate(goal.tele.vars))):
+            g = Bound(Forall(v), goal.tele.types[i], abstract_expr([v], g))
+        b = New_S.prove("prover9 -t{0!s}".format(timeout), g, context, unfold)
+        if b:
+            return []
+        else:
+            return [goal]
+    return aux_fun
+
+
+def prover9_tac(unfold=None, timeout=default_timeout):
+    return tac.tac_from_fun("prover9", prover9_tac_fun(unfold, timeout))
+
+
+def mace4_tac_fun(unfold, timeout, size):
+    def aux_fun(goal, context, _):
+        New_S = LADR_Solver()
+        #TODO: this is an abominable hack!
+        g = goal.prop
+        for i, v in reversed(list(enumerate(goal.tele.vars))):
+            g = Bound(Forall(v), goal.tele.types[i], abstract_expr([v], g))
+        b = New_S.prove("mace4 -t{0!s} -n{1!s}".format(timeout, size), g, context, unfold)
+        if b:
+            return []
+        else:
+            return [goal]
+    return aux_fun
+
+
+def mace4_tac(unfold=None, timeout=default_timeout, size=0):
+    return tac.tac_from_fun("mace4", mace4_tac_fun(unfold, timeout, size))
+
+
+###############################################################################
 #
 # Exceptions associated with LADR interface
 #
-################################################################################
+###############################################################################
 
 class LADR_Interface_Error(Exception):
     """Class of all possible type errors
@@ -135,13 +181,17 @@ class Boole_to_LADR:
 
     def ladr_fun_name(self, f, predicate=False):
         s = f.name
+        # print "\n\n" + s
         if predicate:
+            # print "is a predicate! \n\n"
             if s[0].isupper():
                 return s
             else:
                 return 'P' + s
         else:
             if s[0].islower():
+                return s
+            elif f.info.infix:
                 return s
             else:
                 return 'f' + s
@@ -163,7 +213,7 @@ class Boole_to_LADR:
             return self.closure_preds[fun.name]
         else:
             etype, _ = ty.infer(fun)
-            codom, doms = root_pi(etype)
+            codom, doms = root_pi_implicit(etype)
             # We state that the output of the function satisfies the
             # codomain predicate.
             codom_pred = self.ladr_sort_pred(codom)
@@ -175,7 +225,12 @@ class Boole_to_LADR:
             vs = ", ".join(v_block)
             q_close = ')'*d_n
             f = self.ladr_fun_name(fun)
-            s = q_open + codom_pred + '(' + f + '(' + vs + '))' + q_close
+            if len(vs) == 0:
+                s = q_open + codom_pred + '(' + f + ')' + q_close
+            elif fun.info.infix and len(vs) == 2:
+                s = q_open + codom_pred + '(' + vs[0] + f + vs[1] + ')' + q_close
+            else:
+                s = q_open + codom_pred + '(' + f + '(' + vs + '))' + q_close
             print "\n--\nClosure axiom for function: \n\n" + s + "\n--"
             self.closure_preds[fun.name] = s
             return s
@@ -194,14 +249,29 @@ class Boole_to_LADR:
             # an LADR function symbol
             etype, _ = ty.infer(fun)
             if self.is_predicate(etype):
-                ladr_fun = (lambda a: self.ladr_fun_name(fun, predicate=True) \
-                            + "(" + ",".join(a) + ")")
+                def fun_app(a):
+                    f = self.ladr_fun_name(fun, predicate=True)
+                    if len(a) == 0:
+                        return f
+                    elif fun.info.infix and len(a) == 2:
+                        return '(' + a[0] + f + a[1] + ')'
+                    else:
+                        args = ",".join(a)
+                        return f + "(" + args + ")"
+                ladr_fun = fun_app
             else:
                 # We must make sure to construct a `closure' statement
                 # for this function w.r.t. its domain (represented as
                 # an LADR predicate).
                 self.ensure_fun_closure(fun)
-                ladr_fun = (lambda a: self.ladr_fun_name(fun) + "(" + ",".join(a) + ")")
+                def fun_app_f(a):
+                    f = self.ladr_fun_name(fun, predicate=False)
+                    if len(a) == 0:
+                        return f
+                    else:
+                        args = ",".join(a)
+                        return f + "(" + args + ")"
+                ladr_fun = fun_app_f
             return ladr_fun(args)
 
     # Given a Boole type, give an LADR predicate symbol string
@@ -306,33 +376,42 @@ class LADR_Solver():
     def reset(self):
         self.boole_to_ladr.reset()
 
-    def mk_ladr_goal(self, f):
-        g = self.boole_to_ladr(f)
-        n = self.boole_to_ladr.sorts_nonempty_fml()
-        c = self.boole_to_ladr.funs_closure_fml()
-        if len(n) > 0 and len(c) > 0:
-            encoding_prefix = '(' + n + ' & ' + c + ')' + ' -> '
-        elif len(n) > 0:
-            encoding_prefix = '(' + n + ')' + ' -> '
-        elif len(c) > 0:
-            encoding_prefix = '(' + c + ')' + ' -> '
-        else:
-            encoding_prefix = ''
-        s = "formulas(goals).\n" + encoding_prefix + g + ".\nend_of_list."
+    def mk_ladr_hyps(self, ctxt, unfold):
+        hs = ctxt.to_list('hyps')
+        if not (unfold is None):
+            hs = map(lambda h: conv.unfold_norm(unfold, h, ctxt), hs)
+        hs = map(lambda h: self.boole_to_ladr(h), hs)
+        s = "formulas(sos).\n\n"
+        for h in hs:
+            s += h + ".\n"
+        non_empty = self.boole_to_ladr.sorts_nonempty_fml()
+        closure = self.boole_to_ladr.funs_closure_fml()
+        s += non_empty + ".\n"
+        s += closure + ".\n"
+        s += "\nend_of_list.\n\n"
         return s
 
-    def prove(self, f):
+    def mk_ladr_goal(self, f, ctxt, unfold):
+        if not (unfold is None):
+            f = conv.unfold_norm(unfold, f, ctxt)
+        f = self.boole_to_ladr(f)
+        s = "formulas(goals).\n" + f + ".\nend_of_list."
+        return s
+
+    def prove(self, solver, f, ctxt, unfold):
         self.reset() # We currently hold no context between prover calls
-        s = self.mk_ladr_goal(f)
-        print "\n--\nFinal LADR input formula:\n\n" + s + "\n--"
+        hyps = self.mk_ladr_hyps(ctxt, unfold)
+        goal = self.mk_ladr_goal(f, ctxt, unfold)
+        output = hyps + goal
+        print "\n--\nFinal LADR input formula:\n\n" + output + "\n--"
         p = pipes.Template()
-        prover9(p)
+        ladr(solver, p)
         #p.append(ladr_bin_path + "interpformat portable", "--")
         p.debug(False)
         t = tempfile.NamedTemporaryFile(mode='r')
         f = p.open(t.name, 'w')
         try:
-            f.write(s)
+            f.write(output)
         finally:
             f.close()
             t.seek(0)
@@ -340,13 +419,15 @@ class LADR_Solver():
             if True:
                 print "Prover output:\n", ms_str
                 t.close()
+            #TODO: make this more robust!
             return ("============================== PROOF =================================" in ms_str)
 
-################################################################################
+
+###############################################################################
 #
 # Using Mace4 models as groups in Sage.
-#
-################################################################################
+#a
+###############################################################################
 
 #
 # Given a group model, construct a permutation group from it (Cayley's Theorem).
@@ -423,7 +504,7 @@ if __name__ == '__main__':
 
     G = deftype('G')
     x,y,z = G('x y z')
-    e = G('e')
+    u = G('u')
     p = Bool('p')
     q = Bool('q')
     i = (G >> G)('i')
@@ -433,21 +514,26 @@ if __name__ == '__main__':
     T = Boole_to_LADR()
     S = LADR_Solver()
 
-    print "--\nSome FOL fun:\n"
-    S.prove(implies(And(p, q), And(q, q)))
-    S.prove(Or(p, Not(p)))
-    S.prove(implies(forall([x], P(x)), exists([x], P(x))))
-    S.prove(implies(forall([x], P(x)), forall([y], P(y))))
+    current_ctxt().show()
 
-    print "--\n A little group theory:\n"
+    # T(current_ctxt().hyps['unit_l'])
 
-    goal = (implies(And(forall([x], f(x, i(x)) == e),
-                        forall([x,y,z], f(x, f(y, z)) == f(f(x, y), z)),
-                        forall([x], f(x, e) == x),
-                        forall([x], f(x, x) == e)),
-                    forall([x,y], f(x,y) == f(y,x))))
+    # print "--\nSome FOL fun:\n"
+    S.prove("prover9", implies(And(p, q), And(q, q)), current_ctxt(), None)
+    S.prove("prover9", Or(p, Not(p)), current_ctxt(), None)
+    S.prove("prover9", implies(forall([x], P(x)), exists([x], P(x))), current_ctxt(), None)
+    S.prove("prover9", implies(forall([x], P(x)), forall([y], P(y))), current_ctxt(), None)
 
-    print "--\nGoal:\n\n" + str(goal) + "\n--"
 
-    print "Attempting proof..."
-    S.prove(goal)
+    # print "--\n A little group theory:\n"
+
+    # goal = (implies(And(forall([x], f(x, i(x)) == u),
+    #                     forall([x,y,z], f(x, f(y, z)) == f(f(x, y), z)),
+    #                     forall([x], f(x, u) == x),
+    #                     forall([x], f(x, x) == u)),
+    #                 forall([x,y], f(x,y) == f(y,x))))
+
+    # print "--\nGoal:\n\n" + str(goal) + "\n--"
+
+    # print "Attempting proof..."
+    # S.prove("prover9", goal, current_ctxt(), None)

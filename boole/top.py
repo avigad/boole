@@ -13,8 +13,8 @@
 
 from boole import *
 from boole.core.expr import Mvar
-from boole.elab.terms import const, elaborate, mvar_infer, sub_mvar
-from boole.elab.config import push_ctxt, set_current_ctxt, current_ctxt
+from boole.elaboration.terms import const, elaborate, mvar_infer, sub_mvar
+from boole.elaboration.config import push_ctxt, set_current_ctxt, current_ctxt
 
 
 if __name__ == '__main__':

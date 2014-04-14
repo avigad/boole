@@ -800,7 +800,7 @@ class Tele(Expr):
         
         Arguments:
         - `vars`: the names of the variable associated to each expression.
-        - `exprs`: a list of types. Each type binds a variable of
+        - `types`: a list of types. Each type binds a variable of
         the previous type.
         """
         Expr.__init__(self)

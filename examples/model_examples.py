@@ -7,9 +7,9 @@
 #
 ################################################################################
 
-from boole.elab.prelude import *
+from boole.elaboration.prelude import *
 from boole.semantics.value import *
-from boole.elab.terms import ii, rr
+from boole.elaboration.terms import ii, rr
         
 ################################################################################
 #

@@ -163,6 +163,17 @@ def unfold(names, exp, context):
         exprs.append(e)
     return sub_in(exprs, names, exp)
 
+def unfold_norm(names, exp, context):
+    """As above, but beta-normalize the result.
+    
+    Arguments:
+    - `names`:
+    - `exp`:
+    - `context`:
+    """
+    return beta_norm(unfold(names, exp, context))
+
+
 
 def unfold_once(exp, context):
     """Unfolds ALL defined constants in an expression,

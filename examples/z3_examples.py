@@ -154,11 +154,11 @@ def test5():
     
 if __name__ == '__main__':
 
-    # print '******'
-    # print 'Test0:'
-    # print '******'
-    # test0()
-    # print
+    print '******'
+    print 'Test0:'
+    print '******'
+    test0()
+    print
     
     # print '******'
     # print 'Test1:'

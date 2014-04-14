@@ -18,11 +18,11 @@ import boole.semantics.value as v
 from terms import pi, abst, forall, exists, sig, cast, pair,\
      And, Or, Not, implies, eq, true, false, triv,\
      Bool, Type, Real, Int,\
-     power, mod, add, mul, div, minus, uminus, lt, le,\
+     power, mod, add, mul, div, minus, uminus, lt, le, one,\
      deftype, defvar, defconst, defexpr, defhyp, elab, check,\
      defthm, defsub, defclass, definstance, defenum,\
-     Add, Mul, Minus, Div, Uminus, Abs, Lt, Le,\
-     current_ctxt, get_def
+     Add, Mul, Minus, Div, Uminus, Abs, Lt, Le, One,\
+     current_ctxt, push_ctxt, get_def
 
 from config import set_verbose, set_implicit
 
