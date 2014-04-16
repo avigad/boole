@@ -29,12 +29,16 @@ type binder = Pi | Abst | Sig
 
 type proj = Fst | Snd
 
+type info = {implicit : bool; cast : bool}
+
+val default_info : info
+
 type t = 
     Type of level
   | TopLevel of name * toplevel * level list
   | Const of cst * name * t
   | DB of int 
-  | Bound of binder * name * t * t 
+  | Bound of info * binder * name * t * t 
   | App of t * t
   | Pair of name * t * t * t
   | Proj of proj * t

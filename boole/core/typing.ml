@@ -48,7 +48,7 @@ let rec type_raw (conv : Conv.conv) t =
        local variables should checked at creation *)
     | Const (_, _, ty) -> ty
     | DB _ -> assert false
-    | Bound (b, v, ty, tm) ->
+    | Bound (i, b, v, ty, tm) ->
       let ty_ty = type_raw conv ty in
       let vname, open_tm = open_t v ty tm in
       let tm_ty = type_raw conv open_tm in
@@ -68,17 +68,17 @@ let rec type_raw (conv : Conv.conv) t =
         | Abst -> 
           (* Check to see if t2 is well-kinded *)
           let _ = type_raw conv tm_ty in
-          Bound(Pi, v, ty, abst vname tm_ty)
+          Bound(i, Pi, v, ty, abst vname tm_ty)
       end
     | App (t1, t2) ->
       let t1_ty = type_raw conv t1 in
       let t2_ty = type_raw conv t2 in
       begin
         match t1_ty with
-          | Bound (Pi, _, ty_arg, ty_body) 
+          | Bound (_, Pi, _, ty_arg, ty_body) 
               when Conv.check_conv conv t2_ty ty_arg ->
             subst t2 ty_body
-          | Bound (Pi, _, ty_arg, _) ->
+          | Bound (_, Pi, _, ty_arg, _) ->
             raise (TypeError (t2, t2_ty, ty_arg))
           | _ -> raise (NotAPi (t1, t1_ty))
       end
@@ -89,19 +89,19 @@ let rec type_raw (conv : Conv.conv) t =
       if Conv.check_conv conv t2_ty ty_sub_t1 then
         let _, ty = open_t a t1_ty ty in
         let _ = type_raw conv ty in
-        Bound (Sig, a, t1_ty, ty)
+        Bound (default_info, Sig, a, t1_ty, ty)
       else
         raise (TypeError (t2, t2_ty, ty_sub_t1))
     | Proj (Fst, t) ->
       let t_ty = type_raw conv t in
       begin match t_ty with
-        | Bound (Pi, _, ty_arg, _) -> ty_arg
+        | Bound (_, Sig, _, ty_arg, _) -> ty_arg
         | _ -> raise (NotASig (t, t_ty))
       end
     | Proj (Snd, t) ->
       let t_ty = type_raw conv t in
       begin match t_ty with
-        | Bound (Pi, _, _, ty_body) ->
+        | Bound (_, Sig, _, _, ty_body) ->
           let fst_t = Proj (Fst, t) in
           subst fst_t ty_body
         | _ -> raise (NotASig (t, t_ty))

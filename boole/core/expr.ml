@@ -54,12 +54,16 @@ type binder = Pi | Abst | Sig
 
 type proj = Fst | Snd
 
+type info = {implicit : bool; cast : bool}
+
+let default_info = {implicit = false; cast = false}
+
 type t = 
     Type of level
   | TopLevel of name * toplevel * level list
   | Const of cst * name * t
   | DB of int 
-  | Bound of binder * name * t * t 
+  | Bound of info * binder * name * t * t 
   | App of t * t
   | Pair of name * t * t * t
   | Proj of proj * t
@@ -73,10 +77,10 @@ let rec abst_n v t n =
     | TopLevel _ -> t
     | Const (Local, a, _) when a = v -> DB n
     | Const (Local, _, _) | Const (Mvar, _, _) -> t
-    | Bound (binder, a, ty, tm) -> 
+    | Bound (i, binder, a, ty, tm) -> 
       let ty_abst = abst_n v ty n in
       let tm_abst = abst_n v tm (n+1) in
-      Bound (binder, a, ty_abst, tm_abst)
+      Bound (i, binder, a, ty_abst, tm_abst)
     | App (t1, t2) -> App (abst_n v t1 n, abst_n v t2 n)
     | Pair (a, ty, t1, t2) ->
       let ty_abst = abst_n v ty (n+1) in
@@ -94,10 +98,10 @@ let rec subst_n u t n =
     | TopLevel _ -> t
     | DB i when i = n -> u
     | DB i -> DB i
-    | Bound (binder, a, ty, tm) ->
+    | Bound (i, binder, a, ty, tm) ->
       let ty_sub = subst_n u ty n in
       let tm_sub = subst_n u tm (n+1) in
-      Bound (binder, a, ty_sub, tm_sub)
+      Bound (i, binder, a, ty_sub, tm_sub)
     | App (t1, t2) -> App (subst_n u t1 n, subst_n u t2 n)
     | Pair (a, ty, t1, t2) ->
       let ty_sub = subst_n u ty (n+1) in
@@ -130,7 +134,7 @@ let rec compare t1 t2 =
     | DB n, DB m -> Pervasives.compare n m
     | DB _, Const _ | DB _, Type _ | DB _, TopLevel _ -> 1
     | DB _, _ -> -1
-    | Bound (b1, _, ty1, t1), Bound(b2, _, ty2, t2) ->
+    | Bound (_, b1, _, ty1, t1), Bound(_, b2, _, ty2, t2) ->
       let c = Pervasives.compare b1 b2 in
       if c = 0 then
         let c_ty = compare ty1 ty2 in
@@ -179,10 +183,10 @@ let rec subst_l v l t =
     | Type m ->
       let m_s = subst_level v l m in
       Type m_s
-    | Bound(b, a, ty, body) ->
+    | Bound(i, b, a, ty, body) ->
       let ty_s = subst_l v l ty in
       let body_s = subst_l v l body in
-      Bound(b, a , ty_s, body_s)
+      Bound(i, b, a , ty_s, body_s)
     | App(t1, t2) ->
       let t1_s = subst_l v l t1 in
       let t2_s = subst_l v l t2 in
@@ -234,7 +238,7 @@ let rec free_vars t =
     | Type _ | DB _ | TopLevel _ -> []
     | Const(Local, a, t) -> a::free_vars t
     | Const _ -> []
-    | Bound (_, _, t1, t2) -> (free_vars t1) @ (free_vars t2)
+    | Bound (_, _, _, t1, t2) -> (free_vars t1) @ (free_vars t2)
     | App (t1, t2) -> (free_vars t1) @ (free_vars t2)
     | Pair(_, ty, t1, t2) ->
       (free_vars ty) @ (free_vars t1) @ (free_vars t2)
@@ -254,7 +258,7 @@ let rec get_mvars t =
     | DB _ | TopLevel _ -> []
     | Const (Mvar, _, ty) -> t::get_mvars ty
     | Const (Local, _, t) -> get_mvars t
-    | Bound (_, _, t1, t2) -> get_mvars t1 @ get_mvars t2
+    | Bound (_, _, _, t1, t2) -> get_mvars t1 @ get_mvars t2
     | App (t1, t2) -> get_mvars t1 @ get_mvars t2
     | Pair(_, ty, t1, t2) ->
       (get_mvars ty) @ (get_mvars t1) @ (get_mvars t2)
@@ -284,7 +288,7 @@ let rec make_bnd b vars t =
         begin match v with
           | Const(Local, a, ty) ->
               let v_t = abst a t in
-              make_bnd b vs (Bound (b, a, ty, v_t))
+              make_bnd b vs (Bound (default_info, b, a, ty, v_t))
           | _ -> invalid_arg "make_bnd"
         end
 
@@ -351,7 +355,7 @@ let rec print_term o t =
     | Const(Local, a, _) -> fprintf o "%s" a
     | Const(Mvar, a, _) -> fprintf o "?%s" a
     | DB i -> fprintf o "DB(%s)" (string_of_int i)
-    | Bound(b, a, ty, tm) ->
+    | Bound(_, b, a, ty, tm) ->
       let tm = subst (Const (Local, a, ty)) tm in
       if not (List.mem a (free_vars tm)) then
         begin

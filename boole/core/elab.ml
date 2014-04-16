@@ -2,16 +2,17 @@
 
 open Expr
 
-type constr = Eq of Expr.t * Expr.t | HasType of Expr.t * Expr.t
-                | IsType of Expr.t
+type constr =   Eq of bool * Expr.t * Expr.t 
+              | HasType of bool * Expr.t * Expr.t
+              | IsType of bool * Expr.t
 
 type constrs = constr list
 
 let print_cstr o c = 
   match c with
-    | Eq (t1, t2) -> Printf.fprintf o "%a ?== %a" print_term t1 print_term t2
-    | HasType (t1, t2) -> Printf.fprintf o "%a ?: %a" print_term t1 print_term t2
-    | IsType t -> Printf.fprintf o "%a ?: Type?" print_term t
+    | Eq (_, t1, t2) -> Printf.fprintf o "%a ?== %a" print_term t1 print_term t2
+    | HasType (_, t1, t2) -> Printf.fprintf o "%a ?: %a" print_term t1 print_term t2
+    | IsType (_, t) -> Printf.fprintf o "%a ?: Type?" print_term t
 
 let print_cstrs o cs =
   let rec print_lst_aux cs =
@@ -41,7 +42,7 @@ let rec type_raw t =
           | _ -> raise (Typing.NotAType(ty, ty_sort))
         end
     | DB _ -> assert false
-    | Bound(b, a, t1, t2) ->
+    | Bound(i, b, a, t1, t2) ->
         let (a_var, t2) = open_t a t1 t2 in
         let t1_ty = type_raw t1 in
         let t2_ty = type_raw t2 in
@@ -57,28 +58,28 @@ let rec type_raw t =
               | Type _, _ -> raise (Typing.NotAType (t2, t2_ty))
               | _, _ -> raise (Typing.NotAType (t1, t1_ty))
           end
-          | Abst -> Bound(Pi, a, t1, abst a_var t2_ty)
+          | Abst -> Bound(i, Pi, a, t1, abst a_var t2_ty)
         end
     | App(t1, t2) ->
         let t1_ty = type_raw t1 in
         begin match t1_ty with
-          | Bound(Pi, _, _, body) -> subst t2 body
+          | Bound(_, Pi, _, _, body) -> subst t2 body
           | _ -> raise (Typing.NotAPi (t1, t1_ty))
         end      
     | Pair (a, ty, t1, _) ->
         let t1_ty = type_raw t1 in
         let _, ty = open_t a t1_ty ty in
-        Bound (Sig, a, t1_ty, ty)
+        Bound (default_info, Sig, a, t1_ty, ty)
     | Proj (Fst, t) ->
         let t_ty = type_raw t in
         begin match t_ty with
-          | Bound (Pi, _, ty_arg, _) -> ty_arg
+          | Bound (_, Sig, _, ty_arg, _) -> ty_arg
           | _ -> raise (Typing.NotASig (t, t_ty))
         end
     | Proj (Snd, t) ->
         let t_ty = type_raw t in
         begin match t_ty with
-          | Bound (Pi, _, _, ty_body) ->
+          | Bound (_, Sig, _, _, ty_body) ->
               let fst_t = Proj (Fst, t) in
               subst fst_t ty_body
           | _ -> raise (Typing.NotASig (t, t_ty))
@@ -98,13 +99,13 @@ let rec type_constr conv t cs =
         let ty_sort, cs' = type_constr conv ty cs in
         begin match ty_sort with
           | Type _ -> 
-              (ty, HasType (t, ty)::cs')
+              (ty, HasType (false, t, ty)::cs')
           | Const(Mvar, _, _) ->
-              (ty, HasType (t, ty)::IsType ty_sort::cs')
+              (ty, HasType (false, t, ty)::IsType (false, ty_sort)::cs')
           | _ -> raise (Typing.NotAType(ty, ty_sort))
         end
     | DB _ -> assert false
-    | Bound(b, a, t1, t2) ->
+    | Bound(i, b, a, t1, t2) ->
         let (a_var, t2) = open_t a t1 t2 in
         let t1_ty, c1 = type_constr conv t1 cs in
         let t2_ty, c2 = type_constr conv t2 c1 in
@@ -125,17 +126,17 @@ let rec type_constr conv t cs =
           end
           | Abst -> 
               let _, cs' = type_constr conv t2_ty c2 in
-              (Bound(Pi, a, t1, abst a_var t2_ty), cs')
+              (Bound(i, Pi, a, t1, abst a_var t2_ty), cs')
         end
     | App(t1, t2) ->
         let t1_ty, c1 = type_constr conv t1 cs in
         let t2_ty, c2 = type_constr conv t2 c1 in
         begin match t1_ty with
-          | Bound(Pi, _, ty, body) 
+          | Bound(_, Pi, _, ty, body) 
               when Conv.check_conv conv t2_ty ty ->
               (subst t2 body, c2)
-          | Bound(Pi, _, ty, body) ->
-              (subst t2 body, Eq (t2_ty, ty)::c2)
+          | Bound(_, Pi, _, ty, body) ->
+              (subst t2 body, Eq (false, t2_ty, ty)::c2)
           | _ -> raise (Typing.NotAPi (t1, t1_ty))
         end      
     | Pair (a, ty, t1, t2) ->
@@ -144,34 +145,83 @@ let rec type_constr conv t cs =
         let t2_ty, c2 = type_constr conv t2 c1 in
         let _, ty = open_t a t1_ty ty in
         let _, c_ty = type_constr conv ty c2 in
-        let out_cstr = Eq (ty_sub_t1, t2_ty)::c_ty in
-        (Bound (Sig, a, t1_ty, ty), out_cstr)
+        let out_cstr = Eq (false, ty_sub_t1, t2_ty)::c_ty in
+        (Bound (default_info, Sig, a, t1_ty, ty), out_cstr)
     | Proj (Fst, t) ->
         let t_ty, c1 = type_constr conv t cs in
         begin match t_ty with
-          | Bound (Pi, _, ty_arg, _) -> 
+          | Bound (_, Sig, _, ty_arg, _) -> 
               (ty_arg, c1)
           | _ -> raise (Typing.NotASig (t, t_ty))
         end
     | Proj (Snd, t) ->
         let t_ty, c1 = type_constr conv t cs in
         begin match t_ty with
-          | Bound (Pi, _, _, ty_body) ->
+          | Bound (_, Sig, _, _, ty_body) ->
               let fst_t = Proj (Fst, t) in
               (subst fst_t ty_body, c1)
           | _ -> raise (Typing.NotASig (t, t_ty))
         end
-          
+
 let make_type_constr t = snd (type_constr Conv.conv t [])
+
+let bound b s ty bod =
+  let x = make_name s in
+  Bound (default_info, b, x, ty, abst x bod)
+
+let pi s ty tm = bound Pi s ty tm
+
+let lambda s ty tm = bound Abst s ty tm
+
+let sigma s ty tm = bound Sig s ty tm
+
+let app t1 t2 = 
+  App (t1, t2)
+
+let fst t = Proj (Fst, t)
+
+let snd t = Proj (Snd, t)
+
+let pair s ty t1 t2 =
+  let x = make_name s in
+  Pair(x, abst x ty, t1, t2)
+
+let type0 = Type Z
+
+let type1 = Type (Suc Z)
+
+let dummy = Type Z
 
 let magic prop =
   let magic_name = Expr.make_name "Boole_magic" in
   Const (Local, magic_name, prop)
 
+let wild = Const(Mvar, make_name "Boole_wild", dummy)
+
+let coerce ty1 ty2 = 
+  let arrow = Bound(default_info, Pi, make_name "_", ty1, ty2) in
+  fresh_mvar (make_name "Coercion_") arrow
+
+let top name ty = TopLevel (make_name name, ([], ty), [])
+
+let eq = 
+  let eq_ty = pi "X" type1 (pi "Y" type1 type0) in
+  top "Eq" eq_ty
+
+let cast_tm = 
+  let x = Const(Local, make_name "X", type1) in
+  let y = Const(Local, make_name "Y", type1) in
+  let eq_x_y = app (app (app (app eq type1) type1) x) y in
+  let cast_ty = pi "X" type1 (pi "Y" type1 (pi "e" eq_x_y (pi "_" x y))) in
+  top "Cast" cast_ty
+
+let cast ty1 ty2 x =
+  app (app (app (app cast_tm ty1) ty2) wild) x
+
 let rec deco t ctxt =
   match t with
     | Const(Mvar, a, _) ->
-        if Expr.string_of_name a = "Boole_wild" then
+        if a = Expr.name_of wild then
           let ty = fresh_mvar (make_name "T") (Type (Suc Z)) in
           let ty_cst = make_pi ctxt ty in
           let m = fresh_mvar (make_name "m") ty_cst in
@@ -184,15 +234,21 @@ let rec deco t ctxt =
     | App (t1, t2) ->
         let t1' = deco t1 ctxt in
         let t2' = deco t2 ctxt in
-        App (t1', t2')
+        begin match type_raw t1' with
+          | Bound({implicit=true; _}, Pi, _, _, _) -> App (App(t1', wild), t2')
+          | Bound({cast=true; _}, Pi, _, dom, _) ->
+              let arg_ty = type_raw t2' in
+              App (t1', cast arg_ty dom t2')
+          | _ ->   App (t1', t2')
+        end
     | Proj (p, t') ->
         Proj (p, deco t' ctxt)
-    | Bound (b, a, ty, tm) ->
+    | Bound (i, b, a, ty, tm) ->
         let ty' = deco ty ctxt in
         let a', open_tm = Expr.open_t a ty' tm in
         let c = Const (Local, a', ty') in
         let tm' = deco open_tm (c::ctxt) in
-        Bound (b, a, ty', abst a' tm')
+        Bound (i, b, a, ty', abst a' tm')
     | Pair (a, ty, t1, t2) ->
         let t1' = deco t1 ctxt in
         let t2' = deco t2 ctxt in

@@ -23,7 +23,7 @@ type conv = Expr.t -> Expr.t -> bool
 
 let hd_beta_step t =
   match t with
-    | App (Bound (Abst, _, _, t1), t2) ->
+    | App (Bound (_, Abst, _, _, t1), t2) ->
       subst t2 t1
     | Proj (Fst, Pair(_, _, t, _)) -> t
     | Proj (Snd, Pair(_, _, _, t)) -> t
@@ -37,7 +37,7 @@ let rec hd_beta_norm t =
   match t with
     | App (t1, t2) ->
         begin match hd_beta_norm t1 with
-          | Bound (Abst, _, _, t1') ->
+          | Bound (_, Abst, _, _, t1') ->
               hd_beta_norm (subst t2 t1')
           | _ -> t
         end
@@ -69,9 +69,9 @@ let rec unfold names m t =
       end
     | TopLevel _
     | Const _ | Type _ | DB _ -> t
-    | Bound (b, a, ty, tm) ->
+    | Bound (i, b, a, ty, tm) ->
       let ty_u, tm_u = unfold names m ty, unfold names m tm in
-      Bound (b, a, ty_u, tm_u)
+      Bound (i, b, a, ty_u, tm_u)
     | App (t1, t2) -> App (unfold names m t1, unfold names m t2)
     | Pair (a, ty, t1, t2) ->
       let ty_u = unfold names m ty in
@@ -84,7 +84,7 @@ let rec beta_eq t1 t2 =
   let h1 = hd_beta_norm t1 in
   let h2 = hd_beta_norm t2 in
   begin match h1, h2 with
-    | Bound(b1, _, ty1, t1), Bound(b2, _, ty2, t2) ->
+    | Bound(_, b1, _, ty1, t1), Bound(_, b2, _, ty2, t2) ->
       (b1 = b2) && (beta_eq ty1 ty2) && (beta_eq t1 t2)
     | Pair(_, ty1, t1, u1), Pair(_, ty2, t2, u2) ->
       (beta_eq ty1 ty2) && (beta_eq t1 t2) && (beta_eq u1 u2)
@@ -108,7 +108,7 @@ let rec conv t1 t2 =
     in
     if args then
       begin match h1, h2 with
-        | Bound(Pi, _, ty1, tm1), Bound(Pi, _, ty2, tm2) ->
+        | Bound(_, Pi, _, ty1, tm1), Bound(_, Pi, _, ty2, tm2) ->
             (beta_eq ty1 ty2) && (conv tm1 tm2)
         | Bound _, Bound _ -> beta_eq h1 h2
         | Type s1, Type s2 -> Expr.level_leq s1 s2 

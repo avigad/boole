@@ -40,11 +40,11 @@ let rec mvar_subst s t =
           mvar_subst s (NMap.find a s)
         else
           Const (Mvar, a, mvar_subst s ty)
-    | Bound (b, a, ty, body) ->
+    | Bound (i, b, a, ty, body) ->
         let a', open_body = Expr.open_t a ty body in
         let subst_ty = mvar_subst s ty in
         let subst_body = mvar_subst s open_body in
-        Bound (b, a, subst_ty, Expr.abst a' subst_body)
+        Bound (i, b, a, subst_ty, Expr.abst a' subst_body)
           
     | App (t1, t2) ->
         App (mvar_subst s t1, mvar_subst s t2)
@@ -63,7 +63,7 @@ let rec occurs x t =
     | Const (Local, _, ty) -> occurs x ty
     | Const (Mvar, a, _) when x = a -> true
     | Const (Mvar, _, ty) -> occurs x ty
-    | Bound (_, _, ty, body) -> occurs x ty || occurs x body
+    | Bound (_, _, _, ty, body) -> occurs x ty || occurs x body
     | App (t1, t2) -> occurs x t1 || occurs x t2
     | Pair (_, ty, t1, t2) ->
         occurs x ty || occurs x t1 || occurs x t2
@@ -90,7 +90,7 @@ let rec fo_step red t1 t2 s =
     | App(t1, u1), App(t2, u2) ->
         let m_t = fo_step red t1 t2 s in
         fo_step red u1 u2 m_t
-    | Bound(b1, a1, ty1, u1), Bound(b2, _, ty2, u2) ->
+    | Bound(_, b1, a1, ty1, u1), Bound(_, b2, _, ty2, u2) ->
         if b1 = b2 then
           let m_ty = fo_step red ty1 ty2 s in
           let _, u1_o = open_t a1 ty1 u1 in
@@ -116,7 +116,7 @@ let rec fo_step red t1 t2 s =
 let rec fo_unif i csts s = 
   match csts with
     | [] -> s
-    | Eq (t1, t2)::cs ->
+    | Eq (_, t1, t2)::cs ->
         let m_t = fo_step i.red t1 t2 s in
         fo_unif i cs m_t
     | _::cs -> fo_unif i cs s
@@ -142,24 +142,24 @@ let destruct t1 t2 =
     | TopLevel(a1, _, _), TopLevel(a2, _, _) ->
         if a1 = a2 then [] else raise UFail
     | App(t1, u1), App(t2, u2) ->
-        [Eq (t1, t2); Eq (u1, u2)]
-    | Bound(b1, a1, ty1, u1), Bound(b2, _, ty2, u2) ->
+        [Eq (false, t1, t2); Eq (false, u1, u2)]
+    | Bound(_, b1, a1, ty1, u1), Bound(_, b2, _, ty2, u2) ->
         if b1 = b2 then
           let _, u1_o = open_t a1 ty1 u1 in
           (* open with the same name, to get alpha equality *)
           let _, u2_o = open_t a1 ty2 u2 in
-          [Eq (ty1, ty2); Eq (u1_o, u2_o)]
+          [Eq (false, ty1, ty2); Eq (false, u1_o, u2_o)]
         else
           raise UFail
     | Proj(p1, u1), Proj(p2, u2) ->
         if p1 = p2
-        then [Eq (u1, u2)]
+        then [Eq (false, u1, u2)]
         else raise UFail
     | Pair(a1, ty1, t1, u1), Pair(_, ty2, t2, u2) ->
         let dummy = Type Z in
         let _, ty1_o = open_t a1 dummy ty1 in
         let _, ty2_o = open_t a1 dummy ty2 in
-        [Eq (ty1_o, ty2_o); Eq (t1, t2); Eq (u1, u2)]
+        [Eq (false, ty1_o, ty2_o); Eq (false, t1, t2); Eq (false, u1, u2)]
     | _ -> raise UFail
 
 
@@ -169,24 +169,24 @@ let rigid_rigid hints t1 t2 s =
   try
     Branch [(s, destruct t1 t2)]
   with UFail  ->
-    apply_hint hints s (Eq (t1, t2))
+    apply_hint hints s (Eq (false, t1, t2))
 
 
 (* This is the imitation part of Huet's 
-   higher order unification algorithm *)
+   higher order unification algoritm *)
 let imitate mvar args_m hd args s =
   let rec args_vars args tpe = 
     match args with
       | [] -> []
       | (Const(Local, a, ty) as c)::ags ->
           begin match tpe with
-            | Bound (Pi, _, _, tm) ->
+            | Bound (_, Pi, _, _, tm) ->
                 let _, tm = Expr.open_t a ty tm in
                 c :: args_vars ags tm
             | _ -> assert false
           end
       | _::ags -> begin match tpe with
-          | Bound (Pi, a, ty, tm) ->
+          | Bound (_, Pi, a, ty, tm) ->
             let b, tm = Expr.open_t a ty tm in
             Const (Local, b, ty) :: (args_vars ags tm)
           | _ -> assert false
@@ -203,7 +203,7 @@ let imitate mvar args_m hd args s =
           let u_mvar = Expr.fresh_mvar (make_name "u_arg") u_ty in
           let u_app = make_app u_mvar args_vars in
           let u_ts = make_app u_mvar args_m in
-          body (App (tm, u_app)) us (Eq (u_ts, u)::cstrs)
+          body (App (tm, u_app)) us (Eq (false, u_ts, u)::cstrs)
   in
   let body, constr = body hd args [] in
   let body = make_abst args_vars body in
@@ -219,7 +219,7 @@ let project conv mvar arg_m rhs s =
     match args with
       | [] -> [], []
       | t::ts -> begin match tpe with
-          | Bound (Pi, a, ty, tm) ->
+          | Bound (_, Pi, a, ty, tm) ->
             let b, tm = Expr.open_t a ty tm in
             let args, proj = args_proj ts tm in
             let args = Const(Local, b, ty) :: args in
@@ -240,7 +240,7 @@ let project conv mvar arg_m rhs s =
     fun (x, t) ->
       let p_x = make_abst args x in
       let s = add_subst (Expr.name_of mvar) p_x s in
-      s, [Eq (t, rhs)]
+      s, [Eq (false, t, rhs)]
   ) proj
 
 let flex_rigid conv mvar args_m r s = 
@@ -281,7 +281,7 @@ let rec try_branch branches unif c cs =
 
 let is_trivial info c s =
   match c with
-    | Eq (t1, t2) -> 
+    | Eq (_, t1, t2) -> 
         let t1_sub, t2_sub = mvar_subst s t1, mvar_subst s t2 in
         Conv.check_conv info.conv t1_sub t2_sub
     | _ -> false  
@@ -295,25 +295,30 @@ let rec ho_unif info constr s =
           if is_trivial info c s then ho_unif info cs s
             else begin
               match c with
-                | Eq (t1, t2) ->
+                | Eq (b, t1, t2) ->
                     begin match ho_step info t1 t2 s
                       with
                         | Branch bs -> 
                             try_branch bs (fun s cs -> ho_unif info cs s) c cs
                         | Postpone ->
-                            (*TODO: this may not terminate! *)
-                            (* Create a flag for previously postponed problems*)
-                            (* ho_unif conv (cs@[Eq (t1, t2)]) s *)
-                            assert false
+                            if not b then
+                              ho_unif info (cs@[Eq (true, t1, t2)]) s
+                            else
+                              raise (UnsolvableConstr constr)
+
                     end
-                | HasType _ ->
+                | HasType (b, t, ty) ->
                     (*TODO: postpone if failure *)
                     begin
                       try
                         match apply_hint info.hints s c with
                           | Branch bs ->
                               try_branch bs (fun s cs -> ho_unif info cs s) c cs
-                          | Postpone -> assert false
+                          | Postpone ->
+                              if not b then
+                                ho_unif info (cs@[HasType(true, t, ty)]) s
+                              else
+                              raise (UnsolvableConstr constr)
                       with UFail -> ho_unif info cs s
                     end
                 | _ -> ho_unif info cs s
@@ -330,13 +335,13 @@ let add_hint t hints =
   fun s c ->
     let br = apply_hint hints s c in
     match c with
-      | HasType (_, ty) ->
+      | HasType (_, _, ty) ->
           let ty_s = mvar_subst s ty in
           let hd_t, _ = get_app t in
           let hd_ty, _ = get_app ty_s in
           if Expr.equal hd_t hd_ty then
             begin
-              append_hint (s, [Eq (t, ty)]) br
+              append_hint (s, [Eq (false, t, ty)]) br
             end
           else
             br

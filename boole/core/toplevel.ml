@@ -25,7 +25,7 @@ let make_var s =
 
 let bound b s ty bod =
   let x = make_name s in
-  Bound (b, x, ty, abst x bod)
+  Bound (default_info, b, x, ty, abst x bod)
 
 let pi s ty tm = bound Pi s ty tm
 
