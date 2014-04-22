@@ -45,42 +45,42 @@ p = Bool('p')
 # print
 
 ## A little real arithmetic for fun!
-push_ctxt('real_arith')
+# push_ctxt('real_arith')
 
-defhyp("x_pos", x > 0.0)
-defhyp("y_pos", y > 0.0)
-defhyp("x_leq_1", x < 1.0)
-defhyp("y_leq_1", y < 1.0)
+# defhyp("x_pos", x > 0.0)
+# defhyp("y_pos", y > 0.0)
+# defhyp("x_leq_1", x < 1.0)
+# defhyp("y_leq_1", y < 1.0)
 
-defthm("arith_geom", x + y > x * y)
+# defthm("arith_geom", x + y > x * y)
 
-goal = current_ctxt().next_goal()
+# goal = current_ctxt().next_goal()
 
-goal.interact(polya_tac)
+# goal.interact(polya_tac)
 
 
-## The Tall, Dark and Handsome puzzle
-Men, (Alec, Bill, Carl, Dave) = \
-    defenum('Men', ('Alec', 'Bill', 'Carl', 'Dave'))
-tall, dark, handsome = (Men >> Int)('tall, dark, handsome')
-ideal = Men('ideal')
-x = Men('x')
+# ## The Tall, Dark and Handsome puzzle
+# Men, (Alec, Bill, Carl, Dave) = \
+#     defenum('Men', ('Alec', 'Bill', 'Carl', 'Dave'))
+# tall, dark, handsome = (Men >> Int)('tall, dark, handsome')
+# ideal = Men('ideal')
+# x = Men('x')
 
-s = Z3_Solver()
-s.add(forall(x, Or(tall(x) == 0, tall(x) == 1)))
-s.add(forall(x, Or(dark(x) == 0, dark(x) == 1)))
-s.add(forall(x, Or(handsome(x) == 0, handsome(x) == 1)))
-s.add(tall(Alec) + tall(Bill) + tall(Carl) + tall(Dave) == 3)
-s.add(dark(Alec) + dark(Bill) + dark(Carl) + dark(Dave) == 2)
-s.add(handsome(Alec) + handsome(Bill) + handsome(Carl) + handsome(Dave) == 1)
-s.add(forall(x, Or(tall(x) == 1, dark(x) == 1, handsome(x) == 1)))
-s.add(dark(Alec) == dark(Dave))   
-s.add(tall(Bill) == tall(Carl))
-s.add(tall(Carl) != tall(Dave))
-s.add(And(tall(ideal) == 1, dark(ideal) == 1, handsome(ideal) == 1))
+# s = Z3_Solver()
+# s.add(forall(x, Or(tall(x) == 0, tall(x) == 1)))
+# s.add(forall(x, Or(dark(x) == 0, dark(x) == 1)))
+# s.add(forall(x, Or(handsome(x) == 0, handsome(x) == 1)))
+# s.add(tall(Alec) + tall(Bill) + tall(Carl) + tall(Dave) == 3)
+# s.add(dark(Alec) + dark(Bill) + dark(Carl) + dark(Dave) == 2)
+# s.add(handsome(Alec) + handsome(Bill) + handsome(Carl) + handsome(Dave) == 1)
+# s.add(forall(x, Or(tall(x) == 1, dark(x) == 1, handsome(x) == 1)))
+# s.add(dark(Alec) == dark(Dave))   
+# s.add(tall(Bill) == tall(Carl))
+# s.add(tall(Carl) != tall(Dave))
+# s.add(And(tall(ideal) == 1, dark(ideal) == 1, handsome(ideal) == 1))
 
-print 'Check:', s.check()
-print 'Model: ', s.z3_model()
+# print 'Check:', s.check()
+# print 'Model: ', s.z3_model()
 
 # ## A classic
 # Person, (Knight, Knave) = defenum('Person', ('Knight', 'Knave'))
