@@ -6,7 +6,6 @@ Check [x : T] T
 Var e : T
 Check \ x : T => T
 Var id : [X : Type] X -> X
-Check id
 Check id _ b
 Check id _ e
 Var U : Type

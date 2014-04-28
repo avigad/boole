@@ -17,6 +17,8 @@ rule token = parse
   | "->"    { ARROW }
   | "Type"  { TYPE }
   | "Bool"  { BOOL }
+  | "~"     { TILDE }
+  | "#"     { POUND }
   | "--"    { comment lexbuf; token lexbuf }
   | ['a'-'z''A'-'Z']+ as ident { IDENT(ident) }
   | '(' { LPAREN }

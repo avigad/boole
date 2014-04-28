@@ -30,6 +30,6 @@ val elab : unif -> unif_info -> Expr.t -> Expr.t
 
 val empty_hints : hints
 
-val add_hint : Expr.t -> hints -> hints
+val add_ty_hint : Expr.t -> hints -> hints
 
 val print_subst : out_channel -> subst -> unit

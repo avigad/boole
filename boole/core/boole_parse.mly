@@ -22,6 +22,8 @@
 %token BOOL
 %token TYPE
 %token WILD
+%token TILDE
+%token POUND
 %start top
 %type <unit> top
 %%
@@ -44,6 +46,10 @@ expr_1 :
        { Toplevel.type1 }
    | LPAREN expr RPAREN
        { $2 }
+   | TILDE LSQ IDENT COLON expr RSQ expr
+       { Toplevel.cpi $3 $5 $7}
+   | POUND LSQ IDENT COLON expr RSQ expr
+       { Toplevel.ipi $3 $5 $7}
    | LSQ IDENT COLON expr RSQ expr
        { Toplevel.pi $2 $4 $6}
    | ABST IDENT COLON expr MAPSTO expr

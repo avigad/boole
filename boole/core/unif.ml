@@ -10,9 +10,11 @@ exception MvarNoVal of Expr.t * Expr.t list
 
 type subst = Expr.t NMap.t
 
-type branch = Branch of (subst * Elab.constrs) list | Postpone
+type branch = (subst * Elab.constrs) list
 
 type hints = subst -> Elab.constr -> branch
+
+type branch_fail = Branch of branch | Postpone
 
 type unif_info = {red : Conv.reduction; conv : Conv.conv; hints : hints}
 
@@ -123,6 +125,7 @@ let rec fo_unif i csts s =
 
 let elab unif info t =
   let cst = make_type_constr t in
+  (* Printf.printf "constraints: %a\n" print_cstrs cst; *)
   let s = unif info cst empty_subst in
   let t_sub = mvar_subst s t in
   let m_t_sub = Expr.get_mvars t_sub in
@@ -163,13 +166,16 @@ let destruct t1 t2 =
     | _ -> raise UFail
 
 
-let apply_hint hints c = hints c
+let apply_hint hints s c = 
+  match hints s c with
+    | [] -> Postpone
+    | l -> Branch l
 
-let rigid_rigid hints t1 t2 s =
+let rigid_rigid info t1 t2 s =
   try
     Branch [(s, destruct t1 t2)]
   with UFail  ->
-    apply_hint hints s (Eq (false, t1, t2))
+    apply_hint info.hints s (Eq (false, t1, t2))
 
 
 (* This is the imitation part of Huet's 
@@ -249,7 +255,7 @@ let flex_rigid conv mvar args_m r s =
   let proj = project conv mvar args_m r s in
   Branch (imit::proj)
 
-let rec ho_step info t1 t2 s =
+let rec eq_step info t1 t2 s =
   let t1, t2 = Conv.reduce info.red t1, Conv.reduce info.red t2 in
   let hd1, args1 = Expr.get_app t1 in
   let hd2, _ = Expr.get_app t2 in
@@ -257,7 +263,7 @@ let rec ho_step info t1 t2 s =
     | Const(Mvar, a, _), _ -> 
         begin try
                 if in_dom a s then
-                  ho_step info (mvar_subst s t1) t2 s
+                  eq_step info (mvar_subst s t1) t2 s
                 else if occurs_rigid a t2 then
                   raise UFail
                 else
@@ -266,8 +272,8 @@ let rec ho_step info t1 t2 s =
           with Invalid_argument _ ->
           raise UFail
         end
-    | _, Const (Mvar, _, _) -> ho_step info t2 t1 s
-    | _ -> rigid_rigid info.hints t1 t2 s
+    | _, Const (Mvar, _, _) -> eq_step info t2 t1 s
+    | _ -> rigid_rigid info t1 t2 s
 
 
 let rec try_branch branches unif c cs =
@@ -282,10 +288,37 @@ let rec try_branch branches unif c cs =
 let is_trivial info c s =
   match c with
     | Eq (_, t1, t2) -> 
-        let t1_sub, t2_sub = mvar_subst s t1, mvar_subst s t2 in
-        Conv.check_conv info.conv t1_sub t2_sub
+        let t1_s, t2_s = mvar_subst s t1, mvar_subst s t2 in
+        Conv.check_conv info.conv t1_s t2_s
+    | HasType (_, t, ty) ->
+        let t_s, ty_s = mvar_subst s t, mvar_subst s ty in
+        let t_ty = Elab.type_raw t_s in
+        Conv.check_conv info.conv t_ty ty_s
     | _ -> false  
 
+
+let ty_step _ _ _ _ (* info *) (* t *) (* ty *) (* s *) =
+  raise UFail
+
+let ho_step info c s =
+  try
+    match c with
+      | Eq (_, t1, t2) -> eq_step info t1 t2 s
+      | HasType (_, t, ty) -> ty_step info t ty s
+      | _ -> raise UFail
+  with UFail -> apply_hint info.hints s c
+
+let is_postponed c =
+  match c with
+    | Eq (b, _, _) -> b
+    | HasType (b, _, _) -> b
+    | IsType (b, _) -> b
+
+let set_postponed c =
+  match c with
+    | Eq (_, t1, t2) -> Eq (true, t1, t2)
+    | HasType (_, t, ty) -> HasType (true, t, ty)
+    | IsType (_, t) -> IsType (true, t)
 
 let rec ho_unif info constr s =
   try
@@ -294,57 +327,34 @@ let rec ho_unif info constr s =
       | c::cs ->
           if is_trivial info c s then ho_unif info cs s
             else begin
-              match c with
-                | Eq (b, t1, t2) ->
-                    begin match ho_step info t1 t2 s
-                      with
-                        | Branch bs -> 
-                            try_branch bs (fun s cs -> ho_unif info cs s) c cs
-                        | Postpone ->
-                            if not b then
-                              ho_unif info (cs@[Eq (true, t1, t2)]) s
-                            else
-                              raise (UnsolvableConstr constr)
-
-                    end
-                | HasType (b, t, ty) ->
-                    (*TODO: postpone if failure *)
-                    begin
-                      try
-                        match apply_hint info.hints s c with
-                          | Branch bs ->
-                              try_branch bs (fun s cs -> ho_unif info cs s) c cs
-                          | Postpone ->
-                              if not b then
-                                ho_unif info (cs@[HasType(true, t, ty)]) s
-                              else
-                              raise (UnsolvableConstr constr)
-                      with UFail -> ho_unif info cs s
-                    end
-                | _ -> ho_unif info cs s
+              match ho_step info c s with
+                | Branch bs ->
+                    try_branch bs (fun s cs -> ho_unif info cs s) c cs
+                | Postpone ->
+                    if not (is_postponed c) then
+                      let c' = set_postponed c in
+                      ho_unif info (cs@[c']) s
+                    else
+                      raise (UnsolvableConstr constr)
             end
   with
       UFail -> raise (UnsolvableConstr constr)
 
-let append_hint c br =
-  match br with
-    | Branch bs -> Branch (c::bs)
-    | Postpone -> Branch [c]
 
-let add_hint t hints =
+let add_ty_hint t hints =
   fun s c ->
-    let br = apply_hint hints s c in
+    let br = hints s c in
     match c with
       | HasType (_, _, ty) ->
           let ty_s = mvar_subst s ty in
           let hd_t, _ = get_app t in
           let hd_ty, _ = get_app ty_s in
           if Expr.equal hd_t hd_ty then
-            begin
-              append_hint (s, [Eq (false, t, ty)]) br
-            end
+            (s, [Eq (false, t, ty)])::br
           else
             br
       | _ -> br
 
-let empty_hints _ _ = Branch []
+(* let add_eq_hint t1 t2 hints = assert false *)
+
+let empty_hints _ _ = []

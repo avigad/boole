@@ -196,7 +196,11 @@ let magic prop =
   let magic_name = Expr.make_name "Boole_magic" in
   Const (Local, magic_name, prop)
 
-let wild = Const(Mvar, make_name "Boole_wild", dummy)
+let wild ctxt = 
+    let ty = fresh_mvar (make_name "T") (Type (Suc Z)) in
+    let ty_cst = make_pi ctxt ty in
+    let m = fresh_mvar (make_name "m") ty_cst in
+    make_app m (List.rev ctxt)
 
 let coerce ty1 ty2 = 
   let arrow = Bound(default_info, Pi, make_name "_", ty1, ty2) in
@@ -215,30 +219,35 @@ let cast_tm =
   let cast_ty = pi "X" type1 (pi "Y" type1 (pi "e" eq_x_y (pi "_" x y))) in
   top "Cast" cast_ty
 
-let cast ty1 ty2 x =
-  app (app (app (app cast_tm ty1) ty2) wild) x
+let cast ty1 ty2 x ctxt =
+  app (app (app (app cast_tm ty1) ty2) (wild ctxt)) x
+
+
+let deco_mvar a ctxt =
+  if string_of_name a = "Boole_wild" then
+    wild ctxt
+  else
+    assert false
+
+let rec deco_cst t ctxt = 
+  match type_raw t with
+    | Bound({implicit=true; _}, Pi, _, _, _) -> deco_cst (App (t, wild ctxt)) ctxt
+    | _ -> t
+
 
 let rec deco t ctxt =
   match t with
-    | Const(Mvar, a, _) ->
-        if a = Expr.name_of wild then
-          let ty = fresh_mvar (make_name "T") (Type (Suc Z)) in
-          let ty_cst = make_pi ctxt ty in
-          let m = fresh_mvar (make_name "m") ty_cst in
-          make_app m (List.rev ctxt)
-        else
-          assert false
-    | Const _ | TopLevel _ | Type _ ->
-        t
+    | Const(Mvar, a, _) -> deco_mvar a ctxt
+    | Const _ | TopLevel _ | Type _ -> deco_cst t ctxt
     | DB _ -> assert false
     | App (t1, t2) ->
         let t1' = deco t1 ctxt in
         let t2' = deco t2 ctxt in
         begin match type_raw t1' with
-          | Bound({implicit=true; _}, Pi, _, _, _) -> App (App(t1', wild), t2')
+          | Bound({implicit=true; _}, Pi, _, _, _) -> App (App(t1', wild ctxt), t2')
           | Bound({cast=true; _}, Pi, _, dom, _) ->
               let arg_ty = type_raw t2' in
-              App (t1', cast arg_ty dom t2')
+              App (t1', cast arg_ty dom t2' ctxt)
           | _ ->   App (t1', t2')
         end
     | Proj (p, t') ->

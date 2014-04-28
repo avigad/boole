@@ -48,7 +48,7 @@ let get_decl a ctxt =
 
 let add_hint h ctxt =
   {ctxt with
-    hints = Unif.add_hint h ctxt.hints}
+    hints = Unif.add_ty_hint h ctxt.hints}
 
 let add_goal a g ctxt =
   {ctxt with

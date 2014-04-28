@@ -22,12 +22,17 @@ let make_var s =
   with Not_found -> 
     Const(Local, x, dummy)
 
-
-let bound b s ty bod =
+let ibound i b s ty bod =
   let x = make_name s in
-  Bound (default_info, b, x, ty, abst x bod)
+  Bound (i, b, x, ty, abst x bod)
+
+let bound b s ty bod = ibound default_info b s ty bod
 
 let pi s ty tm = bound Pi s ty tm
+
+let ipi s ty tm = ibound {implicit = true; cast = false} Pi s ty tm
+
+let cpi s ty tm = ibound {implicit = false; cast = true} Pi s ty tm
 
 let lambda s ty tm = bound Abst s ty tm
 
@@ -86,7 +91,6 @@ let check_core t =
         Printf.printf "%a : %a\n" print_term t print_term ty
     | a::_ -> raise (NotFound (string_of_name a))
 
-(* let elab t = Unif.elab Unif.fo_unif Conv.hd_beta_norm t *)
 let elab t = 
   let u_info = {Unif.red = Conv.hd_beta_norm; 
                 Unif.conv = Conv.conv; 
