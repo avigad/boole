@@ -209,7 +209,9 @@ let coerce ty1 ty2 =
 let top name ty = TopLevel (make_name name, ([], ty), [])
 
 let eq = 
-  let eq_ty = pi "X" type1 (pi "Y" type1 type0) in
+  let x = Const(Local, make_name "X", type1) in
+  let y = Const(Local, make_name "Y", type1) in
+  let eq_ty = pi "X" type1 (pi "Y" type1 (pi "_" x (pi "_" y type0))) in
   top "Eq" eq_ty
 
 let cast_tm = 

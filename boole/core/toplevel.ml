@@ -10,7 +10,11 @@ exception TypingError
 
 exception UnifError
 
+(* The basic context which is loaded by default *)
+
 let top_ctxt = ref (new_ctxt "top")
+
+(* Helper constants and functions for defining terms *)
 
 let dummy = Type Z
 
@@ -53,11 +57,13 @@ let type0 = Type Z
 
 let type1 = Type (Suc Z)
 
+let wild = Const(Mvar,Expr.make_name "Boole_wild", type1)
 
 let magic a t =
   let magic_a = Expr.make_name ("magic_" ^ Expr.string_of_name a) in
   Const(Local, magic_a, t)
 
+(* Base functions for declaring constants and hints *)
 
 let make_goals t mvars =
   let subst = List.fold_left 
@@ -99,8 +105,6 @@ let elab t =
     (Unif.elab Unif.ho_unif u_info t, [])
   with Unif.MvarNoVal (t, ms) ->
     make_goals t ms
-
-let wild = Const(Mvar,Expr.make_name "Boole_wild", type1)
 
 let print_type_err t t1 t2 t3 =
   Printf.eprintf
@@ -164,13 +168,13 @@ let print_goals goals =
     Printf.printf "\n"
   end
   
-
-
 let check t = 
     let t1 = Elab.decorate t in
     let t2, goals = call_with_handle elab t1 in
     call_with_handle check_core t2;
     print_goals goals
+
+(* Functions for adding new fields to the top context *)
 
 let add_top s t = 
   let t1 = Elab.decorate t in
@@ -187,5 +191,5 @@ let add_top s t =
   print_goals goals
 
 let add_hint t =
-  check t;
+  call_with_handle (fun t -> ignore (Typing.type_raw Conv.conv t)) t;
   top_ctxt := add_hint t !top_ctxt

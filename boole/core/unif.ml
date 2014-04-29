@@ -200,7 +200,7 @@ let imitate mvar args_m hd args s =
   in
   let args_vars = args_vars args_m (Elab.type_raw mvar) in
   let rec body tm args cstrs =
-    match List.rev args with
+    match args with
       | [] -> (tm, cstrs)
       | u::us ->
           let u_ty = Elab.type_raw u in
@@ -211,7 +211,7 @@ let imitate mvar args_m hd args s =
           let u_ts = make_app u_mvar args_m in
           body (App (tm, u_app)) us (Eq (false, u_ts, u)::cstrs)
   in
-  let body, constr = body hd args [] in
+  let body, constr = body hd (List.rev args) [] in
   let body = make_abst args_vars body in
 
   let s = add_subst (Expr.name_of mvar) body s in
@@ -293,7 +293,9 @@ let is_trivial info c s =
     | HasType (_, t, ty) ->
         let t_s, ty_s = mvar_subst s t, mvar_subst s ty in
         let t_ty = Elab.type_raw t_s in
-        Conv.check_conv info.conv t_ty ty_s
+        (* Check if ty has meta-variables: if so, there is still work to do
+           on this constraint! *)
+        (not (Expr.has_mvars ty)) && Conv.check_conv info.conv t_ty ty_s
     | _ -> false  
 
 
@@ -321,6 +323,7 @@ let set_postponed c =
     | IsType (_, t) -> IsType (true, t)
 
 let rec ho_unif info constr s =
+  (* Printf.printf "\nconstrs = %a\n" print_cstrs constr; *)
   try
     match constr with
       | [] -> s
@@ -345,16 +348,38 @@ let add_ty_hint t hints =
   fun s c ->
     let br = hints s c in
     match c with
-      | HasType (_, _, ty) ->
+      | HasType (_, tm, ty) ->
           let ty_s = mvar_subst s ty in
-          let hd_t, _ = get_app t in
+          let t_ty = Elab.type_raw t in
+          let hd_t_ty, _ = get_app t_ty in
           let hd_ty, _ = get_app ty_s in
-          if Expr.equal hd_t hd_ty then
-            (s, [Eq (false, t, ty)])::br
+          if Expr.equal hd_t_ty hd_ty then
+          let tm_s = mvar_subst s tm in
+            (s, [Eq (false, tm_s, t); Eq (false, ty, t_ty)])::br
           else
             br
       | _ -> br
 
+let add_hint_f f hints =
+  fun s c ->
+    (s, f s c)::(hints s c)
+
+let cast_hint s c =
+  match c with
+    | Eq (_, t1, t2) ->
+        let t1, t2 = mvar_subst s t1, mvar_subst s t2 in
+        let hd_t2, t2_args = get_app t2 in
+        begin match hd_t2, t2_args with
+          | TopLevel (a, _, _), [_; u]
+            when string_of_name a = "Cast" ->
+              Printf.printf "\n\nreplacing %a with %a\n\n" print_term t2 print_term u;
+              [Eq (false, t1, u)]
+          | _ -> []
+        end
+    | _ -> []
+
 (* let add_eq_hint t1 t2 hints = assert false *)
 
 let empty_hints _ _ = []
+
+let default_hints = add_hint_f cast_hint empty_hints
