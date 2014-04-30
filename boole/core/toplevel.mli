@@ -8,6 +8,7 @@ val make_var : string -> Expr.t
 val pi : string -> Expr.t -> Expr.t -> Expr.t
 val ipi : string -> Expr.t -> Expr.t -> Expr.t
 val cpi : string -> Expr.t -> Expr.t -> Expr.t
+val epi : string -> Expr.t -> Expr.t -> Expr.t
 val lambda : string -> Expr.t -> Expr.t -> Expr.t
 val sigma : string -> Expr.t -> Expr.t -> Expr.t
 val app : Expr.t -> Expr.t -> Expr.t

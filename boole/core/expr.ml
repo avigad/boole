@@ -54,9 +54,9 @@ type binder = Pi | Abst | Sig
 
 type proj = Fst | Snd
 
-type info = {implicit : bool; cast : bool}
+type info = {implicit : bool; cast : bool; ext : bool}
 
-let default_info = {implicit = false; cast = false}
+let default_info = {implicit = false; cast = false; ext = false}
 
 type t = 
     Type of level
@@ -342,6 +342,17 @@ match cst with
 
 let string_of_name a = a
 
+let string_of_info i = 
+  let {implicit; cast; ext} = i in
+  if implicit then
+    "♯"
+  else if cast then
+    "§"
+  else if ext then
+    "~"
+  else
+    ""
+
 let rec print_term o t =
   match t with
       Type l -> 
@@ -355,7 +366,7 @@ let rec print_term o t =
     | Const(Local, a, _) -> fprintf o "%s" a
     | Const(Mvar, a, _) -> fprintf o "?%s" a
     | DB i -> fprintf o "DB(%s)" (string_of_int i)
-    | Bound(_, b, a, ty, tm) ->
+    | Bound(i, b, a, ty, tm) ->
       let tm = subst (Const (Local, a, ty)) tm in
       if not (List.mem a (free_vars tm)) then
         begin
@@ -367,8 +378,9 @@ let rec print_term o t =
                   print_term ty print_term tm
         end
       else
-        fprintf o "%s %s : %a.%a" (string_of_binder b) a
-        print_term ty print_term tm
+        fprintf o "%s%s %s : %a.%a" 
+          (string_of_info i) (string_of_binder b) a
+          print_term ty print_term tm
     | App(t1, t2) ->
       fprintf o "(%a %a)" print_term t1 print_term t2
     | Pair(_, _, t1, t2) ->

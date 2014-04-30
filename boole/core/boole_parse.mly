@@ -47,7 +47,7 @@ expr_1 :
    | LPAREN expr RPAREN
        { $2 }
    | TILDE LSQ IDENT COLON expr RSQ expr
-       { Toplevel.cpi $3 $5 $7}
+       { Toplevel.epi $3 $5 $7}
    | POUND LSQ IDENT COLON expr RSQ expr
        { Toplevel.ipi $3 $5 $7}
    | LSQ IDENT COLON expr RSQ expr

@@ -34,9 +34,11 @@ let bound b s ty bod = ibound default_info b s ty bod
 
 let pi s ty tm = bound Pi s ty tm
 
-let ipi s ty tm = ibound {implicit = true; cast = false} Pi s ty tm
+let ipi s ty tm = ibound {default_info with implicit = true} Pi s ty tm
 
-let cpi s ty tm = ibound {implicit = false; cast = true} Pi s ty tm
+let cpi s ty tm = ibound {default_info with cast = true} Pi s ty tm
+
+let epi s ty tm = ibound {default_info with ext = true} Pi s ty tm
 
 let lambda s ty tm = bound Abst s ty tm
 
@@ -156,13 +158,14 @@ let call_with_handle f t =
         raise UnifError
 
 let print_goals goals =
-  let i = ref 1 in
+  let i = ref 0 in
   if goals = [] then
     ()
   else begin
     Printf.printf "Remaining goals:\n\n";
     List.iter (
       fun g -> 
+        incr i;
         Printf.printf "%d: %a\n" !i print_term g
     ) goals;
     Printf.printf "\n"

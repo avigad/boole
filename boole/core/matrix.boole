@@ -1,0 +1,25 @@
+Var Eq : #[X : Type] #[Y : Type] X -> Y -> Bool
+
+Var Int : Type
+Var plus : Int -> Int -> Int
+Var mul : Int -> Int -> Int
+Var Z : Int
+Var One : Int
+Var lt : Int -> Int -> Bool
+
+Var plusZl : [i : Int] Eq (plus Z i) i
+Var plusZr : [i : Int] Eq (plus i Z) i
+
+Var Matrix : Int -> Int -> Type
+Var Mfield : [i : Int] [j : Int] [k : Int] [l : Int] lt k i -> lt l j -> Int
+Var Mmul : [i : Int] ~[j : Int] [k : Int] [M : Matrix i j] [N : Matrix j k] Matrix i k
+
+Var i : Int
+Var j : Int
+Var jj : Int
+Var k : Int
+
+Var M : Matrix i j
+Var N : Matrix j k
+
+Check Mmul i j k M N

@@ -231,11 +231,43 @@ let deco_mvar a ctxt =
   else
     assert false
 
-let rec deco_cst t ctxt = 
+let rec deco_implicit t ctxt = 
   match type_raw t with
-    | Bound({implicit=true; _}, Pi, _, _, _) -> deco_cst (App (t, wild ctxt)) ctxt
+    | Bound({implicit=true; _}, Pi, _, _, _) -> 
+        deco_implicit (App (t, wild ctxt)) ctxt
     | _ -> t
 
+let rec deco_ty ty =
+  match ty with
+    | Bound ({ext=true; _} as i, Pi, a, ty, body) ->
+        let a1, body1 = Expr.open_t a ty body in
+        let body2 = deco_ty body1 in
+        let body_cast = deco_cast a1 body2 in
+        let body3 = abst a1 body_cast in
+        Bound (i, Pi, a, ty, body3)
+    | Bound (i, Pi, a, ty, body) ->
+        Bound (i, Pi, a, ty, deco_ty body)
+    | _ -> ty
+and deco_cast a ty =
+  match ty with
+    | Bound (i, Pi, b, b_ty, body) ->
+        let vs = Expr.free_vars b_ty in
+        let body_cast = deco_cast a body in
+        if List.mem a vs then
+          Bound ({i with cast=true}, Pi, b, b_ty, body_cast)
+        else
+          Bound (i, Pi, b, b_ty, body_cast)
+    | _ -> ty
+        
+
+let deco_cst t ctxt = 
+  let t1 = match t with
+    | Const (c, a, ty) ->
+        let ty1 = deco_ty ty in
+        Const(c, a, ty1)
+    | _ -> t
+  in
+  deco_implicit t1 ctxt
 
 let rec deco t ctxt =
   match t with
@@ -269,4 +301,5 @@ let rec deco t ctxt =
         let ty' = deco open_ty (c::ctxt) in
         Pair (a, abst a' ty', t1', t2')
 
-let decorate t = deco t []
+(*TODO: this is a hack! *)
+let decorate t = deco_ty (deco t [])
