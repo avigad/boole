@@ -295,12 +295,16 @@ let is_trivial info c s =
         let t_ty = Elab.type_raw t_s in
         (* Check if ty has meta-variables: if so, there is still work to do
            on this constraint! *)
-        (not (Expr.has_mvars ty)) && Conv.check_conv info.conv t_ty ty_s
+        (not (Expr.has_mvars ty_s)) && Conv.check_conv info.conv t_ty ty_s
     | _ -> false  
 
 
-let ty_step _ _ _ _ (* info *) (* t *) (* ty *) (* s *) =
-  raise UFail
+let ty_step _ (* info *) t ty s =
+  let t_s, ty_s = mvar_subst s t, mvar_subst s ty in
+  if not (Expr.has_mvars t_s) then
+    Branch [s, [Eq (false, Elab.type_raw t_s, ty_s)]]
+  else
+    raise UFail
 
 let ho_step info c s =
   try
@@ -362,7 +366,7 @@ let add_ty_hint t hints =
 
 let add_hint_f f hints =
   fun s c ->
-    (s, f s c)::(hints s c)
+    (f s c) @ (hints s c)
 
 let cast_hint s c =
   match c with
@@ -370,10 +374,11 @@ let cast_hint s c =
         let t1, t2 = mvar_subst s t1, mvar_subst s t2 in
         let hd_t2, t2_args = get_app t2 in
         begin match hd_t2, t2_args with
-          | TopLevel (a, _, _), [_; u]
+          | TopLevel (a, _, _), [u; _; _; _]
             when string_of_name a = "Cast" ->
+              (* TODO: branch here instead of assuming all equalities *)
               Printf.printf "\n\nreplacing %a with %a\n\n" print_term t2 print_term u;
-              [Eq (false, t1, u)]
+              [s, [Eq (false, t1, u)]]
           | _ -> []
         end
     | _ -> []
@@ -382,4 +387,5 @@ let cast_hint s c =
 
 let empty_hints _ _ = []
 
+(* let default_hints = empty_hints *)
 let default_hints = add_hint_f cast_hint empty_hints
