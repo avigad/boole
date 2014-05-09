@@ -20,6 +20,6 @@ Var jj : Int
 Var k : Int
 
 Var M : Matrix i j
-Var N : Matrix j k
+Var N : Matrix jj k
 
 Check Mmul i j k M N
