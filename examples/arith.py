@@ -44,7 +44,7 @@ check(e)
 print "e = ", eval_expr(e)
 print
 
-A little real arithmetic for fun!
+## A little real arithmetic for fun!
 push_ctxt('real_arith')
 
 defhyp("x_pos", x > 0.0)
